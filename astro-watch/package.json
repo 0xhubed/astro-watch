@@ -1,0 +1,51 @@
+{
+  "name": "astro-watch",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@react-spring/three": "^10.0.1",
+    "@react-three/drei": "^10.4.2",
+    "@react-three/fiber": "^9.2.0",
+    "@tanstack/react-query": "^5.81.5",
+    "@tensorflow/tfjs": "^4.22.0",
+    "clsx": "^2.1.1",
+    "d3": "^7.9.0",
+    "framer-motion": "^12.23.0",
+    "leva": "^0.10.0",
+    "lucide-react": "^0.525.0",
+    "ml-matrix": "^6.12.1",
+    "next": "15.3.5",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-globe.gl": "^2.34.0",
+    "react-spring": "^10.0.1",
+    "react-use": "^17.6.0",
+    "recharts": "^3.0.2",
+    "simple-statistics": "^7.8.8",
+    "tailwind-merge": "^3.3.1",
+    "three": "^0.178.0",
+    "three-globe": "^2.43.0",
+    "zustand": "^5.0.6"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/d3": "^7.4.3",
+    "@types/d3-geo": "^3.1.0",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/three": "^0.178.0",
+    "@types/topojson-client": "^3.1.5",
+    "eslint": "^9",
+    "eslint-config-next": "15.3.5",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

@@ -1,0 +1,17 @@
+# Project planning and development docs
+unified-asteroid-viz-plan.md
+asteroid-viz-claude-code-guide.md
+enhanced-asteroid-viz-plan.md
+*-plan.md
+*-guide.md
+planning/
+docs/development/
+
+# Claude AI artifacts
+.claude/
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db

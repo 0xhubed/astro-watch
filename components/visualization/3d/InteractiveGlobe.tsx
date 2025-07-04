@@ -38,8 +38,14 @@ export function InteractiveGlobe({ asteroids }: Props) {
         .pointsMerge(true)
         .atmosphereColor('#3a228a')
         .atmosphereAltitude(0.25)
+        .showGraticules(true)
         .onPointClick((point: any) => {
           console.log('Impact point clicked:', point);
+        })
+        .onPointHover((point: any) => {
+          if (point) {
+            console.log('Asteroid:', point.asteroid.name);
+          }
         });
     });
   }, [asteroids]);

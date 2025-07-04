@@ -1,21 +1,37 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0a0a0f;
+  --foreground: #f0f0f5;
+  --space-dark: #0a0a0f;
+  --nebula-purple: #5e17eb;
+  --star-white: #f0f0f5;
+  --orbit-gray: #3a3a4a;
+  --risk-high: #ff3b30;
+  --risk-medium: #ff9500;
+  --risk-low: #34c759;
+  --risk-safe: #007aff;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-space-dark: var(--space-dark);
+  --color-nebula-purple: var(--nebula-purple);
+  --color-star-white: var(--star-white);
+  --color-orbit-gray: var(--orbit-gray);
+  --color-risk-high: var(--risk-high);
+  --color-risk-medium: var(--risk-medium);
+  --color-risk-low: var(--risk-low);
+  --color-risk-safe: var(--risk-safe);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0a0a0f;
+    --foreground: #f0f0f5;
   }
 }
 
@@ -23,4 +39,26 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+@keyframes orbit {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes impact-wave {
+  0% { transform: scale(0); opacity: 1; }
+  100% { transform: scale(4); opacity: 0; }
+}
+
+.animate-orbit {
+  animation: orbit 20s linear infinite;
+}
+
+.animate-pulse-slow {
+  animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-impact-wave {
+  animation: impact-wave 2s ease-out infinite;
 }

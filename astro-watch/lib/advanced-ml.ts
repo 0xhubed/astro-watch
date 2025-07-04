@@ -19,9 +19,9 @@ export class AdvancedRiskPredictor {
     const physOutput = tf.layers.dense({ units: 16, activation: 'relu' }).apply(physDropout);
     
     // Combine pathways
-    const combined = tf.layers.concatenate().apply([trajOutput, physOutput]) as tf.SymbolicTensor;
-    const finalHidden = tf.layers.dense({ units: 64, activation: 'relu' }).apply(combined);
-    const output = tf.layers.dense({ units: 1, activation: 'sigmoid' }).apply(finalHidden);
+    const combined = tf.layers.concatenate().apply([trajOutput as tf.SymbolicTensor, physOutput as tf.SymbolicTensor]) as tf.SymbolicTensor;
+    const finalHidden = tf.layers.dense({ units: 64, activation: 'relu' }).apply(combined) as tf.SymbolicTensor;
+    const output = tf.layers.dense({ units: 1, activation: 'sigmoid' }).apply(finalHidden) as tf.SymbolicTensor;
     
     this.model = tf.model({ inputs: input, outputs: output as tf.SymbolicTensor });
     

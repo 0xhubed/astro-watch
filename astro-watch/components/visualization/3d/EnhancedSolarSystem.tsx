@@ -25,11 +25,383 @@ interface CameraPreset {
 }
 
 const CAMERA_PRESETS: CameraPreset[] = [
-  { name: 'Solar System View', position: [0, 20, 40], target: [0, 0, 0] },
   { name: 'Earth Close-up', position: [0, 10, 20], target: [0, 0, 0] },
-  { name: 'Asteroid Chase', position: [50, 20, 50], target: [0, 0, 0] },
-  { name: 'Top Down', position: [0, 100, 0], target: [0, 0, 0] }
+  { name: 'Earth-Moon System', position: [0, 30, 50], target: [0, 0, 0] },
+  { name: 'Near-Earth Objects', position: [50, 40, 80], target: [0, 0, 0] },
+  { name: 'NEO Overview', position: [0, 100, 150], target: [0, 0, 0] },
+  { name: 'Inner Solar System', position: [0, 150, 300], target: [0, 0, 0] },
+  { name: 'Full Solar System', position: [0, 800, 1500], target: [0, 0, 0] }
 ];
+
+// Realistic planet data with accurate astronomical distances (scaled for visualization)
+// Real AU distances: Mercury=0.39, Venus=0.72, Earth=1.0, Mars=1.52, Jupiter=5.2, Saturn=9.5, Uranus=19.2, Neptune=30.1
+const PLANET_DATA = [
+  {
+    name: 'Mercury',
+    distanceFromSun: 25,    // 0.39 AU * 64 scale factor
+    size: 0.8,              // Relative size
+    baseColor: '#8c7853',   // Base rocky color
+    speed: 0.04,            // Fastest orbit (88 Earth days)
+    inclination: 0.01,
+    textureType: 'rocky'
+  },
+  {
+    name: 'Venus', 
+    distanceFromSun: 46,    // 0.72 AU * 64 scale factor
+    size: 1.9,
+    baseColor: '#ffc649',   // Bright yellow atmosphere
+    speed: 0.03,            // 225 Earth days
+    inclination: 0.006,
+    textureType: 'atmospheric'
+  },
+  {
+    name: 'Earth',
+    distanceFromSun: 64,    // 1.0 AU * 64 scale factor (reference)
+    size: 2.0,
+    baseColor: '#6b93d6',
+    speed: 0.02,            // 365 Earth days
+    inclination: 0,
+    textureType: 'earth'
+  },
+  {
+    name: 'Mars',
+    distanceFromSun: 97,    // 1.52 AU * 64 scale factor
+    size: 1.3,
+    baseColor: '#cd5c5c',   // Red planet
+    speed: 0.015,           // 687 Earth days
+    inclination: 0.032,
+    textureType: 'rocky'
+  },
+  {
+    name: 'Jupiter',
+    distanceFromSun: 333,   // 5.2 AU * 64 scale factor
+    size: 8.0,              // Largest planet
+    baseColor: '#d8ca9d',   // Gas giant bands
+    speed: 0.008,           // 12 Earth years
+    inclination: 0.022,
+    textureType: 'gasGiant'
+  },
+  {
+    name: 'Saturn',
+    distanceFromSun: 608,   // 9.5 AU * 64 scale factor
+    size: 7.0,
+    baseColor: '#fad5a5',
+    speed: 0.006,           // 29 Earth years
+    inclination: 0.043,
+    hasRings: true,
+    textureType: 'gasGiant'
+  },
+  {
+    name: 'Uranus',
+    distanceFromSun: 1229,  // 19.2 AU * 64 scale factor
+    size: 3.5,
+    baseColor: '#4fd0e7',   // Ice giant
+    speed: 0.004,           // 84 Earth years
+    inclination: 0.013,
+    textureType: 'iceGiant'
+  },
+  {
+    name: 'Neptune',
+    distanceFromSun: 1926,  // 30.1 AU * 64 scale factor
+    size: 3.3,
+    baseColor: '#4b70dd',   // Deep blue ice giant
+    speed: 0.003,           // 165 Earth years
+    inclination: 0.031,
+    textureType: 'iceGiant'
+  }
+];
+
+// Create procedural planet textures
+function createPlanetTexture(textureType: string, baseColor: string): THREE.Texture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d')!;
+  
+  switch (textureType) {
+    case 'rocky':
+      // Rocky planet texture (Mercury, Mars)
+      ctx.fillStyle = baseColor;
+      ctx.fillRect(0, 0, 512, 256);
+      
+      // Add craters and surface features
+      for (let i = 0; i < 50; i++) {
+        const x = Math.random() * 512;
+        const y = Math.random() * 256;
+        const radius = Math.random() * 15 + 3;
+        
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(0,0,0,${0.2 + Math.random() * 0.3})`;
+        ctx.fill();
+      }
+      break;
+      
+    case 'atmospheric':
+      // Venus - thick atmosphere
+      const gradient = ctx.createRadialGradient(256, 128, 0, 256, 128, 256);
+      gradient.addColorStop(0, '#ffeb3b');
+      gradient.addColorStop(0.7, '#ffc107');
+      gradient.addColorStop(1, '#ff8f00');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, 512, 256);
+      
+      // Add atmospheric bands
+      for (let i = 0; i < 8; i++) {
+        ctx.fillStyle = `rgba(255,255,255,${0.1 + Math.random() * 0.2})`;
+        ctx.fillRect(0, i * 32, 512, 16);
+      }
+      break;
+      
+    case 'gasGiant':
+      // Jupiter/Saturn - banded gas giant
+      ctx.fillStyle = baseColor;
+      ctx.fillRect(0, 0, 512, 256);
+      
+      // Add horizontal bands
+      const bandColors = ['rgba(139,121,94,0.8)', 'rgba(160,130,98,0.6)', 'rgba(205,133,63,0.4)'];
+      for (let i = 0; i < 12; i++) {
+        ctx.fillStyle = bandColors[i % bandColors.length];
+        ctx.fillRect(0, i * 21, 512, 10 + Math.random() * 8);
+      }
+      
+      // Add the Great Red Spot for Jupiter
+      if (baseColor === '#d8ca9d') {
+        ctx.beginPath();
+        ctx.ellipse(350, 140, 40, 25, 0, 0, Math.PI * 2);
+        ctx.fillStyle = '#cd5c5c';
+        ctx.fill();
+      }
+      break;
+      
+    case 'iceGiant':
+      // Uranus/Neptune - ice giants
+      const iceGradient = ctx.createRadialGradient(256, 128, 0, 256, 128, 200);
+      iceGradient.addColorStop(0, baseColor);
+      iceGradient.addColorStop(0.8, '#1976d2');
+      iceGradient.addColorStop(1, '#0d47a1');
+      ctx.fillStyle = iceGradient;
+      ctx.fillRect(0, 0, 512, 256);
+      
+      // Add subtle atmospheric features
+      for (let i = 0; i < 6; i++) {
+        ctx.fillStyle = `rgba(255,255,255,${0.05 + Math.random() * 0.1})`;
+        ctx.fillRect(0, i * 42, 512, 20);
+      }
+      break;
+      
+    default:
+      ctx.fillStyle = baseColor;
+      ctx.fillRect(0, 0, 512, 256);
+  }
+  
+  return new THREE.CanvasTexture(canvas);
+}
+
+// Removed complex Sun texture function that was causing errors
+
+function createMoonTexture(): THREE.Texture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d')!;
+  
+  // Base gray surface
+  ctx.fillStyle = '#c0c0c0';
+  ctx.fillRect(0, 0, 256, 128);
+  
+  // Add many craters
+  for (let i = 0; i < 80; i++) {
+    const x = Math.random() * 256;
+    const y = Math.random() * 128;
+    const radius = Math.random() * 8 + 2;
+    
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(0,0,0,${0.3 + Math.random() * 0.4})`;
+    ctx.fill();
+    
+    // Crater rim
+    ctx.beginPath();
+    ctx.arc(x, y, radius + 1, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(200,200,200,${0.5})`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+  
+  // Add dark maria (seas)
+  for (let i = 0; i < 5; i++) {
+    const x = Math.random() * 256;
+    const y = Math.random() * 128;
+    const width = 30 + Math.random() * 50;
+    const height = 20 + Math.random() * 30;
+    
+    ctx.beginPath();
+    ctx.ellipse(x, y, width, height, 0, 0, Math.PI * 2);
+    ctx.fillStyle = '#808080';
+    ctx.fill();
+  }
+  
+  return new THREE.CanvasTexture(canvas);
+}
+
+function Planet({ planetData, time }: { planetData: any; time: number }) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const groupRef = useRef<THREE.Group>(null);
+  
+  // Calculate position around Sun (at center 0,0,0)
+  const angle = time * planetData.speed;
+  const x = Math.cos(angle) * planetData.distanceFromSun;
+  const z = Math.sin(angle) * planetData.distanceFromSun;
+  const y = Math.sin(angle * 0.3) * planetData.inclination * 10;
+  
+  // Create texture for this planet
+  const planetTexture = useMemo(() => 
+    createPlanetTexture(planetData.textureType, planetData.baseColor), 
+    [planetData.textureType, planetData.baseColor]
+  );
+  
+  useFrame((state, delta) => {
+    if (meshRef.current) {
+      meshRef.current.rotation.y += delta * 0.3;
+    }
+  });
+  
+  return (
+    <group ref={groupRef} position={[x, y, z]}>
+      <mesh ref={meshRef} castShadow receiveShadow>
+        <sphereGeometry args={[planetData.size, 64, 32]} />
+        <meshStandardMaterial 
+          map={planetTexture}
+          roughness={planetData.textureType === 'iceGiant' ? 0.1 : 0.8}
+          metalness={planetData.textureType === 'iceGiant' ? 0.3 : 0.1}
+        />
+      </mesh>
+      
+      {/* Enhanced Saturn's rings */}
+      {planetData.hasRings && (
+        <>
+          <mesh rotation={[Math.PI / 2.2, 0, 0]}>
+            <ringGeometry args={[planetData.size * 1.2, planetData.size * 2.0, 64]} />
+            <meshStandardMaterial 
+              color="#fad5a5"
+              transparent={true}
+              opacity={0.7}
+              roughness={0.9}
+            />
+          </mesh>
+          <mesh rotation={[Math.PI / 2.2, 0, 0]}>
+            <ringGeometry args={[planetData.size * 2.1, planetData.size * 2.8, 64]} />
+            <meshStandardMaterial 
+              color="#e8c547"
+              transparent={true}
+              opacity={0.5}
+              roughness={0.9}
+            />
+          </mesh>
+        </>
+      )}
+      
+      {/* Planet label */}
+      <Html position={[0, planetData.size + 3, 0]} center>
+        <div className="bg-black/90 text-white px-3 py-1 rounded-lg text-sm font-medium pointer-events-none border border-white/20">
+          {planetData.name}
+        </div>
+      </Html>
+    </group>
+  );
+}
+
+function Moon({ earthPosition }: { earthPosition: [number, number, number] }) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  
+  // Create realistic moon texture
+  const moonTexture = useMemo(() => createMoonTexture(), []);
+  
+  useFrame((state) => {
+    if (meshRef.current) {
+      const time = state.clock.elapsedTime;
+      // Realistic Moon distance: ~384,400 km = ~60 Earth radii
+      // Earth radius in our scale = 6.371, so Moon distance = 60 * 6.371 = ~382 units
+      // Scaled down for visibility to 25 units (still realistic relative scale)
+      const moonDistance = 25; // Realistic but visible distance from Earth
+      const moonAngle = time * 0.5; // Moon orbit speed (27.3 days in real life)
+      
+      // Position relative to Earth
+      const x = earthPosition[0] + Math.cos(moonAngle) * moonDistance;
+      const z = earthPosition[2] + Math.sin(moonAngle) * moonDistance;
+      const y = earthPosition[1] + Math.sin(moonAngle * 0.1) * 1;
+      
+      meshRef.current.position.set(x, y, z);
+      meshRef.current.rotation.y += 0.01;
+    }
+  });
+  
+  return (
+    <mesh ref={meshRef} castShadow receiveShadow>
+      <sphereGeometry args={[0.7, 32, 16]} />
+      <meshStandardMaterial 
+        map={moonTexture}
+        roughness={0.95}
+        metalness={0.0}
+      />
+    </mesh>
+  );
+}
+
+// Enhanced orbital trajectory component - always visible
+function PlanetaryTrajectories() {
+  return (
+    <group>
+      {PLANET_DATA.map((planet) => (
+        <mesh 
+          key={`orbit-${planet.name}`} 
+          rotation={[Math.PI / 2, 0, 0]}
+          renderOrder={1}
+        >
+          <ringGeometry args={[planet.distanceFromSun - 0.5, planet.distanceFromSun + 0.5, 256]} />
+          <meshBasicMaterial 
+            color={planet.baseColor}
+            transparent={true}
+            opacity={0.25}
+            depthWrite={false}
+            depthTest={true}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+      ))}
+      
+      {/* Add orbital markers for better visibility */}
+      {PLANET_DATA.map((planet) => (
+        <group key={`orbit-markers-${planet.name}`}>
+          {/* Create orbital markers every 30 degrees */}
+          {Array.from({ length: 12 }, (_, i) => {
+            const angle = (i * 30) * Math.PI / 180;
+            const x = Math.cos(angle) * planet.distanceFromSun;
+            const z = Math.sin(angle) * planet.distanceFromSun;
+            const y = Math.sin(angle * 0.3) * planet.inclination * 10;
+            
+            return (
+              <mesh 
+                key={`marker-${i}`} 
+                position={[x, y, z]}
+                renderOrder={2}
+              >
+                <sphereGeometry args={[0.2, 8, 4]} />
+                <meshBasicMaterial 
+                  color={planet.baseColor}
+                  transparent={true}
+                  opacity={0.4}
+                  depthWrite={false}
+                />
+              </mesh>
+            );
+          })}
+        </group>
+      ))}
+    </group>
+  );
+}
 
 function Earth() {
   const meshRef = useRef<THREE.Mesh>(null);
@@ -37,15 +409,25 @@ function Earth() {
   // Earth texture state that can be updated
   const [earthTexture, setEarthTexture] = useState<THREE.Texture>(() => createProceduralEarthTexture());
   
-  // Try to load NASA texture on component mount
+  // Try to load NASA texture on component mount with proper error handling
   useEffect(() => {
     let isMounted = true;
     
-    const loader = new THREE.TextureLoader();
-    loader.load(
-      '/textures/earth_day.jpg',
-      (texture) => {
-        // Success callback - NASA texture loaded
+    const loadTexture = async () => {
+      try {
+        const loader = new THREE.TextureLoader();
+        
+        // Wrap the loader in a Promise to handle it properly
+        const texture = await new Promise<THREE.Texture>((resolve, reject) => {
+          loader.load(
+            '/textures/earth_day.jpg',
+            (texture) => resolve(texture),
+            undefined,
+            (error) => reject(error)
+          );
+        });
+        
+        // Success - NASA texture loaded
         if (isMounted) {
           console.log('✅ NASA Earth texture loaded successfully');
           texture.wrapS = THREE.RepeatWrapping;
@@ -53,19 +435,20 @@ function Earth() {
           texture.generateMipmaps = true;
           texture.minFilter = THREE.LinearMipmapLinearFilter;
           texture.magFilter = THREE.LinearFilter;
-          // Update the texture state
           setEarthTexture(texture);
         }
-      },
-      undefined,
-      (error) => {
-        // Error callback - NASA texture failed to load
+      } catch (error) {
+        // Error handled - NASA texture failed to load
         if (isMounted) {
           console.log('⚠️ NASA texture not found, using procedural texture');
           console.log('To add realistic textures, run: ./scripts/download-textures.sh');
+          // Keep using the procedural texture that's already set
         }
       }
-    );
+    };
+    
+    // Call the async function
+    loadTexture();
     
     return () => {
       isMounted = false;
@@ -84,87 +467,163 @@ function Earth() {
     return { earthNormalMap, earthSpecularMap };
   }, []);
   
-  // Procedural texture creation (fallback)
+  // Enhanced procedural texture creation (fallback)
   function createProceduralEarthTexture() {
-    // Main Earth texture
+    // Main Earth texture with higher resolution
     const canvas = document.createElement('canvas');
-    canvas.width = 2048;
-    canvas.height = 1024;
+    canvas.width = 4096;
+    canvas.height = 2048;
     const ctx = canvas.getContext('2d')!;
     
-    // Create realistic ocean base with depth
-    const oceanGradient = ctx.createRadialGradient(1024, 512, 0, 1024, 512, 512);
-    oceanGradient.addColorStop(0, '#2563eb');
-    oceanGradient.addColorStop(0.5, '#1d4ed8');
-    oceanGradient.addColorStop(1, '#1e3a8a');
+    // Create realistic ocean base with depth variations
+    const oceanGradient = ctx.createRadialGradient(2048, 1024, 0, 2048, 1024, 1024);
+    oceanGradient.addColorStop(0, '#1e40af');
+    oceanGradient.addColorStop(0.3, '#1d4ed8');
+    oceanGradient.addColorStop(0.7, '#1e3a8a');
+    oceanGradient.addColorStop(1, '#0f172a');
     ctx.fillStyle = oceanGradient;
-    ctx.fillRect(0, 0, 2048, 1024);
+    ctx.fillRect(0, 0, 4096, 2048);
     
-    // Add more detailed continents with realistic coastlines
-    ctx.fillStyle = '#059669';
+    // Add ocean depth variations
+    for (let i = 0; i < 200; i++) {
+      const x = Math.random() * 4096;
+      const y = Math.random() * 2048;
+      const radius = 20 + Math.random() * 80;
+      const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+      gradient.addColorStop(0, 'rgba(30, 64, 175, 0.6)');
+      gradient.addColorStop(1, 'rgba(15, 23, 42, 0.3)');
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
     
-    // North America with more detail
+    // Detailed continents with realistic colors
+    const landGradient = ctx.createLinearGradient(0, 0, 0, 2048);
+    landGradient.addColorStop(0, '#065f46');  // Dark forest
+    landGradient.addColorStop(0.3, '#059669'); // Forest green
+    landGradient.addColorStop(0.6, '#16a34a'); // Grassland
+    landGradient.addColorStop(0.8, '#ca8a04'); // Desert
+    landGradient.addColorStop(1, '#92400e');   // Arid
+    
+    // North America - more detailed coastline
+    ctx.fillStyle = landGradient;
     ctx.beginPath();
-    ctx.moveTo(200, 200);
-    ctx.bezierCurveTo(250, 180, 350, 190, 400, 220);
-    ctx.bezierCurveTo(420, 280, 380, 320, 350, 350);
-    ctx.bezierCurveTo(300, 340, 250, 330, 200, 300);
+    ctx.moveTo(300, 300);
+    ctx.bezierCurveTo(400, 250, 600, 280, 700, 350);
+    ctx.bezierCurveTo(750, 400, 720, 500, 680, 550);
+    ctx.bezierCurveTo(600, 580, 500, 560, 400, 520);
+    ctx.bezierCurveTo(350, 480, 300, 420, 280, 350);
     ctx.closePath();
     ctx.fill();
     
-    // Add more continents with curves
+    // South America
     ctx.beginPath();
-    ctx.ellipse(600, 300, 150, 100, 0, 0, Math.PI * 2);
+    ctx.moveTo(450, 600);
+    ctx.bezierCurveTo(500, 580, 520, 620, 530, 700);
+    ctx.bezierCurveTo(520, 800, 500, 900, 480, 1000);
+    ctx.bezierCurveTo(450, 1100, 420, 1200, 400, 1300);
+    ctx.bezierCurveTo(380, 1200, 400, 1100, 420, 1000);
+    ctx.bezierCurveTo(430, 900, 440, 800, 430, 700);
+    ctx.bezierCurveTo(420, 620, 430, 580, 450, 600);
+    ctx.closePath();
     ctx.fill();
     
-    // Asia
+    // Europe and Africa
     ctx.beginPath();
-    ctx.ellipse(1200, 250, 200, 120, 0, 0, Math.PI * 2);
+    ctx.ellipse(1200, 400, 200, 150, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(1150, 700, 180, 300, 0, 0, Math.PI * 2);
     ctx.fill();
     
-    // Add mountain ranges with gradients
-    const mountainGradient = ctx.createLinearGradient(0, 0, 0, 50);
-    mountainGradient.addColorStop(0, '#8B4513');
-    mountainGradient.addColorStop(1, '#654321');
+    // Asia - large landmass
+    ctx.beginPath();
+    ctx.ellipse(2000, 450, 400, 200, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Australia
+    ctx.beginPath();
+    ctx.ellipse(2200, 1200, 150, 80, 0, 0, Math.PI * 2);
+    ctx.fill();
+    
+    // Add realistic mountain ranges
+    const mountainGradient = ctx.createLinearGradient(0, 0, 0, 100);
+    mountainGradient.addColorStop(0, '#78716c');
+    mountainGradient.addColorStop(0.5, '#57534e');
+    mountainGradient.addColorStop(1, '#44403c');
     ctx.fillStyle = mountainGradient;
     
-    // Mountain ranges
-    for (let i = 0; i < 10; i++) {
-      const x = Math.random() * 2048;
-      const y = 200 + Math.random() * 400;
-      ctx.fillRect(x, y, 40 + Math.random() * 60, 15 + Math.random() * 25);
+    // Himalayas
+    for (let i = 0; i < 15; i++) {
+      const x = 1800 + Math.random() * 400;
+      const y = 400 + Math.random() * 100;
+      ctx.fillRect(x, y, 60 + Math.random() * 100, 25 + Math.random() * 40);
     }
     
-    // Ice caps with realistic shapes
-    const iceGradient = ctx.createRadialGradient(1024, 50, 0, 1024, 50, 100);
+    // Rocky Mountains
+    for (let i = 0; i < 8; i++) {
+      const x = 400 + Math.random() * 200;
+      const y = 300 + Math.random() * 150;
+      ctx.fillRect(x, y, 40 + Math.random() * 80, 20 + Math.random() * 30);
+    }
+    
+    // Andes
+    for (let i = 0; i < 10; i++) {
+      const x = 420 + Math.random() * 60;
+      const y = 600 + i * 80 + Math.random() * 40;
+      ctx.fillRect(x, y, 30 + Math.random() * 50, 20 + Math.random() * 25);
+    }
+    
+    // Add deserts with sandy color
+    ctx.fillStyle = '#fbbf24';
+    ctx.globalAlpha = 0.7;
+    // Sahara
+    ctx.fillRect(1000, 600, 300, 150);
+    // Gobi
+    ctx.fillRect(1900, 500, 200, 100);
+    // Arabian
+    ctx.fillRect(1400, 650, 150, 100);
+    ctx.globalAlpha = 1.0;
+    
+    // Enhanced ice caps with realistic texture
+    const iceGradient = ctx.createRadialGradient(2048, 100, 0, 2048, 100, 200);
     iceGradient.addColorStop(0, '#ffffff');
+    iceGradient.addColorStop(0.7, '#f0f9ff');
     iceGradient.addColorStop(1, '#e0f2fe');
     ctx.fillStyle = iceGradient;
-    ctx.fillRect(0, 0, 2048, 80);
-    ctx.fillRect(0, 940, 2048, 84);
+    
+    // Arctic ice cap
+    ctx.fillRect(0, 0, 4096, 120);
+    // Antarctic ice cap
+    ctx.fillRect(0, 1920, 4096, 128);
+    
+    // Add ice texture details
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+    for (let i = 0; i < 100; i++) {
+      const x = Math.random() * 4096;
+      const y = Math.random() * 120;
+      ctx.fillRect(x, y, 10 + Math.random() * 20, 3 + Math.random() * 8);
+      // Antarctic
+      const y2 = 1920 + Math.random() * 128;
+      ctx.fillRect(x, y2, 10 + Math.random() * 20, 3 + Math.random() * 8);
+    }
+    
+    // Add cloud shadows for atmosphere effect
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+    for (let i = 0; i < 50; i++) {
+      const x = Math.random() * 4096;
+      const y = Math.random() * 2048;
+      const width = 100 + Math.random() * 300;
+      const height = 30 + Math.random() * 80;
+      ctx.beginPath();
+      ctx.ellipse(x, y, width, height, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
     
     const earthTexture = new THREE.CanvasTexture(canvas);
     earthTexture.wrapS = THREE.RepeatWrapping;
     earthTexture.wrapT = THREE.ClampToEdgeWrapping;
-    
-    // Create normal map for surface details
-    const normalCanvas = document.createElement('canvas');
-    normalCanvas.width = 1024;
-    normalCanvas.height = 512;
-    const normalCtx = normalCanvas.getContext('2d')!;
-    
-    normalCtx.fillStyle = '#8080ff'; // Neutral normal
-    normalCtx.fillRect(0, 0, 1024, 512);
-    
-    // Add bump details for mountains
-    normalCtx.fillStyle = '#a0a0ff';
-    for (let i = 0; i < 50; i++) {
-      const x = Math.random() * 1024;
-      const y = Math.random() * 512;
-      normalCtx.fillRect(x, y, 10, 10);
-    }
-    
-    const earthNormalMap = new THREE.CanvasTexture(normalCanvas);
     
     // Create specular map (water reflects, land doesn't)
     const specCanvas = document.createElement('canvas');
@@ -270,21 +729,33 @@ function Sun() {
   
   useFrame((state, delta) => {
     if (sunRef.current) {
-      sunRef.current.rotation.y += delta * 0.1;
+      sunRef.current.rotation.y += delta * 0.02;
     }
   });
   
   return (
-    <group position={[120, 0, 0]}>
+    <group position={[0, 0, 0]}>
+      {/* Simple Sun without complex textures */}
       <mesh ref={sunRef}>
-        <sphereGeometry args={[6, 32, 32]} />
+        <sphereGeometry args={[10, 32, 16]} />
         <meshBasicMaterial 
-          color={new THREE.Color(0xFDB813)}
+          color={0xFDB813}
         />
       </mesh>
+      
+      {/* Solar lighting */}
+      <pointLight 
+        position={[0, 0, 0]} 
+        intensity={6} 
+        color={0xFDB813} 
+        decay={2}
+        distance={1500}
+      />
     </group>
   );
 }
+
+// This component is now replaced by PlanetaryTrajectories
 
 function EnhancedStarField() {
   const starFieldRef = useRef<THREE.Points>(null);
@@ -437,14 +908,19 @@ function AsteroidSphere({ asteroid, index, isSelected, isHovered, onClick, onPoi
   const meshRef = useRef<THREE.Mesh>(null);
   const orbit = asteroid.orbit;
   const angle = orbit.phase;
-  const minDistance = 12;
-  const actualRadius = Math.max(minDistance, orbit.radius);
+  
+  // Use actual asteroid distance from NASA API data
+  // orbit.radius already contains the scaled distance (missDistance * 64)
+  // This allows showing real asteroid distances from very close to far
+  const actualRadius = orbit.radius; // Direct use of actual distance
   
   const x = Math.cos(angle) * actualRadius;
   const z = Math.sin(angle) * actualRadius;
   const y = Math.sin(angle * 0.2) * orbit.inclination * 0.15;
   
-  const baseScale = Math.max(0.1, Math.log10(Math.max(1, asteroid.size)) * 0.2);
+  // Scale asteroids based on size and distance for better visibility
+  const distanceFactor = Math.min(1.5, Math.max(0.5, 30 / actualRadius)); // Closer asteroids appear larger
+  const baseScale = Math.max(0.1, Math.log10(Math.max(1, asteroid.size)) * 0.2) * distanceFactor;
   const scale = isSelected ? baseScale * 2.0 : isHovered ? baseScale * 1.5 : baseScale;
   
   const torinoColor = getTorino3DColor(asteroid.torinoScale);
@@ -453,6 +929,15 @@ function AsteroidSphere({ asteroid, index, isSelected, isHovered, onClick, onPoi
   // Create a slightly darker, more muted version for realism
   const baseColor = color.clone().multiplyScalar(0.7);
   
+  // Add subtle color variation based on orbital position
+  // Asteroids inside Earth's orbit (closer to Sun) get warmer tint
+  // Asteroids outside Earth's orbit get cooler tint
+  if (orbit.isInnerOrbit) {
+    baseColor.lerp(new THREE.Color(0xffaa00), 0.1); // Slight orange tint
+  } else {
+    baseColor.lerp(new THREE.Color(0x0088ff), 0.05); // Slight blue tint
+  }
+  
   if (isSelected) {
     baseColor.lerp(new THREE.Color(0xffffff), 0.5);
   } else if (isHovered) {
@@ -460,14 +945,14 @@ function AsteroidSphere({ asteroid, index, isSelected, isHovered, onClick, onPoi
   }
   
   // Determine asteroid shape based on size and ID (for consistency)
-  const shapeVariant = asteroid.id % 4;
+  const shapeVariant = parseInt(asteroid.id, 10) % 4;
   const sizeCategory = asteroid.size < 0.5 ? 'small' : asteroid.size < 2.0 ? 'medium' : 'large';
   
   // Subtle rotation animation
   useFrame((state, delta) => {
     if (meshRef.current) {
-      meshRef.current.rotation.x += delta * 0.1 * (1 + asteroid.id % 3);
-      meshRef.current.rotation.y += delta * 0.05 * (1 + asteroid.id % 2);
+      meshRef.current.rotation.x += delta * 0.1 * (1 + parseInt(asteroid.id, 10) % 3);
+      meshRef.current.rotation.y += delta * 0.05 * (1 + parseInt(asteroid.id, 10) % 2);
     }
   });
   
@@ -488,8 +973,7 @@ function AsteroidSphere({ asteroid, index, isSelected, isHovered, onClick, onPoi
   };
   
   // Scale modifications for different shapes
-  const getScaleModifications = () => {
-    const baseScales = [scale, scale, scale];
+  const getScaleModifications = (): [number, number, number] => {
     switch (shapeVariant) {
       case 1: // Elongated
         return [scale * 1.2, scale * 0.8, scale * 0.9];
@@ -498,7 +982,7 @@ function AsteroidSphere({ asteroid, index, isSelected, isHovered, onClick, onPoi
       case 3: // Irregular
         return [scale * 1.1, scale * 0.9, scale * 1.05];
       default:
-        return baseScales;
+        return [scale, scale, scale];
     }
   };
   
@@ -598,8 +1082,7 @@ function AsteroidField({ asteroids, onAsteroidSelect, selectedAsteroid, hoveredA
 function AsteroidLabel({ asteroid }: { asteroid: EnhancedAsteroid }) {
   const orbit = asteroid.orbit;
   const angle = orbit.phase;
-  const minDistance = 12;
-  const actualRadius = Math.max(minDistance, orbit.radius);
+  const actualRadius = orbit.radius; // Use actual distance
   
   const x = Math.cos(angle) * actualRadius;
   const z = Math.sin(angle) * actualRadius;
@@ -633,8 +1116,7 @@ function AsteroidTrails({ asteroids }: { asteroids: EnhancedAsteroid[] }) {
         const trailIndex = asteroidIndex * 20 + i;
         const angle = orbit.phase - (i * 0.05); // Trail behind the asteroid
         
-        const minDistance = 12;
-        const actualRadius = Math.max(minDistance, orbit.radius);
+        const actualRadius = orbit.radius; // Use actual distance
         const x = Math.cos(angle) * actualRadius;
         const z = Math.sin(angle) * actualRadius;
         const y = Math.sin(angle * 0.2) * orbit.inclination * 0.15;
@@ -686,8 +1168,7 @@ function TrajectoryLine({ asteroid }: { asteroid: EnhancedAsteroid }) {
   
   for (let i = 0; i <= 64; i++) {
     const angle = (i / 64) * Math.PI * 2;
-    const minDistance = 12;
-    const actualRadius = Math.max(minDistance, orbit.radius);
+    const actualRadius = orbit.radius; // Use actual distance
     const x = Math.cos(angle) * actualRadius;
     const z = Math.sin(angle) * actualRadius;
     const y = Math.sin(angle * 0.2) * orbit.inclination * 0.15;
@@ -831,10 +1312,28 @@ function AsteroidInfoPanel({ asteroid, onClose }: {
 }
 
 export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSelect, hoveredAsteroid, setHoveredAsteroid }: Props) {
-  const [activePreset, setActivePreset] = useState('Solar System View');
+  const [activePreset, setActivePreset] = useState('Near-Earth Objects');
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [internalHoveredAsteroid, setInternalHoveredAsteroid] = useState<number | null>(null);
+  const [time, setTime] = useState(0);
   const controlsRef = useRef<any>(null);
+  
+  // Update time for planet animations
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTime(prev => prev + 0.01);
+    }, 50);
+    return () => clearInterval(interval);
+  }, []);
+  
+  // Calculate Earth's position for Moon and asteroids
+  const earthData = PLANET_DATA.find(p => p.name === 'Earth')!;
+  const earthAngle = time * earthData.speed;
+  const earthPosition: [number, number, number] = [
+    Math.cos(earthAngle) * earthData.distanceFromSun,
+    Math.sin(earthAngle * 0.3) * earthData.inclination * 10,
+    Math.sin(earthAngle) * earthData.distanceFromSun
+  ];
   
   // Use provided props or internal state
   const actualHoveredAsteroid = hoveredAsteroid ?? internalHoveredAsteroid;
@@ -850,8 +1349,18 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
     if (preset && controlsRef.current) {
       const startPos = controlsRef.current.object.position.clone();
       const startTarget = controlsRef.current.target.clone();
-      const endPos = new THREE.Vector3(...preset.position);
-      const endTarget = new THREE.Vector3(...preset.target);
+      
+      // Position camera relative to Earth's position
+      const endPos = new THREE.Vector3(
+        earthPosition[0] + preset.position[0],
+        earthPosition[1] + preset.position[1], 
+        earthPosition[2] + preset.position[2]
+      );
+      const endTarget = new THREE.Vector3(
+        earthPosition[0] + preset.target[0],
+        earthPosition[1] + preset.target[1],
+        earthPosition[2] + preset.target[2]
+      );
       
       const duration = 1500;
       const startTime = Date.now();
@@ -879,7 +1388,7 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
   return (
     <div className="w-full h-full bg-gradient-to-b from-space-dark via-blue-900/20 to-space-dark relative">
       <Canvas 
-        camera={{ position: [0, 20, 50], fov: 60 }}
+        camera={{ position: [earthPosition[0] + 50, earthPosition[1] + 40, earthPosition[2] + 80], fov: 60 }}
         dpr={[1, 2]}
         performance={{ min: 0.5 }}
         gl={{ 
@@ -905,36 +1414,36 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
         }}
       >
         <Suspense fallback={null}>
-          <fog attach="fog" args={['#000011', 400, 1000]} />
+          <fog attach="fog" args={['#000011', 1500, 4000]} />
           
           <EnhancedStarField />
           
           {/* Balanced lighting for both Earth and asteroids */}
           <ambientLight intensity={0.3} color={0x404080} />
           
-          {/* Main sunlight - strong directional */}
+          {/* Main sunlight - strong directional from center */}
           <directionalLight 
-            position={[120, 60, 30]} 
-            intensity={2.5} 
+            position={[50, 50, 50]} 
+            intensity={3.0} 
             color={0xFDB813}
             castShadow={true}
             shadow-mapSize-width={2048}
             shadow-mapSize-height={2048}
             shadow-camera-near={0.1}
-            shadow-camera-far={1000}
-            shadow-camera-left={-100}
-            shadow-camera-right={100}
-            shadow-camera-top={100}
-            shadow-camera-bottom={-100}
+            shadow-camera-far={3000}
+            shadow-camera-left={-300}
+            shadow-camera-right={300}
+            shadow-camera-top={300}
+            shadow-camera-bottom={-300}
           />
           
-          {/* Sun's point light for close illumination */}
+          {/* Sun's point light for close illumination - at center */}
           <pointLight 
-            position={[120, 0, 0]} 
-            intensity={3} 
+            position={[0, 0, 0]} 
+            intensity={8} 
             color={0xFDB813} 
             decay={2}
-            distance={800}
+            distance={1500}
             castShadow={false}
           />
           
@@ -963,10 +1472,11 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
           
           <OrbitControls 
             ref={controlsRef}
+            target={earthPosition}
             enablePan={true} 
             enableZoom={true} 
-            minDistance={8}
-            maxDistance={300}
+            minDistance={5}
+            maxDistance={3000}
             enableDamping
             dampingFactor={0.08}
             rotateSpeed={0.5}
@@ -976,15 +1486,31 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
             minPolarAngle={Math.PI * 0.1}
           />
           
-          <Earth />
+          {/* Planetary orbital trajectories */}
+          <PlanetaryTrajectories />
+          
+          {/* The Sun at center of solar system */}
           <Sun />
-          <AsteroidField 
-            asteroids={asteroids} 
-            onAsteroidSelect={onAsteroidSelect}
-            selectedAsteroid={selectedAsteroid}
-            hoveredAsteroid={actualHoveredAsteroid}
-            setHoveredAsteroid={actualSetHoveredAsteroid}
-          />
+          
+          {/* All planets except Earth orbiting around Sun */}
+          {PLANET_DATA.filter(p => p.name !== 'Earth').map((planetData) => (
+            <Planet key={planetData.name} planetData={planetData} time={time} />
+          ))}
+          
+          {/* Earth-centric view: Earth at center with detailed textures */}
+          <group position={earthPosition}>
+            <Earth />
+            <Moon earthPosition={[0, 0, 0]} />
+            
+            {/* Asteroids around Earth (Near Earth Objects) */}
+            <AsteroidField 
+              asteroids={asteroids} 
+              onAsteroidSelect={onAsteroidSelect}
+              selectedAsteroid={selectedAsteroid}
+              hoveredAsteroid={actualHoveredAsteroid}
+              setHoveredAsteroid={actualSetHoveredAsteroid}
+            />
+          </group>
         </Suspense>
       </Canvas>
       

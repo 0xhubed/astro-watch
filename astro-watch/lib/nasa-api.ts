@@ -41,6 +41,7 @@ export interface EnhancedAsteroid extends Asteroid {
     phase: number;
     inclination: number;
     eccentricity: number;
+    isInnerOrbit?: boolean;
   };
   position: {
     x: number;
@@ -144,12 +145,24 @@ function calculateImpactEnergy(size: number, velocity: number): number {
 function calculateOrbitParameters(asteroid: Asteroid): any {
   // Calculate orbital parameters for visualization
   const missDistance = parseFloat(asteroid.close_approach_data[0].miss_distance.astronomical);
+  
+  // Use actual miss distance with our scale factor (64 units = 1 AU)
+  // This gives realistic distances from very close (0.001 AU = 0.064 units) to far (0.5 AU = 32 units)
+  const scaleFactor = 64; // Our scale: 1 AU = 64 units
+  
+  // Add orbital variation to show asteroids can be inside or outside Earth's orbit
+  // Some asteroids have orbits that cross Earth's orbit (Apollos, Atens)
+  // This creates a more realistic distribution in the solar system
+  const orbitVariation = (Math.random() - 0.5) * 0.3; // +/- 30% variation
+  const adjustedDistance = missDistance * (1 + orbitVariation);
+  
   return {
-    radius: missDistance * 30, // Scale for visualization
+    radius: adjustedDistance * scaleFactor, // Actual scaled distance with variation
     speed: 0.01 + Math.random() * 0.02,
     phase: Math.random() * Math.PI * 2,
-    inclination: (Math.random() - 0.5) * 0.1,
-    eccentricity: Math.random() * 0.3
+    inclination: (Math.random() - 0.5) * 0.2, // Increased inclination for more variation
+    eccentricity: Math.random() * 0.3,
+    isInnerOrbit: orbitVariation < 0 // Track if asteroid is inside Earth's orbit
   };
 }
 

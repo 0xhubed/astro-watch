@@ -6,7 +6,7 @@ import { useAsteroidStore } from '@/lib/store';
 import { EnhancedSolarSystem } from '@/components/visualization/3d/EnhancedSolarSystem';
 import { RiskDashboard } from '@/components/visualization/charts/RiskDashboard';
 import { Controls } from '@/components/visualization/controls/Controls';
-import { ImpactRiskMap } from '@/components/visualization/maps/ImpactRiskMap';
+import { AsteroidAnalysisHub } from '@/components/visualization/analysis/AsteroidAnalysisHub';
 import { EnhancedAsteroid } from '@/lib/nasa-api';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -126,14 +126,14 @@ export default function Home() {
           
           {viewMode === 'impact-globe' && (
             <motion.div
-              key="impact-globe"
+              key="analysis-hub"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.5 }}
               className="h-[calc(100vh-5rem)]"
             >
-              <ImpactRiskMap asteroids={filteredAsteroids} />
+              <AsteroidAnalysisHub asteroids={filteredAsteroids} />
             </motion.div>
           )}
         </AnimatePresence>

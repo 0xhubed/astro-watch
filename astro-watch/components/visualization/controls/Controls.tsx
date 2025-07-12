@@ -9,12 +9,10 @@ export function Controls() {
     timeRange,
     viewMode,
     showTrajectories,
-    showParticleEffects,
     setRiskFilter,
     setTimeRange,
     setViewMode,
-    toggleTrajectories,
-    toggleParticleEffects
+    toggleTrajectories
   } = useAsteroidStore();
 
   return (
@@ -99,7 +97,7 @@ export function Controls() {
               : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
           }`}
         >
-          Impact Globe
+          Analysis Hub
         </button>
       </div>
 
@@ -114,16 +112,6 @@ export function Controls() {
           }`}
         >
           Trajectories
-        </button>
-        <button
-          onClick={toggleParticleEffects}
-          className={`px-3 py-1 rounded-md text-sm ${
-            showParticleEffects 
-              ? 'bg-green-600 text-white' 
-              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-          }`}
-        >
-          Effects
         </button>
       </div>
     </motion.div>

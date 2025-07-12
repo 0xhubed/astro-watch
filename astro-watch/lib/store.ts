@@ -8,7 +8,6 @@ interface AsteroidStore {
   timeRange: 'day' | 'week' | 'month';
   viewMode: 'solar-system' | 'dashboard' | 'impact-globe';
   showTrajectories: boolean;
-  showParticleEffects: boolean;
   
   setAsteroids: (asteroids: EnhancedAsteroid[]) => void;
   selectAsteroid: (asteroid: EnhancedAsteroid | null) => void;
@@ -16,7 +15,6 @@ interface AsteroidStore {
   setTimeRange: (range: 'day' | 'week' | 'month') => void;
   setViewMode: (mode: 'solar-system' | 'dashboard' | 'impact-globe') => void;
   toggleTrajectories: () => void;
-  toggleParticleEffects: () => void;
   
   getFilteredAsteroids: () => EnhancedAsteroid[];
 }
@@ -27,8 +25,7 @@ export const useAsteroidStore = create<AsteroidStore>((set, get) => ({
   riskFilter: 'all',
   timeRange: 'week',
   viewMode: 'solar-system',
-  showTrajectories: true,
-  showParticleEffects: true,
+  showTrajectories: false,
   
   setAsteroids: (asteroids) => set({ asteroids }),
   selectAsteroid: (asteroid) => set({ selectedAsteroid: asteroid }),
@@ -36,7 +33,6 @@ export const useAsteroidStore = create<AsteroidStore>((set, get) => ({
   setTimeRange: (range) => set({ timeRange: range }),
   setViewMode: (mode) => set({ viewMode: mode }),
   toggleTrajectories: () => set(state => ({ showTrajectories: !state.showTrajectories })),
-  toggleParticleEffects: () => set(state => ({ showParticleEffects: !state.showParticleEffects })),
   
   getFilteredAsteroids: () => {
     const { asteroids, riskFilter } = get();

@@ -28,6 +28,8 @@ export interface Asteroid {
 
 export interface EnhancedAsteroid extends Asteroid {
   risk: number;
+  torinoScale: number;
+  hazardLevel: 'none' | 'normal' | 'attention' | 'threatening' | 'certain';
   confidence: number;
   size: number;
   velocity: number;
@@ -90,9 +92,39 @@ async function enhanceAsteroidData(asteroid: Asteroid): Promise<EnhancedAsteroid
   // Use ML model for risk assessment
   const { risk, confidence } = await calculateAdvancedRisk(asteroid);
   
+  // Calculate Torino Scale value (enhanced for demonstration)
+  let torinoScale = 0;
+  let hazardLevel: 'none' | 'normal' | 'attention' | 'threatening' | 'certain' = 'none';
+  
+  // Add some variability for demonstration purposes
+  const randomBoost = Math.random() * 0.3; // Random boost to show variety
+  const enhancedRisk = Math.min(1, risk + randomBoost);
+  
+  if (enhancedRisk < 0.15) {
+    torinoScale = 0;
+    hazardLevel = 'none';
+  } else if (enhancedRisk < 0.35) {
+    torinoScale = 1;
+    hazardLevel = 'normal';
+  } else if (enhancedRisk < 0.55) {
+    torinoScale = asteroid.is_potentially_hazardous_asteroid ? 3 : 2;
+    hazardLevel = 'attention';
+  } else if (enhancedRisk < 0.75) {
+    torinoScale = asteroid.is_potentially_hazardous_asteroid ? 5 : 4;
+    hazardLevel = 'threatening';
+  } else if (enhancedRisk < 0.9) {
+    torinoScale = asteroid.is_potentially_hazardous_asteroid ? 6 : 5;
+    hazardLevel = 'threatening';
+  } else {
+    torinoScale = asteroid.is_potentially_hazardous_asteroid ? 7 : 6;
+    hazardLevel = 'threatening';
+  }
+  
   return {
     ...asteroid,
     risk,
+    torinoScale,
+    hazardLevel,
     confidence,
     size,
     velocity,
@@ -134,24 +166,38 @@ function calculatePosition(asteroid: Asteroid): any {
 }
 
 async function calculateAdvancedRisk(asteroid: Asteroid): Promise<{ risk: number; confidence: number }> {
-  // Enhanced risk calculation with ML model
-  const features = [
-    Math.log10(asteroid.estimated_diameter.meters.estimated_diameter_max),
-    parseFloat(asteroid.close_approach_data[0].relative_velocity.kilometers_per_second),
-    Math.log10(parseFloat(asteroid.close_approach_data[0].miss_distance.astronomical)),
-    asteroid.is_potentially_hazardous_asteroid ? 1 : 0,
-    asteroid.close_approach_data.length,
-    new Date(asteroid.close_approach_data[0].close_approach_date).getTime() / 1e12,
-    Math.random() // Placeholder for additional orbital data
-  ];
+  const size = asteroid.estimated_diameter.meters.estimated_diameter_max;
+  const velocity = parseFloat(asteroid.close_approach_data[0].relative_velocity.kilometers_per_second);
+  const missDistance = parseFloat(asteroid.close_approach_data[0].miss_distance.astronomical);
+  const isPHA = asteroid.is_potentially_hazardous_asteroid;
   
-  // Simple risk calculation (will be enhanced with TensorFlow.js model)
-  const riskScore = Math.min(1, Math.max(0, 
-    (features[0] * 0.3 + features[1] * 0.2 + (1 - features[2]) * 0.3 + features[3] * 0.2) / 4
-  ));
+  // More realistic risk calculation based on actual parameters
+  // Size factor (larger = more dangerous)
+  const sizeFactor = Math.min(1, Math.log10(size + 1) / 3); // log scale, normalized
+  
+  // Distance factor (closer = more dangerous)
+  // 1 AU = Earth-Sun distance, 0.05 AU is about 19.5 lunar distances
+  const distanceFactor = missDistance < 0.05 ? 1 - (missDistance / 0.05) : 0;
+  
+  // Velocity factor (faster = more dangerous)
+  const velocityFactor = Math.min(1, velocity / 30); // 30 km/s is very fast
+  
+  // PHA designation adds base risk
+  const phaFactor = isPHA ? 0.3 : 0;
+  
+  // Weighted risk calculation
+  const riskScore = Math.min(1, 
+    sizeFactor * 0.25 + 
+    distanceFactor * 0.4 + 
+    velocityFactor * 0.15 + 
+    phaFactor * 0.2
+  );
+  
+  // Confidence based on data quality and distance
+  const confidence = missDistance < 0.1 ? 0.95 : 0.75 + (0.2 * (1 - missDistance));
   
   return {
     risk: riskScore,
-    confidence: 0.75 + Math.random() * 0.25
+    confidence: Math.min(0.99, confidence)
   };
 }

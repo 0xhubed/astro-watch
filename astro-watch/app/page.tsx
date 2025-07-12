@@ -4,11 +4,10 @@ import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAsteroidStore } from '@/lib/store';
 import { EnhancedSolarSystem } from '@/components/visualization/3d/EnhancedSolarSystem';
-import { InteractiveGlobe } from '@/components/visualization/3d/InteractiveGlobe';
 import { RiskDashboard } from '@/components/visualization/charts/RiskDashboard';
 import { Controls } from '@/components/visualization/controls/Controls';
+import { ImpactRiskMap } from '@/components/visualization/maps/ImpactRiskMap';
 import { EnhancedAsteroid } from '@/lib/nasa-api';
-// import { ImpactHeatmap } from '@/components/visualization/maps/ImpactHeatmap';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Home() {
@@ -21,6 +20,7 @@ export default function Home() {
   } = useAsteroidStore();
   
   const [selectedAsteroid, setSelectedAsteroid] = useState<EnhancedAsteroid | null>(null);
+  const [hoveredAsteroid, setHoveredAsteroid] = useState<number | null>(null);
   
   const { data, isLoading, error } = useQuery({
     queryKey: ['asteroids', timeRange],
@@ -29,8 +29,8 @@ export default function Home() {
       if (!response.ok) throw new Error('Failed to fetch asteroids');
       return response.json();
     },
-    refetchInterval: 60000, // Refresh every minute
-    staleTime: 30000, // Consider data stale after 30 seconds
+    refetchInterval: 900000, // Refresh every 15 minutes
+    staleTime: 300000, // Consider data stale after 5 minutes
   });
   
   useEffect(() => {
@@ -92,23 +92,22 @@ export default function Home() {
       {/* Main Content */}
       <main className="pt-20">
         <AnimatePresence mode="wait">
-          {viewMode === '3d' && (
+          {viewMode === 'solar-system' && (
             <motion.div
-              key="3d"
+              key="solar-system"
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
               transition={{ duration: 0.5 }}
               className="h-[calc(100vh-5rem)]"
             >
-              <div className="grid grid-cols-1 lg:grid-cols-2 h-full">
-                <EnhancedSolarSystem 
-                  asteroids={filteredAsteroids} 
-                  selectedAsteroid={selectedAsteroid}
-                  onAsteroidSelect={setSelectedAsteroid}
-                />
-                <InteractiveGlobe asteroids={filteredAsteroids} />
-              </div>
+              <EnhancedSolarSystem 
+                asteroids={filteredAsteroids} 
+                selectedAsteroid={selectedAsteroid}
+                onAsteroidSelect={setSelectedAsteroid}
+                hoveredAsteroid={hoveredAsteroid}
+                setHoveredAsteroid={setHoveredAsteroid}
+              />
             </motion.div>
           )}
           
@@ -125,19 +124,16 @@ export default function Home() {
             </motion.div>
           )}
           
-          {viewMode === 'map' && (
+          {viewMode === 'impact-globe' && (
             <motion.div
-              key="map"
+              key="impact-globe"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.5 }}
-              className="container mx-auto px-4 py-8"
+              className="h-[calc(100vh-5rem)]"
             >
-              <div className="w-full h-full bg-gray-900/50 backdrop-blur-sm rounded-xl p-6 border border-gray-800">
-                <h2 className="text-2xl font-bold text-white mb-4">Impact Risk Heatmap</h2>
-                <p className="text-gray-400">Coming soon - Map visualization is being fixed...</p>
-              </div>
+              <ImpactRiskMap asteroids={filteredAsteroids} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -150,7 +146,7 @@ export default function Home() {
             <div>
               Total Asteroids: {asteroids.length} | 
               Filtered: {filteredAsteroids.length} | 
-              High Risk: {asteroids.filter(a => a.risk > 0.7).length}
+              Threatening: {asteroids.filter(a => a.torinoScale >= 5).length}
             </div>
             <div>
               Last Updated: {new Date().toLocaleTimeString()}

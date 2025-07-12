@@ -36,6 +36,14 @@ if [ ! -d "node_modules" ]; then
     npm install
 fi
 
+# Check if port 3000 is already in use
+if lsof -Pi :3000 -sTCP:LISTEN -t >/dev/null ; then
+    echo "❌ Error: Port 3000 is already in use!"
+    echo "Please stop the existing process or use a different port."
+    echo "Run './scripts/stop.sh' to stop existing AstroWatch processes."
+    exit 1
+fi
+
 # Start the development server
 echo "🌟 Starting development server..."
 echo "🌍 The application will be available at: http://localhost:3000"

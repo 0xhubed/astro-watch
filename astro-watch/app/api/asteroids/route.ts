@@ -17,7 +17,9 @@ export async function GET(request: Request) {
       endDate.setDate(endDate.getDate() + 7);
       break;
     case 'month':
-      endDate.setMonth(endDate.getMonth() + 1);
+      // NASA API only allows max 7 days per request
+      // For month view, we'll fetch the next 7 days
+      endDate.setDate(endDate.getDate() + 7);
       break;
     default:
       endDate.setDate(endDate.getDate() + 7);
@@ -30,6 +32,7 @@ export async function GET(request: Request) {
     const asteroids = await fetchNEOFeed(start, end);
     return NextResponse.json({ asteroids });
   } catch (error) {
+    console.error('Error fetching asteroids:', error);
     return NextResponse.json({ error: 'Failed to fetch asteroids' }, { status: 500 });
   }
 }

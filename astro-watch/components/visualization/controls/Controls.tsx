@@ -63,23 +63,23 @@ export function Controls() {
         onChange={(e) => setRiskFilter(e.target.value as any)}
         className="px-3 py-1 rounded-md bg-gray-700 text-gray-300 border border-gray-600"
       >
-        <option value="all">All Risks</option>
-        <option value="high">High Risk</option>
-        <option value="medium">Medium Risk</option>
-        <option value="low">Low Risk</option>
+        <option value="all">All Torino Levels</option>
+        <option value="threatening">Threatening (5-10)</option>
+        <option value="attention">Attention (2-4)</option>
+        <option value="normal">Normal (0-1)</option>
       </select>
 
       {/* View Mode */}
       <div className="flex gap-2">
         <button
-          onClick={() => setViewMode('3d')}
+          onClick={() => setViewMode('solar-system')}
           className={`px-3 py-1 rounded-md text-sm ${
-            viewMode === '3d' 
+            viewMode === 'solar-system' 
               ? 'bg-purple-600 text-white' 
               : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
           }`}
         >
-          3D
+          Solar System
         </button>
         <button
           onClick={() => setViewMode('dashboard')}
@@ -92,14 +92,14 @@ export function Controls() {
           Dashboard
         </button>
         <button
-          onClick={() => setViewMode('map')}
+          onClick={() => setViewMode('impact-globe')}
           className={`px-3 py-1 rounded-md text-sm ${
-            viewMode === 'map' 
+            viewMode === 'impact-globe' 
               ? 'bg-purple-600 text-white' 
               : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
           }`}
         >
-          Map
+          Impact Globe
         </button>
       </div>
 

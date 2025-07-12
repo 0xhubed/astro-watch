@@ -4,17 +4,17 @@ import { EnhancedAsteroid } from './nasa-api';
 interface AsteroidStore {
   asteroids: EnhancedAsteroid[];
   selectedAsteroid: EnhancedAsteroid | null;
-  riskFilter: 'all' | 'high' | 'medium' | 'low';
+  riskFilter: 'all' | 'threatening' | 'attention' | 'normal';
   timeRange: 'day' | 'week' | 'month';
-  viewMode: '3d' | 'dashboard' | 'map';
+  viewMode: 'solar-system' | 'dashboard' | 'impact-globe';
   showTrajectories: boolean;
   showParticleEffects: boolean;
   
   setAsteroids: (asteroids: EnhancedAsteroid[]) => void;
   selectAsteroid: (asteroid: EnhancedAsteroid | null) => void;
-  setRiskFilter: (filter: 'all' | 'high' | 'medium' | 'low') => void;
+  setRiskFilter: (filter: 'all' | 'threatening' | 'attention' | 'normal') => void;
   setTimeRange: (range: 'day' | 'week' | 'month') => void;
-  setViewMode: (mode: '3d' | 'dashboard' | 'map') => void;
+  setViewMode: (mode: 'solar-system' | 'dashboard' | 'impact-globe') => void;
   toggleTrajectories: () => void;
   toggleParticleEffects: () => void;
   
@@ -26,7 +26,7 @@ export const useAsteroidStore = create<AsteroidStore>((set, get) => ({
   selectedAsteroid: null,
   riskFilter: 'all',
   timeRange: 'week',
-  viewMode: '3d',
+  viewMode: 'solar-system',
   showTrajectories: true,
   showParticleEffects: true,
   
@@ -45,9 +45,9 @@ export const useAsteroidStore = create<AsteroidStore>((set, get) => ({
     
     return asteroids.filter(asteroid => {
       switch (riskFilter) {
-        case 'high': return asteroid.risk > 0.7;
-        case 'medium': return asteroid.risk > 0.4 && asteroid.risk <= 0.7;
-        case 'low': return asteroid.risk <= 0.4;
+        case 'threatening': return asteroid.torinoScale >= 5;
+        case 'attention': return asteroid.torinoScale >= 2 && asteroid.torinoScale < 5;
+        case 'normal': return asteroid.torinoScale < 2;
         default: return true;
       }
     });

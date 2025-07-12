@@ -36,14 +36,24 @@ else
     fi
 fi
 
-# Also kill any node processes that might be related
-NODE_PIDS=$(pgrep -f "node.*3000\|node.*next")
-if [ ! -z "$NODE_PIDS" ]; then
-    echo "🔍 Found additional Node.js processes on port 3000: $NODE_PIDS"
-    for PID in $NODE_PIDS; do
-        echo "🛑 Stopping Node.js process $PID..."
+# Also kill any node processes that might be related to port 3000
+PORT_PIDS=$(lsof -ti:3000)
+if [ ! -z "$PORT_PIDS" ]; then
+    echo "🔍 Found processes using port 3000: $PORT_PIDS"
+    for PID in $PORT_PIDS; do
+        echo "🛑 Stopping process using port 3000: $PID..."
         kill $PID
     done
+    
+    # Wait and force kill if necessary
+    sleep 2
+    REMAINING_PORT_PIDS=$(lsof -ti:3000)
+    if [ ! -z "$REMAINING_PORT_PIDS" ]; then
+        echo "💀 Force killing remaining processes on port 3000..."
+        for PID in $REMAINING_PORT_PIDS; do
+            kill -9 $PID
+        done
+    fi
 fi
 
 echo "================================"

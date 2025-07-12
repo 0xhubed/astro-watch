@@ -9,6 +9,7 @@
     "lint": "next lint",
     "astro:start": "./scripts/start.sh",
     "astro:stop": "./scripts/stop.sh",
+    "astro:build": "./scripts/build.sh",
     "astro:setup": "echo 'Please see NASA_API_SETUP.md for API key setup instructions'",
     "typecheck": "tsc --noEmit"
   },

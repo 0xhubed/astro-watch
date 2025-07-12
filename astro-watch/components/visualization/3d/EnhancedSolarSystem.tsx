@@ -1,18 +1,21 @@
 'use client';
 
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Stars, PerspectiveCamera, Html } from '@react-three/drei';
+import { OrbitControls, Html } from '@react-three/drei';
 import { Suspense, useRef, useState, useMemo, useEffect } from 'react';
-import { useSpring, animated } from '@react-spring/three';
+// import { useSpring, animated } from '@react-spring/three';
 import { motion } from 'framer-motion';
 import * as THREE from 'three';
 import { EnhancedAsteroid } from '@/lib/nasa-api';
 import { useAsteroidStore } from '@/lib/store';
+import { RiskLegend, getTorinoInfo, getTorinoColor, getTorino3DColor } from '@/components/ui/RiskLegend';
 
 interface Props {
   asteroids: EnhancedAsteroid[];
   selectedAsteroid?: EnhancedAsteroid | null;
   onAsteroidSelect?: (asteroid: EnhancedAsteroid | null) => void;
+  hoveredAsteroid?: number | null;
+  setHoveredAsteroid?: (id: number | null) => void;
 }
 
 interface CameraPreset {
@@ -22,7 +25,7 @@ interface CameraPreset {
 }
 
 const CAMERA_PRESETS: CameraPreset[] = [
-  { name: 'Solar System View', position: [0, 30, 80], target: [0, 0, 0] },
+  { name: 'Solar System View', position: [0, 20, 40], target: [0, 0, 0] },
   { name: 'Earth Close-up', position: [0, 10, 20], target: [0, 0, 0] },
   { name: 'Asteroid Chase', position: [50, 20, 50], target: [0, 0, 0] },
   { name: 'Top Down', position: [0, 100, 0], target: [0, 0, 0] }
@@ -421,175 +424,156 @@ function EnhancedStarField() {
   );
 }
 
+// Individual asteroid component with realistic shapes and materials
+function AsteroidSphere({ asteroid, index, isSelected, isHovered, onClick, onPointerOver, onPointerOut }: {
+  asteroid: EnhancedAsteroid;
+  index: number;
+  isSelected: boolean;
+  isHovered: boolean;
+  onClick: () => void;
+  onPointerOver: () => void;
+  onPointerOut: () => void;
+}) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const orbit = asteroid.orbit;
+  const angle = orbit.phase;
+  const minDistance = 12;
+  const actualRadius = Math.max(minDistance, orbit.radius);
+  
+  const x = Math.cos(angle) * actualRadius;
+  const z = Math.sin(angle) * actualRadius;
+  const y = Math.sin(angle * 0.2) * orbit.inclination * 0.15;
+  
+  const baseScale = Math.max(0.1, Math.log10(Math.max(1, asteroid.size)) * 0.2);
+  const scale = isSelected ? baseScale * 2.0 : isHovered ? baseScale * 1.5 : baseScale;
+  
+  const torinoColor = getTorino3DColor(asteroid.torinoScale);
+  const color = new THREE.Color(torinoColor);
+  
+  // Create a slightly darker, more muted version for realism
+  const baseColor = color.clone().multiplyScalar(0.7);
+  
+  if (isSelected) {
+    baseColor.lerp(new THREE.Color(0xffffff), 0.5);
+  } else if (isHovered) {
+    baseColor.lerp(new THREE.Color(0x00ffff), 0.3);
+  }
+  
+  // Determine asteroid shape based on size and ID (for consistency)
+  const shapeVariant = asteroid.id % 4;
+  const sizeCategory = asteroid.size < 0.5 ? 'small' : asteroid.size < 2.0 ? 'medium' : 'large';
+  
+  // Subtle rotation animation
+  useFrame((state, delta) => {
+    if (meshRef.current) {
+      meshRef.current.rotation.x += delta * 0.1 * (1 + asteroid.id % 3);
+      meshRef.current.rotation.y += delta * 0.05 * (1 + asteroid.id % 2);
+    }
+  });
+  
+  // Different geometries for variety
+  const getGeometry = () => {
+    switch (shapeVariant) {
+      case 0: // Irregular sphere (most common)
+        return <sphereGeometry args={[1, 8, 6]} />;
+      case 1: // Elongated (potato-shaped)
+        return <sphereGeometry args={[1, 8, 6]} />;
+      case 2: // More angular
+        return <dodecahedronGeometry args={[1, 0]} />;
+      case 3: // Very irregular
+        return <icosahedronGeometry args={[1, 0]} />;
+      default:
+        return <sphereGeometry args={[1, 8, 6]} />;
+    }
+  };
+  
+  // Scale modifications for different shapes
+  const getScaleModifications = () => {
+    const baseScales = [scale, scale, scale];
+    switch (shapeVariant) {
+      case 1: // Elongated
+        return [scale * 1.2, scale * 0.8, scale * 0.9];
+      case 2: // Slightly flattened
+        return [scale, scale * 0.7, scale];
+      case 3: // Irregular
+        return [scale * 1.1, scale * 0.9, scale * 1.05];
+      default:
+        return baseScales;
+    }
+  };
+  
+  return (
+    <group position={[x, y, z]}>
+      <mesh
+        ref={meshRef}
+        scale={getScaleModifications()}
+        onClick={onClick}
+        onPointerOver={onPointerOver}
+        onPointerOut={onPointerOut}
+        castShadow
+        receiveShadow
+      >
+        {getGeometry()}
+        <meshStandardMaterial 
+          color={baseColor}
+          roughness={0.9}
+          metalness={0.1}
+          transparent={false}
+          emissive={color}
+          emissiveIntensity={0.1}
+        />
+      </mesh>
+      
+      {/* 3D positioned tooltip */}
+      {isHovered && (
+        <Html position={[0, scale * 2, 0]} center>
+          <div className="bg-black/90 text-white px-3 py-2 rounded-lg shadow-xl backdrop-blur-sm border border-white/20 pointer-events-none whitespace-nowrap">
+            <div className="text-sm font-bold text-yellow-300">{asteroid.name}</div>
+            <div className="text-xs text-gray-300 mt-1">
+              Torino Scale: {asteroid.torinoScale} | Size: {asteroid.size.toFixed(1)} km
+            </div>
+          </div>
+        </Html>
+      )}
+    </group>
+  );
+}
+
 // Static asteroid field - NO FLASHING
-function AsteroidField({ asteroids, onAsteroidSelect, selectedAsteroid }: { 
+function AsteroidField({ asteroids, onAsteroidSelect, selectedAsteroid, hoveredAsteroid, setHoveredAsteroid }: { 
   asteroids: EnhancedAsteroid[]; 
   onAsteroidSelect?: (asteroid: EnhancedAsteroid | null) => void;
   selectedAsteroid?: EnhancedAsteroid | null;
+  hoveredAsteroid?: number | null;
+  setHoveredAsteroid?: (index: number | null) => void;
 }) {
-  const meshRef = useRef<THREE.InstancedMesh>(null);
   const { showTrajectories } = useAsteroidStore();
-  const [hoveredAsteroid, setHoveredAsteroid] = useState<number | null>(null);
-  
-  // Initialize positions and colors based on filtered asteroids
-  useEffect(() => {
-    if (!meshRef.current || asteroids.length === 0) return;
-    
-    const tempObject = new THREE.Object3D();
-    const tempColor = new THREE.Color();
-    
-    // Clear all instances first
-    for (let i = 0; i < meshRef.current.count; i++) {
-      tempObject.position.set(0, 0, 0);
-      tempObject.scale.setScalar(0); // Hide unused instances
-      tempObject.updateMatrix();
-      meshRef.current.setMatrixAt(i, tempObject.matrix);
-      
-      tempColor.setHex(0x000000);
-      meshRef.current.setColorAt(i, tempColor);
-    }
-    
-    // Only render filtered asteroids
-    asteroids.forEach((asteroid, i) => {
-      if (i >= meshRef.current!.count) return;
-      
-      const orbit = asteroid.orbit;
-      
-      // STATIC position - NO ANIMATION
-      const angle = orbit.phase;
-      
-      // Ensure asteroids are OUTSIDE Earth (radius = 6.371)
-      const minDistance = 12; // Safe distance from Earth
-      const actualRadius = Math.max(minDistance, orbit.radius);
-      
-      const x = Math.cos(angle) * actualRadius;
-      const z = Math.sin(angle) * actualRadius;
-      const y = Math.sin(angle * 0.2) * orbit.inclination * 0.15;
-      
-      tempObject.position.set(x, y, z);
-      
-      // STATIC scale
-      const baseScale = Math.max(0.3, Math.log10(Math.max(1, asteroid.size)) * 0.4);
-      tempObject.scale.setScalar(baseScale);
-      
-      tempObject.updateMatrix();
-      meshRef.current!.setMatrixAt(i, tempObject.matrix);
-      
-      // STATIC color - only based on risk level
-      const baseColorHex = asteroid.risk > 0.7 ? 0xff3333 : 
-                         asteroid.risk > 0.4 ? 0xffaa00 : 0x33ff33;
-      
-      tempColor.setHex(baseColorHex);
-      meshRef.current!.setColorAt(i, tempColor);
-    });
-    
-    meshRef.current!.instanceMatrix.needsUpdate = true;
-    if (meshRef.current!.instanceColor) {
-      meshRef.current!.instanceColor.needsUpdate = true;
-    }
-  }, [asteroids]);
-  
-  // Handle selection highlighting and hover effects
-  useFrame(() => {
-    if (!meshRef.current || asteroids.length === 0) return;
-    
-    const tempColor = new THREE.Color();
-    const tempObject = new THREE.Object3D();
-    let needsColorUpdate = false;
-    let needsMatrixUpdate = false;
-    
-    asteroids.forEach((asteroid, i) => {
-      if (i >= meshRef.current!.count) return;
-      
-      // Base color
-      const baseColorHex = asteroid.risk > 0.7 ? 0xff3333 : 
-                         asteroid.risk > 0.4 ? 0xffaa00 : 0x33ff33;
-      
-      tempColor.setHex(baseColorHex);
-      
-      // Get current matrix for scale manipulation
-      meshRef.current!.getMatrixAt(i, tempObject.matrix);
-      tempObject.matrix.decompose(tempObject.position, tempObject.quaternion, tempObject.scale);
-      
-      const baseScale = Math.max(0.3, Math.log10(Math.max(1, asteroid.size)) * 0.4);
-      
-      // Only highlight selected/hovered
-      if (selectedAsteroid?.id === asteroid.id) {
-        tempColor.lerp(new THREE.Color(0xffffff), 0.7); // More pronounced selection
-        tempObject.scale.setScalar(baseScale * 1.5); // Larger scale for selection
-        needsColorUpdate = true;
-        needsMatrixUpdate = true;
-      } else if (hoveredAsteroid === i) {
-        tempColor.lerp(new THREE.Color(0x00ffff), 0.8); // More pronounced hover - cyan
-        tempObject.scale.setScalar(baseScale * 1.3); // Slightly larger for hover
-        needsColorUpdate = true;
-        needsMatrixUpdate = true;
-      } else {
-        tempObject.scale.setScalar(baseScale); // Normal scale
-        needsMatrixUpdate = true;
-      }
-      
-      if (needsMatrixUpdate) {
-        tempObject.updateMatrix();
-        meshRef.current!.setMatrixAt(i, tempObject.matrix);
-      }
-      
-      meshRef.current!.setColorAt(i, tempColor);
-    });
-    
-    if (needsColorUpdate && meshRef.current!.instanceColor) {
-      meshRef.current!.instanceColor.needsUpdate = true;
-    }
-    if (needsMatrixUpdate) {
-      meshRef.current!.instanceMatrix.needsUpdate = true;
-    }
-  });
 
   return (
     <group>
-      <instancedMesh 
-        ref={meshRef} 
-        args={[undefined, undefined, Math.max(100, asteroids.length)]}
-        onClick={(e) => {
-          e.stopPropagation();
-          if (onAsteroidSelect && e.instanceId !== undefined && e.instanceId < asteroids.length) {
-            const selectedAst = asteroids[e.instanceId];
-            onAsteroidSelect(selectedAst);
-          }
-        }}
-        onPointerOver={(e) => {
-          e.stopPropagation();
-          if (e.instanceId !== undefined && e.instanceId < asteroids.length) {
-            setHoveredAsteroid(e.instanceId);
+      {/* Individual asteroid spheres */}
+      {asteroids.map((asteroid, index) => (
+        <AsteroidSphere
+          key={asteroid.id}
+          asteroid={asteroid}
+          index={index}
+          isSelected={selectedAsteroid?.id === asteroid.id}
+          isHovered={hoveredAsteroid === index}
+          onClick={() => {
+            onAsteroidSelect?.(asteroid);
+          }}
+          onPointerOver={() => {
+            setHoveredAsteroid?.(index);
             document.body.style.cursor = 'pointer';
-          }
-        }}
-        onPointerOut={(e) => {
-          e.stopPropagation();
-          setHoveredAsteroid(null);
-          document.body.style.cursor = 'default';
-        }}
-        onPointerMove={(e) => {
-          e.stopPropagation();
-          if (e.instanceId !== undefined && e.instanceId < asteroids.length) {
-            if (hoveredAsteroid !== e.instanceId) {
-              setHoveredAsteroid(e.instanceId);
-              document.body.style.cursor = 'pointer';
-            }
-          }
-        }}
-        frustumCulled={false}
-      >
-        <dodecahedronGeometry args={[1, 0]} />
-        <meshStandardMaterial 
-          roughness={0.9}
-          metalness={0.3}
-          color={0x8B4513}
-          transparent={false}
-          side={THREE.FrontSide}
+          }}
+          onPointerOut={() => {
+            setHoveredAsteroid?.(null);
+            document.body.style.cursor = 'auto';
+          }}
         />
-      </instancedMesh>
+      ))}
       
+
       {/* Asteroid particle trails */}
       <AsteroidTrails asteroids={asteroids} />
       
@@ -641,8 +625,9 @@ function AsteroidTrails({ asteroids }: { asteroids: EnhancedAsteroid[] }) {
     
     asteroids.forEach((asteroid, asteroidIndex) => {
       const orbit = asteroid.orbit;
-      const baseColor = asteroid.risk > 0.7 ? [1, 0.2, 0.2] : 
-                       asteroid.risk > 0.4 ? [1, 0.7, 0] : [0.2, 1, 0.2];
+      const torinoColor = getTorino3DColor(asteroid.torinoScale);
+      const rgb = parseInt(torinoColor.slice(1), 16);
+      const baseColor = [(rgb >> 16) / 255, ((rgb >> 8) & 0xff) / 255, (rgb & 0xff) / 255];
       
       for (let i = 0; i < 20; i++) {
         const trailIndex = asteroidIndex * 20 + i;
@@ -721,7 +706,7 @@ function TrajectoryLine({ asteroid }: { asteroid: EnhancedAsteroid }) {
         ]} 
       />
       <meshBasicMaterial 
-        color={asteroid.risk > 0.7 ? '#ff3b30' : asteroid.risk > 0.4 ? '#ff9500' : '#34c759'}
+        color={getTorino3DColor(asteroid.torinoScale)}
         transparent
         opacity={0.4}
       />
@@ -736,26 +721,26 @@ function CameraControls({ activePreset, onPresetChange, isTransitioning }: {
   isTransitioning?: boolean;
 }) {
   return (
-    <div className="absolute top-4 right-4 z-10 bg-black/30 backdrop-blur-md rounded-xl p-4 border border-white/10">
-      <h3 className="text-white text-sm font-semibold mb-3 flex items-center gap-2">
-        <span className="w-2 h-2 rounded-full bg-blue-400"></span>
+    <div className="absolute top-4 left-4 z-10 bg-black/40 backdrop-blur-sm rounded-lg p-3 border border-white/20 max-w-[180px]">
+      <h3 className="text-white text-xs font-semibold mb-2 flex items-center gap-2">
+        <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
         Camera Views
       </h3>
-      <div className="space-y-2">
+      <div className="space-y-1">
         {CAMERA_PRESETS.map((preset) => (
           <button
             key={preset.name}
             onClick={() => onPresetChange(preset.name)}
             disabled={isTransitioning}
-            className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
+            className={`w-full text-left px-2 py-1.5 rounded text-xs transition-all duration-200 ${
               activePreset === preset.name 
-                ? 'bg-blue-500/80 text-white shadow-lg shadow-blue-500/20' 
-                : 'bg-white/5 text-white/80 hover:bg-white/15 hover:text-white'
+                ? 'bg-blue-500/70 text-white shadow-sm' 
+                : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'
             } ${isTransitioning ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
           >
-            <span className="flex items-center gap-2">
+            <span className="flex items-center gap-1.5">
               {activePreset === preset.name && (
-                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
+                <span className="w-1 h-1 rounded-full bg-white animate-pulse"></span>
               )}
               {preset.name}
             </span>
@@ -763,9 +748,9 @@ function CameraControls({ activePreset, onPresetChange, isTransitioning }: {
         ))}
       </div>
       {isTransitioning && (
-        <div className="mt-3 text-xs text-white/60 flex items-center gap-2">
-          <div className="w-3 h-3 border border-white/30 border-t-white/80 rounded-full animate-spin"></div>
-          Transitioning...
+        <div className="mt-2 text-xs text-white/50 flex items-center gap-1.5">
+          <div className="w-2 h-2 border border-white/30 border-t-white/80 rounded-full animate-spin"></div>
+          <span className="text-[10px]">Transitioning...</span>
         </div>
       )}
     </div>
@@ -777,29 +762,23 @@ function AsteroidInfoPanel({ asteroid, onClose }: {
   asteroid: EnhancedAsteroid; 
   onClose: () => void;
 }) {
-  const riskColor = asteroid.risk > 0.7 ? 'red' : asteroid.risk > 0.4 ? 'yellow' : 'green';
-  const riskBgColor = asteroid.risk > 0.7 ? 'bg-red-500/20' : asteroid.risk > 0.4 ? 'bg-yellow-500/20' : 'bg-green-500/20';
+  const torinoInfo = getTorinoInfo(asteroid.torinoScale);
+  const riskBgColor = torinoInfo.bgColor;
   
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20, scale: 0.9 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 20, scale: 0.9 }}
-      className="absolute bottom-4 left-4 z-10 bg-black/40 backdrop-blur-md rounded-xl p-5 max-w-sm border border-white/10 shadow-2xl"
+      className="absolute bottom-4 right-4 z-10 bg-black/40 backdrop-blur-md rounded-xl p-5 max-w-sm border border-white/10 shadow-2xl"
     >
       <div className="flex justify-between items-start mb-4">
         <div>
           <h3 className="text-white text-lg font-bold mb-1">{asteroid.name}</h3>
           <div className={`inline-flex items-center gap-2 px-2 py-1 rounded-full text-xs font-medium ${riskBgColor}`}>
-            <div className={`w-2 h-2 rounded-full ${
-              riskColor === 'red' ? 'bg-red-400' : 
-              riskColor === 'yellow' ? 'bg-yellow-400' : 'bg-green-400'
-            } animate-pulse`}></div>
-            <span className={`${
-              riskColor === 'red' ? 'text-red-300' : 
-              riskColor === 'yellow' ? 'text-yellow-300' : 'text-green-300'
-            }`}>
-              {asteroid.risk > 0.7 ? 'HIGH RISK' : asteroid.risk > 0.4 ? 'MEDIUM RISK' : 'LOW RISK'}
+            <div className={`w-2 h-2 rounded-full bg-current animate-pulse ${torinoInfo.color}`}></div>
+            <span className={torinoInfo.color}>
+              Torino {asteroid.torinoScale} - {torinoInfo.level}
             </span>
           </div>
         </div>
@@ -820,12 +799,9 @@ function AsteroidInfoPanel({ asteroid, onClose }: {
               <span className="font-mono">{asteroid.size.toFixed(1)} km</span>
             </div>
             <div className="flex justify-between">
-              <span>Risk:</span>
-              <span className={`font-mono font-medium ${
-                riskColor === 'red' ? 'text-red-400' : 
-                riskColor === 'yellow' ? 'text-yellow-400' : 'text-green-400'
-              }`}>
-                {(asteroid.risk * 100).toFixed(1)}%
+              <span>Torino Scale:</span>
+              <span className={`font-mono font-medium ${torinoInfo.color}`}>
+                {asteroid.torinoScale}
               </span>
             </div>
           </div>
@@ -854,10 +830,15 @@ function AsteroidInfoPanel({ asteroid, onClose }: {
   );
 }
 
-export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSelect }: Props) {
+export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSelect, hoveredAsteroid, setHoveredAsteroid }: Props) {
   const [activePreset, setActivePreset] = useState('Solar System View');
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [internalHoveredAsteroid, setInternalHoveredAsteroid] = useState<number | null>(null);
   const controlsRef = useRef<any>(null);
+  
+  // Use provided props or internal state
+  const actualHoveredAsteroid = hoveredAsteroid ?? internalHoveredAsteroid;
+  const actualSetHoveredAsteroid = setHoveredAsteroid || setInternalHoveredAsteroid;
   
   const handlePresetChange = async (presetName: string) => {
     if (isTransitioning) return;
@@ -906,14 +887,30 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
           alpha: false,
           powerPreference: 'high-performance'
         }}
+        raycaster={{ 
+          params: { 
+            Points: { threshold: 0.5 },
+            Mesh: { threshold: 0.5 },
+            Line: { threshold: 0.5 },
+            LOD: { threshold: 0.5 },
+            Sprite: { threshold: 0.5 }
+          } 
+        }}
+        style={{ cursor: 'auto' }}
+        onPointerMissed={() => {
+          if (actualSetHoveredAsteroid) {
+            actualSetHoveredAsteroid(null);
+          }
+          document.body.style.cursor = 'auto';
+        }}
       >
         <Suspense fallback={null}>
           <fog attach="fog" args={['#000011', 400, 1000]} />
           
           <EnhancedStarField />
           
-          {/* Realistic space lighting setup */}
-          <ambientLight intensity={0.15} color={0x404080} />
+          {/* Balanced lighting for both Earth and asteroids */}
+          <ambientLight intensity={0.3} color={0x404080} />
           
           {/* Main sunlight - strong directional */}
           <directionalLight 
@@ -954,6 +951,16 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
             castShadow={false}
           />
           
+          {/* Additional lighting for asteroids */}
+          <pointLight 
+            position={[0, 50, 0]} 
+            intensity={1.2} 
+            color={0xffffff} 
+            decay={2}
+            distance={200}
+            castShadow={false}
+          />
+          
           <OrbitControls 
             ref={controlsRef}
             enablePan={true} 
@@ -975,6 +982,8 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
             asteroids={asteroids} 
             onAsteroidSelect={onAsteroidSelect}
             selectedAsteroid={selectedAsteroid}
+            hoveredAsteroid={actualHoveredAsteroid}
+            setHoveredAsteroid={actualSetHoveredAsteroid}
           />
         </Suspense>
       </Canvas>
@@ -992,9 +1001,100 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
         />
       )}
       
+      {/* Asteroid List Panel */}
+      <motion.div
+        initial={{ x: 300, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+        className="absolute right-4 top-24 bottom-24 w-80 bg-black/40 backdrop-blur-md rounded-xl border border-white/10 shadow-2xl overflow-hidden"
+      >
+        <div className="p-4 border-b border-white/10">
+          <h3 className="text-white text-lg font-bold">Nearby Asteroids</h3>
+          <p className="text-white/60 text-xs mt-1">Click to select • Hover to highlight</p>
+        </div>
+        
+        <div className="overflow-y-auto h-[calc(100%-80px)] custom-scrollbar">
+          <div className="p-2 space-y-1">
+            {asteroids.map((asteroid, index) => {
+              const torinoInfo = getTorinoInfo(asteroid.torinoScale);
+              const isSelected = selectedAsteroid?.id === asteroid.id;
+              const isHovered = actualHoveredAsteroid === index;
+              
+              return (
+                <motion.button
+                  key={asteroid.id}
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: Math.min(index * 0.02, 0.5) }}
+                  onClick={() => onAsteroidSelect?.(asteroid)}
+                  onMouseEnter={() => actualSetHoveredAsteroid(index)}
+                  onMouseLeave={() => actualSetHoveredAsteroid(null)}
+                  className={`w-full text-left p-3 rounded-lg transition-all duration-200 ${
+                    isSelected 
+                      ? 'bg-blue-500/30 border border-blue-400/50' 
+                      : isHovered
+                      ? 'bg-white/10 border border-white/20'
+                      : 'bg-white/5 border border-transparent hover:bg-white/10'
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="text-white text-sm font-medium">{asteroid.name}</div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className={`w-2 h-2 rounded-full bg-current ${torinoInfo.color} ${isSelected || isHovered ? 'animate-pulse' : ''}`}></div>
+                        <span className={`text-xs ${torinoInfo.color}`}>
+                          Torino {asteroid.torinoScale}
+                        </span>
+                        <span className="text-white/40 text-xs">•</span>
+                        <span className="text-white/60 text-xs">{asteroid.size.toFixed(1)} km</span>
+                      </div>
+                    </div>
+                    {(isSelected || isHovered) && (
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="ml-2"
+                      >
+                        <div className="w-4 h-4 rounded-full bg-blue-400/30 flex items-center justify-center">
+                          <div className="w-2 h-2 rounded-full bg-blue-400"></div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </div>
+                  <div className="text-white/40 text-xs mt-1">
+                    {asteroid.velocity.toFixed(1)} km/s • {asteroid.missDistance.toFixed(2)} AU
+                  </div>
+                </motion.button>
+              );
+            })}
+          </div>
+        </div>
+      </motion.div>
+      
+      <style jsx>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: rgba(255, 255, 255, 0.05);
+          border-radius: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.2);
+          border-radius: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(255, 255, 255, 0.3);
+        }
+      `}</style>
+
+      
       <div className="absolute bottom-4 right-4 z-10 text-xs text-white/40">
         Asteroids: {asteroids.length}
       </div>
+      
+      {/* Risk Legend */}
+      <RiskLegend position="center" />
     </div>
   );
 }

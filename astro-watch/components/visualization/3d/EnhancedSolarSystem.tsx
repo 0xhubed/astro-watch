@@ -726,30 +726,132 @@ function Earth() {
 
 function Sun() {
   const sunRef = useRef<THREE.Mesh>(null);
+  const coronaRef = useRef<THREE.Mesh>(null);
+  const atmosphereRef = useRef<THREE.Mesh>(null);
+  
+  // Enhanced sun texture with better surface details
+  const sunTexture = useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d')!;
+    
+    // Base bright solar gradient
+    const gradient = ctx.createRadialGradient(512, 256, 0, 512, 256, 400);
+    gradient.addColorStop(0, '#ffffff');     // Bright white core
+    gradient.addColorStop(0.2, '#ffff99');  // Bright yellow
+    gradient.addColorStop(0.4, '#ffcc00');  // Golden yellow
+    gradient.addColorStop(0.7, '#ff9900');  // Orange
+    gradient.addColorStop(1, '#ff6600');    // Deep orange edge
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 1024, 512);
+    
+    // Add solar granulation pattern (small bright cells)
+    for (let i = 0; i < 100; i++) {
+      const x = Math.random() * 1024;
+      const y = Math.random() * 512;
+      const radius = 8 + Math.random() * 16;
+      const brightness = 0.3 + Math.random() * 0.4;
+      
+      const cellGradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+      cellGradient.addColorStop(0, `rgba(255, 255, 255, ${brightness})`);
+      cellGradient.addColorStop(1, `rgba(255, 204, 0, ${brightness * 0.3})`);
+      ctx.fillStyle = cellGradient;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    // Add some darker areas (sunspots)
+    ctx.fillStyle = 'rgba(200, 100, 0, 0.4)';
+    for (let i = 0; i < 8; i++) {
+      const x = Math.random() * 1024;
+      const y = Math.random() * 512;
+      const radius = 12 + Math.random() * 20;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    return new THREE.CanvasTexture(canvas);
+  }, []);
   
   useFrame((state, delta) => {
     if (sunRef.current) {
-      sunRef.current.rotation.y += delta * 0.02;
+      sunRef.current.rotation.y += delta * 0.01; // Slow rotation
+    }
+    if (coronaRef.current) {
+      coronaRef.current.rotation.y -= delta * 0.005;
+      // Subtle pulsing
+      const scale = 1 + Math.sin(state.clock.elapsedTime * 0.8) * 0.015;
+      coronaRef.current.scale.setScalar(scale);
+    }
+    if (atmosphereRef.current) {
+      atmosphereRef.current.rotation.y += delta * 0.003;
+      // Gentle breathing effect
+      const scale = 1 + Math.sin(state.clock.elapsedTime * 0.3) * 0.008;
+      atmosphereRef.current.scale.setScalar(scale);
     }
   });
   
   return (
     <group position={[0, 0, 0]}>
-      {/* Simple Sun without complex textures */}
+      {/* Main Sun body */}
       <mesh ref={sunRef}>
-        <sphereGeometry args={[10, 32, 16]} />
-        <meshBasicMaterial 
-          color={0xFDB813}
+        <sphereGeometry args={[10, 128, 64]} />
+        <meshStandardMaterial 
+          map={sunTexture}
+          emissive={0xffa500}
+          emissiveIntensity={0.2}
+          roughness={1}
+          metalness={0}
         />
       </mesh>
       
-      {/* Solar lighting */}
+      {/* Corona atmosphere - inner layer */}
+      <mesh ref={coronaRef} scale={1.08}>
+        <sphereGeometry args={[10, 64, 32]} />
+        <meshBasicMaterial 
+          color={0xFFD700}
+          transparent
+          opacity={0.25}
+          side={THREE.BackSide}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </mesh>
+      
+      {/* Solar atmosphere - outer layer */}
+      <mesh ref={atmosphereRef} scale={1.18}>
+        <sphereGeometry args={[10, 32, 16]} />
+        <meshBasicMaterial 
+          color={0xFFA500}
+          transparent
+          opacity={0.08}
+          side={THREE.BackSide}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </mesh>
+      
+      {/* Solar lighting system */}
       <pointLight 
         position={[0, 0, 0]} 
-        intensity={6} 
-        color={0xFDB813} 
+        intensity={10} 
+        color={0xFFF8DC} 
         decay={2}
-        distance={1500}
+        distance={2500}
+        castShadow={false}
+      />
+      
+      {/* Secondary warm illumination */}
+      <pointLight 
+        position={[0, 0, 0]} 
+        intensity={3} 
+        color={0xFFD700} 
+        decay={2}
+        distance={1200}
+        castShadow={false}
       />
     </group>
   );

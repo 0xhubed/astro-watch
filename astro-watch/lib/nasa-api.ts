@@ -80,7 +80,7 @@ export async function fetchNEOFeed(startDate: string, endDate: string): Promise<
   }
 }
 
-async function enhanceAsteroidData(asteroid: Asteroid): Promise<EnhancedAsteroid> {
+export async function enhanceAsteroidData(asteroid: Asteroid): Promise<EnhancedAsteroid> {
   const size = asteroid.estimated_diameter.meters.estimated_diameter_max;
   const velocity = parseFloat(asteroid.close_approach_data[0].relative_velocity.kilometers_per_second);
   const missDistance = parseFloat(asteroid.close_approach_data[0].miss_distance.astronomical);

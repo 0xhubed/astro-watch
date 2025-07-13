@@ -139,16 +139,25 @@ export async function trainModel(
     }));
   }
 
-  // Training progress callback
-  callbacks.push({
-    onEpochEnd: (epoch, logs) => {
+  // Training progress callback - use a simplified approach
+  const progressCallback = {
+    onEpochEnd: async (epoch: number, logs?: any) => {
       if (epoch % 10 === 0 || epoch < 5) {
         console.log(`Epoch ${epoch + 1}/${config.epochs}`);
-        console.log(`  Loss: ${logs?.loss?.toFixed(4)}, Val Loss: ${logs?.val_loss?.toFixed(4)}`);
-        console.log(`  MAE: ${logs?.mae?.toFixed(4)}, Val MAE: ${logs?.val_mae?.toFixed(4)}`);
+        try {
+          const loss = typeof logs?.loss === 'number' ? logs.loss : (logs?.loss ? Number(logs.loss) : 0);
+          const valLoss = typeof logs?.val_loss === 'number' ? logs.val_loss : (logs?.val_loss ? Number(logs.val_loss) : 0);
+          const mae = typeof logs?.mae === 'number' ? logs.mae : (logs?.mae ? Number(logs.mae) : 0);
+          const valMae = typeof logs?.val_mae === 'number' ? logs.val_mae : (logs?.val_mae ? Number(logs.val_mae) : 0);
+          console.log(`  Loss: ${loss.toFixed(4)}, Val Loss: ${valLoss.toFixed(4)}`);
+          console.log(`  MAE: ${mae.toFixed(4)}, Val MAE: ${valMae.toFixed(4)}`);
+        } catch (e) {
+          console.log(`  Epoch ${epoch + 1} completed`);
+        }
       }
     }
-  });
+  };
+  callbacks.push(progressCallback as any);
 
   try {
     // Train the model

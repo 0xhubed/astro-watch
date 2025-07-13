@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Asteroid } from '@/lib/nasa-api';
+import { Asteroid, EnhancedAsteroid, enhanceAsteroidData } from '@/lib/nasa-api';
 import { predictRiskBatch } from '@/lib/ml/risk-predictor';
 
 export function useMLPredictions(asteroids: Asteroid[]) {
-  const [enhancedAsteroids, setEnhancedAsteroids] = useState<Asteroid[]>(asteroids);
+  const [enhancedAsteroids, setEnhancedAsteroids] = useState<EnhancedAsteroid[]>([]);
   const [isMLReady, setIsMLReady] = useState(false);
   const [mlStats, setMlStats] = useState({
     modelUsed: 'fallback' as 'ml' | 'fallback',
@@ -26,20 +26,19 @@ export function useMLPredictions(asteroids: Asteroid[]) {
         const predictions = await predictRiskBatch(asteroids);
         
         // Enhance asteroids with ML predictions
-        const enhanced = asteroids.map((asteroid, index) => {
+        const enhanced = await Promise.all(asteroids.map(async (asteroid, index) => {
           const prediction = predictions[index];
           
-          // Update the enhanced asteroid data with ML predictions
+          // Convert Asteroid to EnhancedAsteroid with ML predictions
+          const enhancedAsteroid = await enhanceAsteroidData(asteroid);
+          
+          // Override risk and confidence with ML predictions
           return {
-            ...asteroid,
-            enhanced_properties: {
-              ...asteroid.enhanced_properties,
-              risk: prediction.risk,
-              confidence: prediction.confidence,
-              model_used: prediction.modelUsed
-            }
+            ...enhancedAsteroid,
+            risk: prediction.risk,
+            confidence: prediction.confidence
           };
-        });
+        }));
         
         const processingTime = performance.now() - startTime;
         

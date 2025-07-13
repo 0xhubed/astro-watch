@@ -1,6 +1,6 @@
-# 🌌 AstroWatch - Asteroid Impact Visualization
+# 🌌 AstroWatch - Advanced Asteroid Risk Assessment Platform
 
-An advanced, real-time asteroid tracking and impact visualization application built with Next.js, Three.js, and machine learning. Experience near-Earth objects like never before with interactive 3D visualizations, predictive risk analysis, and immersive data exploration.
+A sophisticated real-time asteroid tracking and impact visualization application powered by machine learning. Built with Next.js, Three.js, and TensorFlow.js, AstroWatch provides comprehensive near-Earth object monitoring with interactive 3D visualizations, AI-driven risk predictions, and real-time data analytics.
 
 ## ✨ Features
 
@@ -16,11 +16,13 @@ An advanced, real-time asteroid tracking and impact visualization application bu
 - **Risk Distribution Analysis**: Pie charts and radar plots for risk factor breakdown
 - **Impact Heatmaps**: Geographic visualization of potential impact zones
 
-### 🤖 **Machine Learning Integration**
-- **Advanced Risk Prediction**: TensorFlow.js-powered ensemble models
-- **Feature Analysis**: Multi-pathway neural networks analyzing size, velocity, distance, and orbital characteristics
-- **Confidence Scoring**: Risk predictions with confidence intervals
-- **Factor Contribution**: Detailed breakdown of risk factors
+### 🤖 **AI-Powered Risk Assessment**
+- **TensorFlow.js ML Models**: Client-side neural networks for real-time risk prediction
+- **Multi-Factor Analysis**: 6-dimensional feature vectors analyzing size, velocity, distance, orbital characteristics, kinetic energy, and proximity factors
+- **Browser-Based Training**: Automatic model training when pre-trained models are unavailable
+- **Intelligent Fallback**: Rule-based calculations when ML models can't load
+- **Real-Time Processing**: Batch predictions for multiple asteroids with performance monitoring
+- **Visual ML Status**: Live indicator showing whether ML model or fallback system is active
 
 ### 🌍 **Interactive Globe**
 - **3D Earth Globe**: Realistic Earth visualization with impact point mapping
@@ -57,10 +59,12 @@ An advanced, real-time asteroid tracking and impact visualization application bu
 - **TanStack Query** - Server state management with caching
 - **NASA NEO API** - Real asteroid data from NASA's Near Earth Object Web Service
 
-### **Machine Learning**
-- **TensorFlow.js** - Client-side machine learning
-- **Simple Statistics** - Statistical analysis and calculations
-- **ML Matrix** - Matrix operations for advanced calculations
+### **Machine Learning & AI**
+- **TensorFlow.js** - Client-side neural networks and model training
+- **Browser ML Training** - In-browser model training with synthetic data generation
+- **Feature Engineering** - Advanced asteroid characteristic extraction and normalization
+- **Simple Statistics** - Statistical analysis and risk calculations
+- **ML Matrix** - Matrix operations for advanced mathematical calculations
 
 ### **Development Tools**
 - **ESLint** - Code linting and formatting
@@ -160,9 +164,16 @@ astro-watch/
 │   └── ui/                      # Reusable UI components
 ├── lib/
 │   ├── nasa-api.ts             # NASA API client
-│   ├── advanced-ml.ts          # Machine learning models
-│   └── store.ts                # Zustand state management
+│   ├── ml/                      # Machine Learning modules
+│   │   ├── risk-predictor.ts    # Main ML prediction engine
+│   │   ├── feature-engineering.ts # Feature extraction & normalization
+│   │   ├── browser-trainer.ts   # In-browser model training
+│   │   ├── data-generator.ts    # Synthetic training data
+│   │   └── model-trainer.ts     # Advanced training pipelines
+│   ├── advanced-ml.ts           # Legacy ML utilities
+│   └── store.ts                 # Zustand state management
 ├── hooks/                       # Custom React hooks
+│   └── useMLPredictions.ts      # Client-side ML enhancement hook
 ├── types/                       # TypeScript type definitions
 ├── public/
 │   ├── models/                  # 3D models and assets
@@ -178,10 +189,13 @@ astro-watch/
 - Automatic updates every minute
 - Support for historical and future asteroid approaches
 
-### **Advanced Risk Analysis**
-- Multi-factor risk assessment using machine learning
-- Considers size, velocity, distance, and orbital characteristics
-- Confidence scoring for prediction reliability
+### **Advanced AI Risk Analysis**
+- **Dual-Mode Processing**: Server-side rule-based calculations + client-side ML enhancement
+- **6-Factor Assessment**: Size (log-normalized), velocity, miss distance, PHA status, kinetic energy, and proximity flags
+- **Neural Network Architecture**: Dense layers with dropout regularization for robust predictions
+- **Automatic Training**: Browser-based model training with 5000+ synthetic samples when pre-trained models unavailable
+- **Performance Monitoring**: Real-time ML processing metrics and model performance tracking
+- **Intelligent Fallback**: Seamless transition between ML and rule-based systems
 
 ### **Interactive 3D Visualizations**
 - GPU-accelerated rendering for smooth performance
@@ -195,16 +209,33 @@ astro-watch/
 
 ## 🚀 Deployment
 
-### **Vercel (Recommended)**
-1. Connect your GitHub repository to Vercel
-2. Set environment variables in Vercel dashboard
-3. Deploy automatically on every push
-
-### **Manual Deployment**
+### **Quick Deploy to Vercel**
 ```bash
-npm run build
-npm run start
+# Install Vercel CLI
+npm i -g vercel
+
+# Run deployment preparation script
+npm run deploy
+
+# Deploy to production
+vercel --prod
 ```
+
+### **Environment Variables Required**
+```env
+NASA_API_KEY=your_nasa_api_key_here
+NEXT_PUBLIC_NASA_API_BASE=https://api.nasa.gov/neo/rest/v1
+NEXT_PUBLIC_ENABLE_PERFORMANCE_MONITORING=true
+```
+
+### **Deployment Features**
+- ⚡ **Zero-config deployment** with Vercel
+- 🔄 **Automatic builds** on git push
+- 🌐 **Global CDN** distribution
+- 📊 **Built-in analytics** and monitoring
+- 🔧 **Custom build optimizations** for ML models
+
+For detailed deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## 🤝 Contributing
 

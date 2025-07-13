@@ -9,6 +9,8 @@ import { Controls } from '@/components/visualization/controls/Controls';
 import { AsteroidAnalysisHub } from '@/components/visualization/analysis/AsteroidAnalysisHub';
 import { EnhancedAsteroid } from '@/lib/nasa-api';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useMLPredictions } from '@/hooks/useMLPredictions';
+import { MLIndicator } from '@/components/visualization/MLIndicator';
 
 export default function Home() {
   const { 
@@ -33,11 +35,14 @@ export default function Home() {
     staleTime: 300000, // Consider data stale after 5 minutes
   });
   
+  // Use ML predictions to enhance asteroid data on client-side
+  const { asteroids: mlEnhancedAsteroids, isMLReady, mlStats } = useMLPredictions(data?.asteroids || []);
+  
   useEffect(() => {
-    if (data?.asteroids) {
-      setAsteroids(data.asteroids);
+    if (mlEnhancedAsteroids.length > 0) {
+      setAsteroids(mlEnhancedAsteroids);
     }
-  }, [data, setAsteroids]);
+  }, [mlEnhancedAsteroids, setAsteroids]);
 
   const filteredAsteroids = getFilteredAsteroids();
 
@@ -73,6 +78,9 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-space-dark">
+      {/* ML Indicator */}
+      <MLIndicator isMLReady={isMLReady} mlStats={mlStats} />
+      
       {/* Header */}
       <header className="fixed top-0 z-50 w-full bg-gray-900/80 backdrop-blur-md border-b border-gray-800">
         <div className="container mx-auto px-4 py-4">

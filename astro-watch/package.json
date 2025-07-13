@@ -7,11 +7,13 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "deploy": "./scripts/deploy.sh",
+    "vercel-build": "./scripts/vercel-build.sh",
     "astro:start": "./scripts/start.sh",
     "astro:stop": "./scripts/stop.sh",
     "astro:build": "./scripts/build.sh",
-    "astro:setup": "echo 'Please see NASA_API_SETUP.md for API key setup instructions'",
-    "typecheck": "tsc --noEmit"
+    "astro:setup": "echo 'Please see NASA_API_SETUP.md for API key setup instructions'"
   },
   "dependencies": {
     "@react-spring/three": "^10.0.1",

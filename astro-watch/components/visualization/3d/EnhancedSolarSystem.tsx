@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import { EnhancedAsteroid } from '@/lib/nasa-api';
 import { useAsteroidStore } from '@/lib/store';
 import { RiskLegend, getTorinoInfo, getTorinoColor, getTorino3DColor } from '@/components/ui/RiskLegend';
+import { DetailedAsteroidView } from './DetailedAsteroidView';
 
 interface Props {
   asteroids: EnhancedAsteroid[];
@@ -245,7 +246,7 @@ function createMoonTexture(): THREE.Texture {
   return new THREE.CanvasTexture(canvas);
 }
 
-function Planet({ planetData, time }: { planetData: any; time: number }) {
+function Planet({ planetData, time, hideLabels }: { planetData: any; time: number; hideLabels?: boolean }) {
   const meshRef = useRef<THREE.Mesh>(null);
   const groupRef = useRef<THREE.Group>(null);
   
@@ -303,11 +304,13 @@ function Planet({ planetData, time }: { planetData: any; time: number }) {
       )}
       
       {/* Planet label */}
-      <Html position={[0, planetData.size + 3, 0]} center>
-        <div className="bg-black/90 text-white px-3 py-1 rounded-lg text-sm font-medium pointer-events-none border border-white/20">
-          {planetData.name}
-        </div>
-      </Html>
+      {!hideLabels && (
+        <Html position={[0, planetData.size + 3, 0]} center>
+          <div className="bg-black/90 text-white px-3 py-1 rounded-lg text-sm font-medium pointer-events-none border border-white/20">
+            {planetData.name}
+          </div>
+        </Html>
+      )}
     </group>
   );
 }
@@ -998,12 +1001,13 @@ function EnhancedStarField() {
 }
 
 // Individual asteroid component with realistic shapes and materials
-function AsteroidSphere({ asteroid, index, isSelected, isHovered, onClick, onPointerOver, onPointerOut }: {
+function AsteroidSphere({ asteroid, index, isSelected, isHovered, onClick, onDoubleClick, onPointerOver, onPointerOut }: {
   asteroid: EnhancedAsteroid;
   index: number;
   isSelected: boolean;
   isHovered: boolean;
   onClick: () => void;
+  onDoubleClick?: () => void;
   onPointerOver: () => void;
   onPointerOut: () => void;
 }) {
@@ -1094,6 +1098,7 @@ function AsteroidSphere({ asteroid, index, isSelected, isHovered, onClick, onPoi
         ref={meshRef}
         scale={getScaleModifications()}
         onClick={onClick}
+        onDoubleClick={onDoubleClick}
         onPointerOver={onPointerOver}
         onPointerOut={onPointerOut}
         castShadow
@@ -1126,12 +1131,14 @@ function AsteroidSphere({ asteroid, index, isSelected, isHovered, onClick, onPoi
 }
 
 // Static asteroid field - NO FLASHING
-function AsteroidField({ asteroids, onAsteroidSelect, selectedAsteroid, hoveredAsteroid, setHoveredAsteroid }: { 
+function AsteroidField({ asteroids, onAsteroidSelect, selectedAsteroid, hoveredAsteroid, setHoveredAsteroid, onOpenDetailed, hideLabels }: { 
   asteroids: EnhancedAsteroid[]; 
   onAsteroidSelect?: (asteroid: EnhancedAsteroid | null) => void;
   selectedAsteroid?: EnhancedAsteroid | null;
   hoveredAsteroid?: number | null;
   setHoveredAsteroid?: (index: number | null) => void;
+  onOpenDetailed?: () => void;
+  hideLabels?: boolean;
 }) {
   const { showTrajectories } = useAsteroidStore();
 
@@ -1147,6 +1154,10 @@ function AsteroidField({ asteroids, onAsteroidSelect, selectedAsteroid, hoveredA
           isHovered={hoveredAsteroid === index}
           onClick={() => {
             onAsteroidSelect?.(asteroid);
+          }}
+          onDoubleClick={() => {
+            onAsteroidSelect?.(asteroid);
+            onOpenDetailed?.();
           }}
           onPointerOver={() => {
             setHoveredAsteroid?.(index);
@@ -1164,7 +1175,7 @@ function AsteroidField({ asteroids, onAsteroidSelect, selectedAsteroid, hoveredA
       <AsteroidTrails asteroids={asteroids} />
       
       {/* Asteroid Names */}
-      {selectedAsteroid && (
+      {selectedAsteroid && !hideLabels && (
         <AsteroidLabel asteroid={selectedAsteroid} />
       )}
       
@@ -1341,9 +1352,10 @@ function CameraControls({ activePreset, onPresetChange, isTransitioning }: {
 }
 
 // Enhanced Asteroid Info Panel
-function AsteroidInfoPanel({ asteroid, onClose }: { 
+function AsteroidInfoPanel({ asteroid, onClose, onOpenDetailed }: { 
   asteroid: EnhancedAsteroid; 
   onClose: () => void;
+  onOpenDetailed: () => void;
 }) {
   const torinoInfo = getTorinoInfo(asteroid.torinoScale);
   const riskBgColor = torinoInfo.bgColor;
@@ -1408,6 +1420,13 @@ function AsteroidInfoPanel({ asteroid, onClose }: {
             {asteroid.close_approach_data[0]?.close_approach_date || 'Date unknown'}
           </div>
         </div>
+        
+        <button
+          onClick={onOpenDetailed}
+          className="w-full mt-4 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 hover:border-blue-500/50 text-blue-300 hover:text-blue-200 py-2 px-4 rounded-lg transition-all duration-200 text-sm font-medium"
+        >
+          View Detailed Information
+        </button>
       </div>
     </motion.div>
   );
@@ -1418,6 +1437,7 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [internalHoveredAsteroid, setInternalHoveredAsteroid] = useState<number | null>(null);
   const [time, setTime] = useState(0);
+  const [showDetailedView, setShowDetailedView] = useState(false);
   const controlsRef = useRef<any>(null);
   
   // Update time for planet animations
@@ -1596,7 +1616,7 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
           
           {/* All planets except Earth orbiting around Sun */}
           {PLANET_DATA.filter(p => p.name !== 'Earth').map((planetData) => (
-            <Planet key={planetData.name} planetData={planetData} time={time} />
+            <Planet key={planetData.name} planetData={planetData} time={time} hideLabels={showDetailedView} />
           ))}
           
           {/* Earth-centric view: Earth at center with detailed textures */}
@@ -1611,6 +1631,8 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
               selectedAsteroid={selectedAsteroid}
               hoveredAsteroid={actualHoveredAsteroid}
               setHoveredAsteroid={actualSetHoveredAsteroid}
+              onOpenDetailed={() => setShowDetailedView(true)}
+              hideLabels={showDetailedView}
             />
           </group>
         </Suspense>
@@ -1626,6 +1648,15 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
         <AsteroidInfoPanel 
           asteroid={selectedAsteroid} 
           onClose={() => onAsteroidSelect?.(null)}
+          onOpenDetailed={() => setShowDetailedView(true)}
+        />
+      )}
+      
+      {selectedAsteroid && (
+        <DetailedAsteroidView
+          asteroid={selectedAsteroid}
+          isOpen={showDetailedView}
+          onClose={() => setShowDetailedView(false)}
         />
       )}
       

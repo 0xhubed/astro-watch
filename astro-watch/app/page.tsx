@@ -149,7 +149,7 @@ export default function Home() {
       
       {/* Statistics Footer */}
       <footer className="fixed bottom-0 w-full bg-gray-900/80 backdrop-blur-md border-t border-gray-800">
-        <div className="container mx-auto px-4 py-3">
+        <div className="container mx-auto px-4 py-2">
           <div className="flex justify-between items-center text-sm text-gray-400">
             <div>
               Total Asteroids: {asteroids.length} | 
@@ -159,6 +159,9 @@ export default function Home() {
             <div>
               Last Updated: {new Date().toLocaleTimeString()}
             </div>
+          </div>
+          <div className="text-center text-xs text-gray-500 mt-1">
+            © 2025 Daniel Huber
           </div>
         </div>
       </footer>

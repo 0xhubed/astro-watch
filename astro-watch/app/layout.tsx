@@ -29,7 +29,14 @@ export default function RootLayout({
       </head>
       <body className={inter.className}>
         <QueryClientProvider client={queryClient}>
-          {children}
+          <div className="min-h-screen flex flex-col">
+            <main className="flex-grow">
+              {children}
+            </main>
+            <footer className="text-center py-4 text-sm text-gray-500">
+              © 2025 Daniel Huber
+            </footer>
+          </div>
         </QueryClientProvider>
       </body>
     </html>

@@ -30,8 +30,7 @@ const CAMERA_PRESETS: CameraPreset[] = [
   { name: 'Earth-Moon System', position: [0, 30, 50], target: [0, 0, 0] },
   { name: 'Near-Earth Objects', position: [50, 40, 80], target: [0, 0, 0] },
   { name: 'NEO Overview', position: [0, 100, 150], target: [0, 0, 0] },
-  { name: 'Inner Solar System', position: [0, 150, 300], target: [0, 0, 0] },
-  { name: 'Full Solar System', position: [0, 800, 1500], target: [0, 0, 0] }
+  { name: 'Inner Solar System', position: [0, 150, 300], target: [0, 0, 0] }
 ];
 
 // Realistic planet data with accurate astronomical distances (scaled for visualization)

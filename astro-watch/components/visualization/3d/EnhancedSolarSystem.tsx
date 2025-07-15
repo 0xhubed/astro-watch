@@ -1214,7 +1214,7 @@ function AsteroidLabel({ asteroid }: { asteroid: EnhancedAsteroid }) {
   const y = Math.sin(angle * 0.2) * orbit.inclination * 0.15;
   
   return (
-    <Html position={[x, y + 2, z]} center>
+    <Html position={[x, y + 2, z]} center style={{ zIndex: 10 }}>
       <div className="bg-black/80 text-white px-2 py-1 rounded text-xs pointer-events-none whitespace-nowrap">
         {asteroid.name}
       </div>

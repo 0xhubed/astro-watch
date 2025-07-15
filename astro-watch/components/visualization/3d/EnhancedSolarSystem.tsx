@@ -305,7 +305,7 @@ function Planet({ planetData, time, hideLabels }: { planetData: any; time: numbe
       
       {/* Planet label */}
       {!hideLabels && (
-        <Html position={[0, planetData.size + 3, 0]} center>
+        <Html position={[0, planetData.size + 3, 0]} center style={{ zIndex: 10 }}>
           <div className="bg-black/90 text-white px-3 py-1 rounded-lg text-sm font-medium pointer-events-none border border-white/20">
             {planetData.name}
           </div>
@@ -315,14 +315,15 @@ function Planet({ planetData, time, hideLabels }: { planetData: any; time: numbe
   );
 }
 
-function Moon({ earthPosition }: { earthPosition: [number, number, number] }) {
+function Moon({ earthPosition, hideLabels }: { earthPosition: [number, number, number]; hideLabels?: boolean }) {
   const meshRef = useRef<THREE.Mesh>(null);
+  const groupRef = useRef<THREE.Group>(null);
   
   // Create realistic moon texture
   const moonTexture = useMemo(() => createMoonTexture(), []);
   
   useFrame((state) => {
-    if (meshRef.current) {
+    if (meshRef.current && groupRef.current) {
       const time = state.clock.elapsedTime;
       // Realistic Moon distance: ~384,400 km = ~60 Earth radii
       // Earth radius in our scale = 6.371, so Moon distance = 60 * 6.371 = ~382 units
@@ -335,20 +336,31 @@ function Moon({ earthPosition }: { earthPosition: [number, number, number] }) {
       const z = earthPosition[2] + Math.sin(moonAngle) * moonDistance;
       const y = earthPosition[1] + Math.sin(moonAngle * 0.1) * 1;
       
-      meshRef.current.position.set(x, y, z);
+      groupRef.current.position.set(x, y, z);
       meshRef.current.rotation.y += 0.01;
     }
   });
   
   return (
-    <mesh ref={meshRef} castShadow receiveShadow>
-      <sphereGeometry args={[0.7, 32, 16]} />
-      <meshStandardMaterial 
-        map={moonTexture}
-        roughness={0.95}
-        metalness={0.0}
-      />
-    </mesh>
+    <group ref={groupRef}>
+      <mesh ref={meshRef} castShadow receiveShadow>
+        <sphereGeometry args={[0.7, 32, 16]} />
+        <meshStandardMaterial 
+          map={moonTexture}
+          roughness={0.95}
+          metalness={0.0}
+        />
+      </mesh>
+      
+      {/* Moon label */}
+      {!hideLabels && (
+        <Html position={[0, 2.5, 0]} center style={{ zIndex: 10 }}>
+          <div className="bg-black/90 text-white px-3 py-1 rounded-lg text-sm font-medium pointer-events-none border border-white/20">
+            Moon
+          </div>
+        </Html>
+      )}
+    </group>
   );
 }
 
@@ -1117,7 +1129,7 @@ function AsteroidSphere({ asteroid, index, isSelected, isHovered, onClick, onDou
       
       {/* 3D positioned tooltip */}
       {isHovered && (
-        <Html position={[0, scale * 2, 0]} center>
+        <Html position={[0, scale * 2, 0]} center style={{ zIndex: 10 }}>
           <div className="bg-black/90 text-white px-3 py-2 rounded-lg shadow-xl backdrop-blur-sm border border-white/20 pointer-events-none whitespace-nowrap">
             <div className="text-sm font-bold text-yellow-300">{asteroid.name}</div>
             <div className="text-xs text-gray-300 mt-1">
@@ -1622,7 +1634,7 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
           {/* Earth-centric view: Earth at center with detailed textures */}
           <group position={earthPosition}>
             <Earth />
-            <Moon earthPosition={[0, 0, 0]} />
+            <Moon earthPosition={[0, 0, 0]} hideLabels={showDetailedView} />
             
             {/* Asteroids around Earth (Near Earth Objects) */}
             <AsteroidField 

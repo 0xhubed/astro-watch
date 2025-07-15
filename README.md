@@ -1,6 +1,8 @@
-# 🌌 AstroWatch - Advanced Asteroid Risk Assessment Platform
+# 🌌 AstroWatch - Near Earth Object Visualization Playground
 
-A sophisticated real-time asteroid tracking and impact visualization application powered by machine learning. Built with Next.js, Three.js, and TensorFlow.js, AstroWatch provides comprehensive near-Earth object monitoring with interactive 3D visualizations, AI-driven risk predictions, and real-time data analytics.
+An experimental 3D visualization and machine learning playground for exploring near-Earth asteroids. Built with Next.js, Three.js, and TensorFlow.js, AstroWatch serves as a reference implementation for combining NASA asteroid data with interactive 3D visualizations and client-side ML predictions.
+
+> **⚠️ Disclaimer**: This is an experimental playground and reference implementation, not a production-ready risk assessment tool. All risk predictions are experimental and should not be used for actual asteroid threat evaluation. For authoritative asteroid data and risk assessments, please refer to official sources like NASA/JPL and ESA.
 
 ## ✨ Features
 
@@ -11,18 +13,18 @@ A sophisticated real-time asteroid tracking and impact visualization application
 - **Orbital Mechanics**: Accurate trajectory calculations and orbital animations
 
 ### 📊 **Data Analytics & Dashboards**
-- **Risk Assessment Dashboard**: Real-time charts showing asteroid risk levels over time
+- **Risk Assessment Dashboard**: Charts showing asteroid risk levels over time
 - **Timeline Visualization**: Interactive timeline of asteroid close approaches
 - **Risk Distribution Analysis**: Pie charts and radar plots for risk factor breakdown
-- **Impact Heatmaps**: Geographic visualization of potential impact zones
+- **Impact Visualization**: Geographic visualization of potential impact zones
 
-### 🤖 **AI-Powered Risk Assessment**
-- **TensorFlow.js ML Models**: Client-side neural networks for real-time risk prediction
+### 🤖 **Experimental ML Risk Assessment**
+- **TensorFlow.js ML Models**: Client-side neural networks for experimental risk prediction
 - **Multi-Factor Analysis**: 6-dimensional feature vectors analyzing size, velocity, distance, orbital characteristics, kinetic energy, and proximity factors
 - **Browser-Based Training**: Automatic model training when pre-trained models are unavailable
 - **Intelligent Fallback**: Rule-based calculations when ML models can't load
-- **Real-Time Processing**: Batch predictions for multiple asteroids with performance monitoring
-- **Visual ML Status**: Live indicator showing whether ML model or fallback system is active
+- **Batch Processing**: Predictions for multiple asteroids with performance monitoring
+- **Visual ML Status**: Indicator showing whether ML model or fallback system is active
 
 ### 🌍 **Interactive Globe**
 - **3D Earth Globe**: Realistic Earth visualization with impact point mapping
@@ -31,9 +33,9 @@ A sophisticated real-time asteroid tracking and impact visualization application
 - **Atmospheric Effects**: Realistic atmospheric rendering and lighting
 
 ### ⚡ **Performance Features**
-- **Real-time Updates**: Data refreshes every minute with smooth animations
-- **Efficient Rendering**: Optimized for 60fps performance
-- **Responsive Design**: Works seamlessly on desktop and mobile devices
+- **Periodic Updates**: Data refreshes every 15 minutes with smooth animations
+- **Efficient Rendering**: Optimized for smooth performance
+- **Responsive Design**: Works on desktop and mobile devices
 - **Progressive Loading**: Smart loading strategies for optimal user experience
 
 ## 🛠 Tech Stack
@@ -122,21 +124,29 @@ A sophisticated real-time asteroid tracking and impact visualization application
 
 ## 📖 Usage
 
+### **As a Reference Implementation**
+This project demonstrates:
+- **NASA API Integration**: How to fetch and process NEO data
+- **3D Visualization**: Three.js integration with React for space visualizations
+- **Client-side ML**: TensorFlow.js for browser-based model training and inference
+- **Performance Optimization**: Efficient rendering of large datasets
+- **Modern Web Stack**: Next.js, TypeScript, and modern React patterns
+
 ### **Navigation**
 - **3D View**: Interactive solar system with asteroid orbits
-- **Dashboard**: Charts and analytics for risk assessment
-- **Map View**: Global impact visualization (coming soon)
+- **Dashboard**: Charts and analytics for experimental risk assessment
+- **Map View**: Global impact visualization (experimental)
 
 ### **Controls**
 - **Time Range**: Switch between day, week, and month views
-- **Risk Filter**: Filter asteroids by risk level (high, medium, low)
+- **Risk Filter**: Filter asteroids by experimental risk level (high, medium, low)
 - **Visual Options**: Toggle trajectories and particle effects
 - **Interactive Camera**: Zoom, pan, and rotate in 3D views
 
 ### **Data Sources**
-- **NASA NEO API**: Real-time near-Earth object data
+- **NASA NEO API**: Near-Earth object data (updated periodically)
 - **Orbital Mechanics**: Physics-based trajectory calculations
-- **Risk Assessment**: Multi-factor ML-based risk scoring
+- **Risk Assessment**: Experimental ML-based and rule-based risk scoring
 
 ## 🏗 Project Structure
 
@@ -184,17 +194,17 @@ astro-watch/
 
 ## 🌟 Key Features in Detail
 
-### **Real-time Asteroid Tracking**
-- Live data from NASA's Near Earth Object Web Service
-- Automatic updates every minute
+### **Asteroid Data Visualization**
+- Data from NASA's Near Earth Object Web Service
+- Periodic updates (15-minute intervals)
 - Support for historical and future asteroid approaches
 
-### **Advanced AI Risk Analysis**
+### **Experimental ML Risk Analysis**
 - **Dual-Mode Processing**: Server-side rule-based calculations + client-side ML enhancement
 - **6-Factor Assessment**: Size (log-normalized), velocity, miss distance, PHA status, kinetic energy, and proximity flags
-- **Neural Network Architecture**: Dense layers with dropout regularization for robust predictions
+- **Neural Network Architecture**: Dense layers with dropout regularization for experimental predictions
 - **Automatic Training**: Browser-based model training with 5000+ synthetic samples when pre-trained models unavailable
-- **Performance Monitoring**: Real-time ML processing metrics and model performance tracking
+- **Performance Monitoring**: ML processing metrics and model performance tracking
 - **Intelligent Fallback**: Seamless transition between ML and rule-based systems
 
 ### **Interactive 3D Visualizations**
@@ -265,6 +275,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Built with ❤️ for space enthusiasts and data visualization lovers**
+**Built with ❤️ for space enthusiasts, developers, and data visualization explorers**
 
-🌌 *Explore the cosmos, understand the risks, and visualize the future of our planet's safety.*
+🌌 *An experimental platform for learning about near-Earth objects through interactive 3D visualization and machine learning techniques.*

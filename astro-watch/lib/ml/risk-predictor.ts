@@ -1,10 +1,20 @@
-import * as tf from '@tensorflow/tfjs';
+// Lazy load TensorFlow.js to improve initial page load
+let tf: typeof import('@tensorflow/tfjs') | null = null;
+
+async function loadTensorFlow() {
+  if (!tf) {
+    console.log('Loading TensorFlow.js...');
+    tf = await import('@tensorflow/tfjs');
+    console.log('TensorFlow.js loaded');
+  }
+  return tf;
+}
 import { Asteroid } from '../nasa-api';
 import { extractFeatures, validateFeatures } from './feature-engineering';
 
 interface ModelCache {
-  model: tf.LayersModel | null;
-  loading: Promise<tf.LayersModel> | null;
+  model: any | null; // Will be tf.LayersModel when loaded
+  loading: Promise<any> | null;
   lastLoaded: number;
   version: string;
 }
@@ -67,7 +77,7 @@ function getModelUrl(): string {
  * Load the ML model from various sources (public directory, browser storage, or train new)
  * Uses caching to avoid reloading the model multiple times
  */
-async function loadModel(): Promise<tf.LayersModel> {
+async function loadModel(): Promise<any> {
   const now = Date.now();
 
   // Return cached model if still valid
@@ -95,7 +105,8 @@ async function loadModel(): Promise<tf.LayersModel> {
       try {
         const modelUrl = getModelUrl();
         console.log(`Attempting to load from: ${modelUrl}`);
-        const model = await tf.loadLayersModel(modelUrl);
+        const tfjs = await loadTensorFlow();
+        const model = await tfjs.loadLayersModel(modelUrl);
         
         // Verify model architecture
         const inputShape = model.inputs[0].shape;
@@ -194,8 +205,9 @@ export async function predictRisk(asteroid: Asteroid): Promise<PredictionResult>
     const model = await loadModel();
 
     // Make prediction
-    const inputTensor = tf.tensor2d([features]);
-    const predictionTensor = model.predict(inputTensor) as tf.Tensor2D;
+    const tfjs = await loadTensorFlow();
+    const inputTensor = tfjs.tensor2d([features]);
+    const predictionTensor = model.predict(inputTensor) as any;
     const prediction = await predictionTensor.data();
 
     // Clean up tensors
@@ -290,8 +302,9 @@ export async function predictRiskBatch(asteroids: Asteroid[]): Promise<Predictio
 
     // Batch prediction
     const startTime = performance.now();
-    const inputTensor = tf.tensor2d(allFeatures);
-    const predictionTensor = model.predict(inputTensor) as tf.Tensor2D;
+    const tfjs = await loadTensorFlow();
+    const inputTensor = tfjs.tensor2d(allFeatures);
+    const predictionTensor = model.predict(inputTensor) as any;
     const predictions = await predictionTensor.data();
     const processingTime = performance.now() - startTime;
 

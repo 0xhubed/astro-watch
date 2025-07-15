@@ -19,6 +19,9 @@ export function useMLPredictions(asteroids: Asteroid[]) {
 
     const runMLPredictions = async () => {
       try {
+        // Add a small delay to ensure initial render happens first
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         console.log('Running ML predictions for', asteroids.length, 'asteroids...');
         const startTime = performance.now();
         

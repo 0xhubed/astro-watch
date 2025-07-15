@@ -35,14 +35,22 @@ export default function Home() {
     staleTime: 300000, // Consider data stale after 5 minutes
   });
   
-  // Use ML predictions to enhance asteroid data on client-side
+  // Set asteroids immediately when data is loaded
+  useEffect(() => {
+    if (data?.asteroids && data.asteroids.length > 0) {
+      setAsteroids(data.asteroids);
+    }
+  }, [data?.asteroids, setAsteroids]);
+  
+  // Use ML predictions to enhance asteroid data on client-side (non-blocking)
   const { asteroids: mlEnhancedAsteroids, isMLReady, mlStats } = useMLPredictions(data?.asteroids || []);
   
+  // Update asteroids with ML predictions when ready (without blocking initial render)
   useEffect(() => {
-    if (mlEnhancedAsteroids.length > 0) {
+    if (mlEnhancedAsteroids.length > 0 && isMLReady) {
       setAsteroids(mlEnhancedAsteroids);
     }
-  }, [mlEnhancedAsteroids, setAsteroids]);
+  }, [mlEnhancedAsteroids, isMLReady, setAsteroids]);
 
   const filteredAsteroids = getFilteredAsteroids();
 

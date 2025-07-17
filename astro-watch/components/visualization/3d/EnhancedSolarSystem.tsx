@@ -43,7 +43,8 @@ const PLANET_DATA = [
     baseColor: '#8c7853',   // Base rocky color
     speed: 0.04,            // Fastest orbit (88 Earth days)
     inclination: 0.01,
-    textureType: 'rocky'
+    textureType: 'rocky',
+    initialPhase: 0.3       // Initial orbital position (30% around orbit)
   },
   {
     name: 'Venus', 
@@ -52,7 +53,8 @@ const PLANET_DATA = [
     baseColor: '#ffc649',   // Bright yellow atmosphere
     speed: 0.03,            // 225 Earth days
     inclination: 0.006,
-    textureType: 'atmospheric'
+    textureType: 'atmospheric',
+    initialPhase: 0.7       // 70% around orbit
   },
   {
     name: 'Earth',
@@ -61,7 +63,8 @@ const PLANET_DATA = [
     baseColor: '#6b93d6',
     speed: 0.02,            // 365 Earth days
     inclination: 0,
-    textureType: 'earth'
+    textureType: 'earth',
+    initialPhase: 0         // Start at 0 (reference)
   },
   {
     name: 'Mars',
@@ -70,7 +73,8 @@ const PLANET_DATA = [
     baseColor: '#cd5c5c',   // Red planet
     speed: 0.015,           // 687 Earth days
     inclination: 0.032,
-    textureType: 'rocky'
+    textureType: 'rocky',
+    initialPhase: 0.15      // 15% around orbit
   },
   {
     name: 'Jupiter',
@@ -79,7 +83,8 @@ const PLANET_DATA = [
     baseColor: '#d8ca9d',   // Gas giant bands
     speed: 0.008,           // 12 Earth years
     inclination: 0.022,
-    textureType: 'gasGiant'
+    textureType: 'gasGiant',
+    initialPhase: 0.45      // 45% around orbit
   },
   {
     name: 'Saturn',
@@ -89,7 +94,8 @@ const PLANET_DATA = [
     speed: 0.006,           // 29 Earth years
     inclination: 0.043,
     hasRings: true,
-    textureType: 'gasGiant'
+    textureType: 'gasGiant',
+    initialPhase: 0.85      // 85% around orbit
   },
   {
     name: 'Uranus',
@@ -98,7 +104,8 @@ const PLANET_DATA = [
     baseColor: '#4fd0e7',   // Ice giant
     speed: 0.004,           // 84 Earth years
     inclination: 0.013,
-    textureType: 'iceGiant'
+    textureType: 'iceGiant',
+    initialPhase: 0.55      // 55% around orbit
   },
   {
     name: 'Neptune',
@@ -107,7 +114,8 @@ const PLANET_DATA = [
     baseColor: '#4b70dd',   // Deep blue ice giant
     speed: 0.003,           // 165 Earth years
     inclination: 0.031,
-    textureType: 'iceGiant'
+    textureType: 'iceGiant',
+    initialPhase: 0.25      // 25% around orbit
   }
 ];
 
@@ -250,7 +258,9 @@ function Planet({ planetData, time, hideLabels }: { planetData: any; time: numbe
   const groupRef = useRef<THREE.Group>(null);
   
   // Calculate position around Sun (at center 0,0,0)
-  const angle = time * planetData.speed;
+  // Add initial phase to spread planets around their orbits
+  const initialAngle = (planetData.initialPhase || 0) * Math.PI * 2;
+  const angle = initialAngle + time * planetData.speed;
   const x = Math.cos(angle) * planetData.distanceFromSun;
   const z = Math.sin(angle) * planetData.distanceFromSun;
   const y = Math.sin(angle * 0.3) * planetData.inclination * 10;
@@ -390,7 +400,9 @@ function PlanetaryTrajectories() {
         <group key={`orbit-markers-${planet.name}`}>
           {/* Create orbital markers every 30 degrees */}
           {Array.from({ length: 12 }, (_, i) => {
-            const angle = (i * 30) * Math.PI / 180;
+            const baseAngle = (i * 30) * Math.PI / 180;
+            const initialPhaseAngle = (planet.initialPhase || 0) * Math.PI * 2;
+            const angle = baseAngle + initialPhaseAngle;
             const x = Math.cos(angle) * planet.distanceFromSun;
             const z = Math.sin(angle) * planet.distanceFromSun;
             const y = Math.sin(angle * 0.3) * planet.inclination * 10;
@@ -1472,7 +1484,8 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
   
   // Calculate Earth's position for Moon and asteroids
   const earthData = PLANET_DATA.find(p => p.name === 'Earth')!;
-  const earthAngle = time * earthData.speed;
+  const earthInitialAngle = (earthData.initialPhase || 0) * Math.PI * 2;
+  const earthAngle = earthInitialAngle + time * earthData.speed;
   const earthPosition: [number, number, number] = [
     Math.cos(earthAngle) * earthData.distanceFromSun,
     Math.sin(earthAngle * 0.3) * earthData.inclination * 10,

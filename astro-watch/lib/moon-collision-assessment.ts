@@ -60,16 +60,6 @@ export function calculateMoonCollisionRisk(asteroid: EnhancedAsteroid): MoonColl
   // 3. Gravitational focusing effects
   const gravitationalFocusing = calculateGravitationalFocusing(asteroid);
   
-  // Debug logging
-  console.log(`Moon Collision Calculation for ${asteroid.id}:`, {
-    geometricProbability,
-    orbitalFactors,
-    gravitationalFocusing,
-    missDistance: asteroid.missDistance,
-    velocity: asteroid.velocity,
-    size: asteroid.size
-  });
-  
   // 4. Combined probability
   let moonCollisionProbability = geometricProbability * orbitalFactors * gravitationalFocusing;
   
@@ -181,10 +171,14 @@ function calculateOrbitalFactors(asteroid: EnhancedAsteroid): number {
   const eccentricityFactor = 1 - asteroid.orbit.eccentricity * 0.3;
   
   // 4. Semi-major axis factor - asteroids with similar orbital radius to Earth more likely
-  const semiMajorAxisDiff = Math.abs(asteroid.orbit.semi_major_axis - 1.0); // AU
+  // Use orbital radius if semi_major_axis is not available
+  const orbitalRadius = asteroid.orbit.semi_major_axis || (asteroid.orbit.radius / 1.496e8); // Convert km to AU if needed
+  const semiMajorAxisDiff = Math.abs(orbitalRadius - 1.0); // AU
   const semiMajorAxisFactor = Math.exp(-semiMajorAxisDiff);
   
-  return inclinationFactor * timingFactor * eccentricityFactor * semiMajorAxisFactor;
+  // Ensure no NaN values
+  const result = inclinationFactor * timingFactor * eccentricityFactor * semiMajorAxisFactor;
+  return isNaN(result) ? 0.5 : result; // Default to 0.5 if calculation fails
 }
 
 /**

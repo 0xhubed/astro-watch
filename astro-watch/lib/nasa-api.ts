@@ -1,3 +1,14 @@
+export interface APOD {
+  date: string;
+  explanation: string;
+  hdurl?: string;
+  media_type: string;
+  service_version: string;
+  title: string;
+  url: string;
+  copyright?: string;
+}
+
 export interface Asteroid {
   id: string;
   name: string;
@@ -41,6 +52,7 @@ export interface EnhancedAsteroid extends Asteroid {
     phase: number;
     inclination: number;
     eccentricity: number;
+    semi_major_axis: number;
     isInnerOrbit?: boolean;
   };
   position: {
@@ -67,6 +79,31 @@ export interface EnhancedAsteroid extends Asteroid {
 
 const NASA_API_KEY = process.env.NASA_API_KEY;
 const BASE_URL = 'https://api.nasa.gov/neo/rest/v1';
+
+export async function getAPOD(date?: string): Promise<APOD> {
+  const apiKey = NASA_API_KEY || 'DEMO_KEY';
+  let url = `https://api.nasa.gov/planetary/apod?api_key=${apiKey}`;
+  
+  if (date) {
+    url += `&date=${date}`;
+  }
+  
+  try {
+    const response = await fetch(url, {
+      next: { revalidate: 86400 } // Cache for 24 hours
+    });
+    
+    if (!response.ok) {
+      throw new Error(`NASA APOD API error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching APOD:', error);
+    throw error;
+  }
+}
 
 export async function fetchNEOFeed(startDate: string, endDate: string): Promise<EnhancedAsteroid[]> {
   const url = `${BASE_URL}/feed?start_date=${startDate}&end_date=${endDate}&api_key=${NASA_API_KEY}`;
@@ -194,12 +231,19 @@ function calculateOrbitParameters(asteroid: Asteroid): any {
   const orbitVariation = (Math.random() - 0.5) * 0.3; // +/- 30% variation
   const adjustedDistance = missDistance * (1 + orbitVariation);
   
+  // Get orbital data if available
+  const orbitalData = asteroid.orbital_data;
+  const semiMajorAxis = orbitalData?.semi_major_axis ? parseFloat(orbitalData.semi_major_axis) : adjustedDistance;
+  const actualInclination = orbitalData?.inclination ? parseFloat(orbitalData.inclination) : (Math.random() - 0.5) * 0.2;
+  const actualEccentricity = orbitalData?.eccentricity ? parseFloat(orbitalData.eccentricity) : Math.random() * 0.3;
+
   return {
     radius: adjustedDistance * scaleFactor, // Actual scaled distance with variation
     speed: 0.01 + Math.random() * 0.02,
     phase: Math.random() * Math.PI * 2,
-    inclination: (Math.random() - 0.5) * 0.2, // Increased inclination for more variation
-    eccentricity: Math.random() * 0.3,
+    inclination: actualInclination,
+    eccentricity: actualEccentricity,
+    semi_major_axis: semiMajorAxis,
     isInnerOrbit: orbitVariation < 0 // Track if asteroid is inside Earth's orbit
   };
 }

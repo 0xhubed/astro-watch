@@ -2,6 +2,8 @@
 
 import { useAsteroidStore } from '@/lib/store';
 import { motion } from 'framer-motion';
+import Link from 'next/link';
+import { Image } from 'lucide-react';
 
 export function Controls() {
   const {
@@ -114,6 +116,15 @@ export function Controls() {
           Trajectories
         </button>
       </div>
+
+      {/* APOD Link */}
+      <Link
+        href="/apod"
+        className="flex items-center gap-2 px-3 py-1 rounded-md text-sm bg-orange-600 text-white hover:bg-orange-700 transition-colors"
+      >
+        <Image className="w-4 h-4" />
+        Picture of the Day
+      </Link>
     </motion.div>
   );
 }

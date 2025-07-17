@@ -48,10 +48,10 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-6 border border-gray-800"
+        className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-800"
       >
-        <h3 className="text-xl font-semibold mb-4 text-white">Torino Scale Risk Over Time</h3>
-        <ResponsiveContainer width="100%" height={300}>
+        <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-white">Torino Scale Risk Over Time</h3>
+        <ResponsiveContainer width="100%" height={250} className="md:h-[300px]">
           <AreaChart data={data}>
             <defs>
               <linearGradient id="riskGradient" x1="0" y1="0" x2="0" y2="1">
@@ -110,17 +110,17 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
       <motion.div
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
-        className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-6 border border-gray-800"
+        className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-800"
       >
-        <h3 className="text-xl font-semibold mb-4 text-white">Torino Scale Distribution</h3>
-        <ResponsiveContainer width="100%" height={300}>
+        <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-white">Torino Scale Distribution</h3>
+        <ResponsiveContainer width="100%" height={250} className="md:h-[300px]">
           <PieChart>
             <Pie
               data={torinoGroups}
               cx="50%"
               cy="50%"
-              innerRadius={60}
-              outerRadius={120}
+              innerRadius={40}
+              outerRadius={80}
               paddingAngle={5}
               dataKey="value"
             >
@@ -144,9 +144,9 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-6 border border-gray-800"
+        className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-800"
       >
-        <h3 className="text-xl font-semibold mb-4 text-white">Top Threats by Torino Scale</h3>
+        <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-white">Top Threats by Torino Scale</h3>
         <div className="space-y-3">
           {topAsteroids.map((asteroid) => {
             const torinoInfo = getTorinoInfo(asteroid.torinoScale);
@@ -218,7 +218,7 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
         animate={{ opacity: 1, x: 0 }}
         className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-6 border border-gray-800 h-full"
       >
-        <h3 className="text-xl font-semibold mb-4 text-white">Asteroid Facts & Insights</h3>
+        <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-white">Asteroid Facts & Insights</h3>
         <div className="space-y-6 overflow-y-auto max-h-[300px] custom-scrollbar">
           {facts.map((section, index) => (
             <div key={index}>
@@ -274,9 +274,9 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-6 border border-gray-800"
+        className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-800"
       >
-        <h3 className="text-xl font-semibold mb-4 text-white">Impact Scenarios by Size</h3>
+        <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-white">Impact Scenarios by Size</h3>
         <div className="space-y-4 overflow-y-auto max-h-[300px] custom-scrollbar">
           {scenarios.map((scenario, index) => (
             <div key={index} className="bg-gray-800/50 rounded-lg p-4">
@@ -309,10 +309,10 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
       <motion.div
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
-        className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-6 border border-gray-800"
+        className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-800"
       >
-        <h3 className="text-xl font-semibold mb-4 text-white">Size vs Velocity Distribution</h3>
-        <ResponsiveContainer width="100%" height={300}>
+        <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-white">Size vs Velocity Distribution</h3>
+        <ResponsiveContainer width="100%" height={250} className="md:h-[300px]">
           <ScatterChart>
             <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
             <XAxis 
@@ -367,9 +367,9 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-6 border border-gray-800"
+        className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-800"
       >
-        <h3 className="text-xl font-semibold mb-4 text-white">Torino Impact Hazard Scale</h3>
+        <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-white">Torino Impact Hazard Scale</h3>
         <div className="space-y-2 overflow-y-auto max-h-[300px] custom-scrollbar">
           {scaleInfo.map((item) => (
             <div key={item.level} className="flex items-center gap-3 p-2 bg-gray-800/30 rounded-lg">
@@ -403,9 +403,9 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-6 border border-gray-800"
+        className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-800"
       >
-        <h3 className="text-xl font-semibold mb-4 text-white">Data & API Information</h3>
+        <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-white">Data & API Information</h3>
         <div className="space-y-4">
           <div className="flex items-center justify-between p-3 bg-green-900/20 rounded-lg border border-green-700/30">
             <div>
@@ -447,29 +447,29 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
   };
   
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* ML Model Performance Section */}
       <MLModelStats />
       {/* Primary Analytics Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         <TimeSeriesRisk />
         <RiskDistribution />
       </div>
       
       {/* Secondary Analytics Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         <TopThreats />
         <SizeVelocityChart />
       </div>
       
       {/* Educational Content Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         <AsteroidFacts />
         <ImpactScenarios />
       </div>
       
       {/* Bottom Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         <APIStatus />
         <TorinoScaleCard />
       </div>

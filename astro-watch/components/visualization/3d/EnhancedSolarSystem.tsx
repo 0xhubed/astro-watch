@@ -1346,7 +1346,7 @@ function CameraControls({ activePreset, onPresetChange, isTransitioning }: {
   isTransitioning?: boolean;
 }) {
   return (
-    <div className="absolute top-4 left-4 z-10 bg-black/40 backdrop-blur-sm rounded-lg p-3 border border-white/20 max-w-[180px]">
+    <div className="absolute top-2 left-2 md:top-4 md:left-4 z-10 bg-black/40 backdrop-blur-sm rounded-lg p-2 md:p-3 border border-white/20 max-w-[140px] md:max-w-[180px]">
       <h3 className="text-white text-xs font-semibold mb-2 flex items-center gap-2">
         <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
         Camera Views
@@ -1396,7 +1396,7 @@ function AsteroidInfoPanel({ asteroid, onClose, onOpenDetailed }: {
       initial={{ opacity: 0, y: 20, scale: 0.9 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 20, scale: 0.9 }}
-      className="absolute bottom-4 right-4 z-10 bg-black/40 backdrop-blur-md rounded-xl p-5 max-w-sm border border-white/10 shadow-2xl"
+      className="absolute bottom-2 right-2 md:bottom-4 md:right-4 z-10 bg-black/40 backdrop-blur-md rounded-xl p-3 md:p-5 max-w-[calc(100vw-1rem)] md:max-w-sm border border-white/10 shadow-2xl"
     >
       <div className="flex justify-between items-start mb-4">
         <div>
@@ -1702,7 +1702,7 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
         initial={{ x: 300, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ duration: 0.5, delay: 0.2 }}
-        className="absolute right-4 top-24 bottom-24 w-80 bg-black/40 backdrop-blur-md rounded-xl border border-white/10 shadow-2xl overflow-hidden"
+        className="hidden md:block absolute right-4 top-24 bottom-24 w-80 bg-black/40 backdrop-blur-md rounded-xl border border-white/10 shadow-2xl overflow-hidden"
       >
         <div className="p-4 border-b border-white/10">
           <h3 className="text-white text-lg font-bold">Nearby Asteroids</h3>
@@ -1794,6 +1794,89 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
         Asteroids: {asteroids.length}
       </div>
       
+      {/* Mobile Asteroid List Toggle */}
+      <button
+        onClick={() => setShowDetailedView(!showDetailedView)}
+        className="md:hidden fixed bottom-20 right-4 z-20 bg-purple-600 hover:bg-purple-700 text-white rounded-full p-3 shadow-lg"
+      >
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+          <line x1="9" y1="9" x2="15" y2="9"></line>
+          <line x1="9" y1="15" x2="15" y2="15"></line>
+        </svg>
+      </button>
+
+      {/* Mobile Asteroid List Drawer */}
+      {showDetailedView && (
+        <motion.div
+          initial={{ y: '100%' }}
+          animate={{ y: 0 }}
+          exit={{ y: '100%' }}
+          transition={{ type: 'spring', damping: 25 }}
+          className="md:hidden fixed inset-x-0 bottom-0 z-30 bg-black/90 backdrop-blur-lg rounded-t-2xl border-t border-white/20 max-h-[70vh]"
+        >
+          <div className="p-4 border-b border-white/10">
+            <div className="flex items-center justify-between">
+              <h3 className="text-white text-lg font-bold">Nearby Asteroids</h3>
+              <button
+                onClick={() => setShowDetailedView(false)}
+                className="text-white/60 hover:text-white p-2"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+          </div>
+          
+          <div className="overflow-y-auto h-[calc(100%-80px)] custom-scrollbar p-4">
+            <div className="space-y-2">
+              {asteroids.map((asteroid) => {
+                const torinoInfo = getTorinoInfo(asteroid.torinoScale);
+                const isSelected = selectedAsteroid?.id === asteroid.id;
+                const isHovered = actualHoveredAsteroid === asteroid.id;
+                
+                return (
+                  <motion.button
+                    key={asteroid.id}
+                    onClick={() => {
+                      if (onAsteroidSelect) {
+                        onAsteroidSelect(asteroid);
+                      }
+                      setShowDetailedView(false);
+                    }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className={`w-full p-3 rounded-lg border transition-all ${
+                      isSelected 
+                        ? 'bg-purple-900/50 border-purple-500' 
+                        : isHovered
+                        ? 'bg-white/10 border-white/30'
+                        : 'bg-white/5 border-white/10 hover:bg-white/10'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="text-left">
+                        <div className="text-white font-medium text-sm">{asteroid.name}</div>
+                        <div className="text-white/60 text-xs">
+                          {asteroid.size.toFixed(1)} km • {asteroid.velocity.toFixed(1)} km/s
+                        </div>
+                      </div>
+                      <div className={`${torinoInfo.bgColor} px-2 py-1 rounded-full`}>
+                        <span className={`text-xs font-medium ${torinoInfo.color}`}>
+                          T{asteroid.torinoScale}
+                        </span>
+                      </div>
+                    </div>
+                  </motion.button>
+                );
+              })}
+            </div>
+          </div>
+        </motion.div>
+      )}
+
       {/* Risk Legend */}
       <RiskLegend position="center" />
     </div>

@@ -33,14 +33,14 @@ export function AsteroidAnalysisHub({ asteroids }: Props) {
   return (
     <div className="w-full h-full bg-gradient-to-b from-space-dark via-blue-900/20 to-space-dark">
       {/* Tab Navigation */}
-      <div className="fixed top-20 left-4 right-4 z-10 bg-black/40 backdrop-blur-md rounded-xl border border-white/10 p-4">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex gap-2">
+      <div className="fixed top-16 md:top-20 left-2 right-2 md:left-4 md:right-4 z-10 bg-black/40 backdrop-blur-md rounded-xl border border-white/10 p-3 md:p-4">
+        <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
+          <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0">
             {tabs.map((tab) => (
               <motion.button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                className={`px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-all duration-200 whitespace-nowrap ${
                   activeTab === tab.id
                     ? 'bg-blue-500/70 text-white shadow-lg'
                     : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'
@@ -48,24 +48,25 @@ export function AsteroidAnalysisHub({ asteroids }: Props) {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                <span className="mr-2">{tab.icon}</span>
-                {tab.name}
+                <span className="mr-1 md:mr-2">{tab.icon}</span>
+                <span className="hidden sm:inline">{tab.name}</span>
+                <span className="sm:hidden">{tab.name.split(' ')[0]}</span>
               </motion.button>
             ))}
           </div>
           
-          <div className="flex-1 text-white/60 text-xs leading-relaxed">
+          <div className="flex-1 text-white/60 text-xs leading-relaxed hidden md:block">
             {tabs.find(tab => tab.id === activeTab)?.description}
           </div>
           
-          <div className="text-white/40 text-xs">
-            {asteroids.length} asteroids tracked
+          <div className="text-white/40 text-xs text-center sm:text-right">
+            {asteroids.length} asteroids
           </div>
         </div>
       </div>
 
       {/* Tab Content */}
-      <div className="pt-32 h-full">
+      <div className="pt-28 md:pt-32 h-full">
         <AnimatePresence mode="wait">
           {activeTab === 'trajectories' && (
             <motion.div

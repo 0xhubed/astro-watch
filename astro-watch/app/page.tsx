@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useAsteroidStore } from '@/lib/store';
 import { EnhancedSolarSystem } from '@/components/visualization/3d/EnhancedSolarSystem';
 import { RiskDashboard } from '@/components/visualization/charts/RiskDashboard';
-import { Controls } from '@/components/visualization/controls/Controls';
+import { MobileControls } from '@/components/visualization/controls/MobileControls';
 import { AsteroidAnalysisHub } from '@/components/visualization/analysis/AsteroidAnalysisHub';
 import { EnhancedAsteroid } from '@/lib/nasa-api';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -91,22 +91,22 @@ export default function Home() {
       
       {/* Header */}
       <header className="fixed top-0 z-50 w-full bg-gray-900/80 backdrop-blur-md border-b border-gray-800">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
+        <div className="container mx-auto px-4 py-3 md:py-4">
+          <div className="flex items-center justify-between gap-2">
             <motion.h1 
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-600 bg-clip-text text-transparent"
+              className="text-xl md:text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-600 bg-clip-text text-transparent"
             >
               AstroWatch
             </motion.h1>
-            <Controls />
+            <MobileControls />
           </div>
         </div>
       </header>
       
       {/* Main Content */}
-      <main className="pt-20">
+      <main className="pt-16 md:pt-20">
         <AnimatePresence mode="wait">
           {viewMode === 'solar-system' && (
             <motion.div
@@ -134,7 +134,7 @@ export default function Home() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
               transition={{ duration: 0.5 }}
-              className="container mx-auto px-4 py-8"
+              className="container mx-auto px-4 py-4 md:py-8"
             >
               <RiskDashboard asteroids={filteredAsteroids} timeRange={timeRange} />
             </motion.div>
@@ -158,14 +158,18 @@ export default function Home() {
       {/* Statistics Footer */}
       <footer className="fixed bottom-0 w-full bg-gray-900/80 backdrop-blur-md border-t border-gray-800">
         <div className="container mx-auto px-4 py-2">
-          <div className="flex justify-between items-center text-sm text-gray-400">
-            <div>
-              Total Asteroids: {asteroids.length} | 
+          <div className="flex flex-col md:flex-row md:justify-between md:items-center text-xs md:text-sm text-gray-400">
+            <div className="text-center md:text-left">
+              <span className="hidden md:inline">Total Asteroids: {asteroids.length} | </span>
+              <span className="md:hidden">Total: {asteroids.length} | </span>
               Filtered: {filteredAsteroids.length} | 
-              Threatening: {asteroids.filter(a => a.torinoScale >= 5).length}
+              <span className="hidden md:inline">Threatening: </span>
+              <span className="md:hidden">High: </span>
+              {asteroids.filter(a => a.torinoScale >= 5).length}
             </div>
-            <div>
-              Last Updated: {new Date().toLocaleTimeString()}
+            <div className="text-center md:text-right text-xs mt-1 md:mt-0">
+              <span className="hidden md:inline">Last Updated: </span>
+              {new Date().toLocaleTimeString()}
             </div>
           </div>
           <div className="text-center text-xs text-gray-500 mt-1">

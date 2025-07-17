@@ -24,7 +24,7 @@ function Earth() {
   return (
     <group>
       <mesh ref={meshRef}>
-        <sphereGeometry args={[6.371, 64, 64]} />
+        <sphereGeometry args={[3.0, 64, 64]} />
         <meshPhongMaterial
           color="#4a90e2"
           shininess={100}
@@ -33,7 +33,7 @@ function Earth() {
       </mesh>
       {/* Atmosphere */}
       <mesh ref={atmosphereRef} scale={[1.05, 1.05, 1.05]}>
-        <sphereGeometry args={[6.371, 64, 64]} />
+        <sphereGeometry args={[3.0, 64, 64]} />
         <meshBasicMaterial
           color="#87ceeb"
           transparent

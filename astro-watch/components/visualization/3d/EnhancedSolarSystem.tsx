@@ -335,7 +335,7 @@ function Moon({ earthPosition, hideLabels }: { earthPosition: [number, number, n
     if (meshRef.current && groupRef.current) {
       const time = state.clock.elapsedTime;
       // Realistic Moon distance: ~384,400 km = ~60 Earth radii
-      // Earth radius in our scale = 6.371, so Moon distance = 60 * 6.371 = ~382 units
+      // Earth radius in our scale = 3.0, so Moon distance = 60 * 3.0 = 180 units
       // Scaled down for visibility and to avoid crossing Venus orbit (46 units)
       const moonDistance = 12; // Reduced to stay within Earth's vicinity
       const moonAngle = time * 0.5; // Moon orbit speed (27.3 days in real life)
@@ -725,7 +725,7 @@ function Earth() {
     <group>
       {/* Earth Surface with NASA satellite imagery */}
       <mesh ref={meshRef} castShadow receiveShadow>
-        <sphereGeometry args={[6.371, 256, 256]} />
+        <sphereGeometry args={[3.0, 256, 256]} />
         <meshStandardMaterial
           map={earthTexture}
           normalMap={earthNormalMap}
@@ -739,7 +739,7 @@ function Earth() {
       
       {/* Subtle single atmosphere layer */}
       <mesh scale={[1.02, 1.02, 1.02]}>
-        <sphereGeometry args={[6.371, 32, 32]} />
+        <sphereGeometry args={[3.0, 32, 32]} />
         <meshBasicMaterial
           color={new THREE.Color(0x87ceeb)}
           transparent
@@ -1043,8 +1043,10 @@ function AsteroidSphere({ asteroid, index, isSelected, isHovered, onClick, onDou
   
   // Use actual asteroid distance from NASA API data
   // orbit.radius already contains the scaled distance (missDistance * 64)
-  // This allows showing real asteroid distances from very close to far
-  const actualRadius = orbit.radius; // Direct use of actual distance
+  // Add minimum offset to ensure asteroids are always outside Earth's surface
+  const earthRadius = 3.0; // Current Earth radius in visualization units
+  const minDistance = earthRadius + 2.0; // Minimum distance from Earth center (Earth radius + 2 units buffer)
+  const actualRadius = Math.max(minDistance, orbit.radius); // Ensure asteroid is always outside Earth
   
   const x = Math.cos(angle) * actualRadius;
   const z = Math.sin(angle) * actualRadius;

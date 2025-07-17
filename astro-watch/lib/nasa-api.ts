@@ -225,11 +225,9 @@ function calculateOrbitParameters(asteroid: Asteroid): any {
   // This gives realistic distances from very close (0.001 AU = 0.064 units) to far (0.5 AU = 32 units)
   const scaleFactor = 64; // Our scale: 1 AU = 64 units
   
-  // Add orbital variation to show asteroids can be inside or outside Earth's orbit
-  // Some asteroids have orbits that cross Earth's orbit (Apollos, Atens)
-  // This creates a more realistic distribution in the solar system
-  const orbitVariation = (Math.random() - 0.5) * 0.3; // +/- 30% variation
-  const adjustedDistance = missDistance * (1 + orbitVariation);
+  // Use actual miss distance for accurate positioning
+  // Remove random variation to maintain correct relative distances
+  const adjustedDistance = missDistance;
   
   // Get orbital data if available
   const orbitalData = asteroid.orbital_data;
@@ -244,7 +242,7 @@ function calculateOrbitParameters(asteroid: Asteroid): any {
     inclination: actualInclination,
     eccentricity: actualEccentricity,
     semi_major_axis: semiMajorAxis,
-    isInnerOrbit: orbitVariation < 0 // Track if asteroid is inside Earth's orbit
+    isInnerOrbit: adjustedDistance < 1.0 // Track if asteroid is inside Earth's orbit (< 1 AU)
   };
 }
 

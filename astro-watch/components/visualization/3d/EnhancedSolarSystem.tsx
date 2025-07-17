@@ -1835,7 +1835,7 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
               {asteroids.map((asteroid) => {
                 const torinoInfo = getTorinoInfo(asteroid.torinoScale);
                 const isSelected = selectedAsteroid?.id === asteroid.id;
-                const isHovered = actualHoveredAsteroid === asteroid.id;
+                const isHovered = actualHoveredAsteroid === parseInt(asteroid.id);
                 
                 return (
                   <motion.button

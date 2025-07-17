@@ -109,7 +109,12 @@ export function DetailedAsteroidView({ asteroid, isOpen, onClose }: DetailedAste
                 </div>
                 <div className="bg-white/5 rounded-lg p-4">
                   <div className="text-white/60 text-sm mb-1">Size (Max)</div>
-                  <div className="text-white font-mono text-lg">{asteroid.size.toFixed(1)} km</div>
+                  <div className="text-white font-mono text-lg">
+                    {asteroid.size >= 1000 
+                      ? `${(asteroid.size / 1000).toFixed(2)} km`
+                      : `${asteroid.size.toFixed(1)} m`
+                    }
+                  </div>
                 </div>
                 <div className="bg-white/5 rounded-lg p-4">
                   <InfoTooltip text="The theoretical energy that would be released if this asteroid impacted Earth, measured in Joules">
@@ -250,6 +255,78 @@ export function DetailedAsteroidView({ asteroid, isOpen, onClose }: DetailedAste
                       </span>
                     </div>
                   </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Lunar Collision Assessment */}
+            <section>
+              <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+                <span className="text-2xl">🌙</span>
+                Lunar Collision Assessment
+              </h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Moon Collision Probability */}
+                <div className="bg-white/5 rounded-lg p-4">
+                  <InfoTooltip text="Probability this asteroid will collide with the Moon instead of or in addition to Earth-Moon system encounters">
+                    <div className="text-white/60 text-sm mb-1">Moon Collision Risk</div>
+                  </InfoTooltip>
+                  <div className="text-white font-mono text-lg">
+                    {(asteroid.moonCollisionData.probability * 100).toFixed(4)}%
+                  </div>
+                  <div className="text-white/60 text-xs mt-1">
+                    Confidence: {(asteroid.moonCollisionData.confidence * 100).toFixed(0)}%
+                  </div>
+                </div>
+                
+                {/* Impact Characteristics */}
+                <div className="bg-white/5 rounded-lg p-4">
+                  <InfoTooltip text="Expected crater size if Moon collision occurs" position="right">
+                    <div className="text-white/60 text-sm mb-1">Expected Crater</div>
+                  </InfoTooltip>
+                  <div className="text-white font-mono text-lg">
+                    {asteroid.moonCollisionData.craterDiameter.toFixed(1)} m
+                  </div>
+                  <div className="text-white/60 text-xs mt-1">
+                    {asteroid.moonCollisionData.observableFromEarth ? "🔭 Visible from Earth" : "Too small to observe"}
+                  </div>
+                </div>
+                
+                {/* Comparison to Earth */}
+                <div className="bg-white/5 rounded-lg p-4">
+                  <InfoTooltip text="How Moon collision probability compares to Earth collision risk">
+                    <div className="text-white/60 text-sm mb-1">Moon vs Earth Risk</div>
+                  </InfoTooltip>
+                  <div className="text-white font-mono text-lg">
+                    {asteroid.moonCollisionData.comparisonToEarth.moonToEarthRatio.toFixed(2)}×
+                  </div>
+                  <div className="text-white/60 text-xs mt-1">
+                    {asteroid.moonCollisionData.comparisonToEarth.interpretation}
+                  </div>
+                </div>
+                
+                {/* Impact Energy */}
+                <div className="bg-white/5 rounded-lg p-4">
+                  <InfoTooltip text="Kinetic energy released in Moon collision scenario" position="right">
+                    <div className="text-white/60 text-sm mb-1">Impact Energy</div>
+                  </InfoTooltip>
+                  <div className="text-white font-mono text-lg">
+                    {(asteroid.moonCollisionData.impactEnergy / 1e12).toFixed(1)} TJ
+                  </div>
+                  <div className="text-white/60 text-xs mt-1">
+                    {(asteroid.moonCollisionData.impactEnergy / 4.184e12).toFixed(1)} tons TNT equivalent
+                  </div>
+                </div>
+              </div>
+              
+              {/* Educational Context */}
+              <div className="bg-blue-500/10 rounded-lg p-4 border border-blue-500/20 mt-6">
+                <h4 className="text-blue-300 font-medium mb-2">Lunar Impact Context</h4>
+                <div className="space-y-2 text-blue-200 text-sm">
+                  <p><strong>Moon as Shield:</strong> The Moon intercepts approximately 1 asteroid per year that might otherwise approach Earth.</p>
+                  <p><strong>Observable Impacts:</strong> Lunar impacts larger than 1 meter create flashes visible from Earth with telescopes.</p>
+                  <p><strong>Crater Formation:</strong> Unlike Earth, the Moon has no atmosphere to burn up small objects - even tiny impacts create permanent craters.</p>
                 </div>
               </div>
             </section>

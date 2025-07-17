@@ -326,8 +326,8 @@ function Moon({ earthPosition, hideLabels }: { earthPosition: [number, number, n
       const time = state.clock.elapsedTime;
       // Realistic Moon distance: ~384,400 km = ~60 Earth radii
       // Earth radius in our scale = 6.371, so Moon distance = 60 * 6.371 = ~382 units
-      // Scaled down for visibility to 25 units (still realistic relative scale)
-      const moonDistance = 25; // Realistic but visible distance from Earth
+      // Scaled down for visibility and to avoid crossing Venus orbit (46 units)
+      const moonDistance = 12; // Reduced to stay within Earth's vicinity
       const moonAngle = time * 0.5; // Moon orbit speed (27.3 days in real life)
       
       // Position relative to Earth
@@ -702,7 +702,10 @@ function Earth() {
   
   useFrame((state, delta) => {
     if (meshRef.current) {
-      meshRef.current.rotation.y += delta * 0.005; // Very slow Earth rotation
+      // Rotate Earth to show Europe facing the Sun
+      // Add an offset to position Europe (~50-60 degrees) toward the Sun
+      // Use elapsedTime directly for consistent rotation
+      meshRef.current.rotation.y = Math.PI * 0.3 + state.clock.elapsedTime * 0.005;
     }
   });
 
@@ -1132,7 +1135,10 @@ function AsteroidSphere({ asteroid, index, isSelected, isHovered, onClick, onDou
           <div className="bg-black/90 text-white px-3 py-2 rounded-lg shadow-xl backdrop-blur-sm border border-white/20 pointer-events-none whitespace-nowrap">
             <div className="text-sm font-bold text-yellow-300">{asteroid.name}</div>
             <div className="text-xs text-gray-300 mt-1">
-              Torino Scale: {asteroid.torinoScale} | Size: {asteroid.size.toFixed(1)} km
+              Torino Scale: {asteroid.torinoScale} | Size: {asteroid.size >= 1000 
+                ? `${(asteroid.size / 1000).toFixed(2)} km`
+                : `${asteroid.size.toFixed(1)} m`
+              }
             </div>
           </div>
         </Html>
@@ -1402,7 +1408,12 @@ function AsteroidInfoPanel({ asteroid, onClose, onOpenDetailed }: {
             <div className="text-white/60 text-xs uppercase tracking-wide">Physical Properties</div>
             <div className="flex justify-between">
               <span>Size:</span>
-              <span className="font-mono">{asteroid.size.toFixed(1)} km</span>
+              <span className="font-mono">
+                {asteroid.size >= 1000 
+                  ? `${(asteroid.size / 1000).toFixed(2)} km`
+                  : `${asteroid.size.toFixed(1)} m`
+                }
+              </span>
             </div>
             <div className="flex justify-between">
               <span>Torino Scale:</span>
@@ -1554,9 +1565,9 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
           {/* Balanced lighting for both Earth and asteroids */}
           <ambientLight intensity={0.3} color={0x404080} />
           
-          {/* Main sunlight - strong directional from center */}
+          {/* Main sunlight - directional light FROM the Sun's position */}
           <directionalLight 
-            position={[50, 50, 50]} 
+            position={[-earthPosition[0], -earthPosition[1], -earthPosition[2]]} 
             intensity={3.0} 
             color={0xFDB813}
             castShadow={true}
@@ -1585,10 +1596,10 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
             args={[0x87ceeb, 0x111122, 0.05]}
           />
           
-          {/* Rim lighting for dramatic effect */}
+          {/* Rim lighting for dramatic effect - positioned relative to Sun */}
           <directionalLight 
-            position={[-50, 30, -50]} 
-            intensity={0.8} 
+            position={[earthPosition[0] * 0.5, earthPosition[1] + 30, earthPosition[2] * 0.5]} 
+            intensity={0.4} 
             color={0x4488ff}
             castShadow={false}
           />
@@ -1716,7 +1727,12 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
                           Torino {asteroid.torinoScale}
                         </span>
                         <span className="text-white/40 text-xs">•</span>
-                        <span className="text-white/60 text-xs">{asteroid.size.toFixed(1)} km</span>
+                        <span className="text-white/60 text-xs">
+                          {asteroid.size >= 1000 
+                            ? `${(asteroid.size / 1000).toFixed(2)} km`
+                            : `${asteroid.size.toFixed(1)} m`
+                          }
+                        </span>
                       </div>
                     </div>
                     {(isSelected || isHovered) && (

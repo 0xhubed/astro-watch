@@ -48,6 +48,21 @@ export interface EnhancedAsteroid extends Asteroid {
     y: number;
     z: number;
   };
+  moonCollisionData: {
+    probability: number;              // 0-1 probability
+    confidence: number;               // Assessment confidence
+    impactVelocity: number;          // km/s
+    impactEnergy: number;            // Joules
+    craterDiameter: number;          // meters
+    observableFromEarth: boolean;    // Visible impact flash
+    closestMoonApproach: number;     // AU
+    moonEncounterDate?: string;      // ISO date string
+    comparisonToEarth: {
+      earthProbability: number;
+      moonToEarthRatio: number;
+      interpretation: string;
+    };
+  };
 }
 
 const NASA_API_KEY = process.env.NASA_API_KEY;
@@ -121,7 +136,7 @@ export async function enhanceAsteroidData(asteroid: Asteroid): Promise<EnhancedA
     hazardLevel = 'threatening';
   }
   
-  return {
+  const enhancedAsteroid = {
     ...asteroid,
     risk,
     torinoScale,
@@ -132,7 +147,30 @@ export async function enhanceAsteroidData(asteroid: Asteroid): Promise<EnhancedA
     missDistance,
     impactEnergy,
     orbit,
-    position
+    position,
+    moonCollisionData: {
+      probability: 0,
+      confidence: 0,
+      impactVelocity: 0,
+      impactEnergy: 0,
+      craterDiameter: 0,
+      observableFromEarth: false,
+      closestMoonApproach: 0,
+      comparisonToEarth: {
+        earthProbability: 0,
+        moonToEarthRatio: 0,
+        interpretation: ''
+      }
+    }
+  };
+  
+  // Add Moon collision assessment
+  const { calculateMoonCollisionRisk } = await import('./moon-collision-assessment');
+  const moonCollisionData = calculateMoonCollisionRisk(enhancedAsteroid);
+  
+  return {
+    ...enhancedAsteroid,
+    moonCollisionData
   };
 }
 

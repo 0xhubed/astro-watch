@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Space background gradient -->
+  <defs>
+    <radialGradient id="spaceGrad" cx="50%" cy="50%">
+      <stop offset="0%" style="stop-color:#1e3a8a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0f172a;stop-opacity:1" />
+    </radialGradient>
+    <radialGradient id="asteroidGrad" cx="30%" cy="30%">
+      <stop offset="0%" style="stop-color:#e5e7eb;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#6b7280;stop-opacity:1" />
+    </radialGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="32" height="32" fill="url(#spaceGrad)" rx="6"/>
+  
+  <!-- Stars -->
+  <circle cx="8" cy="6" r="0.5" fill="#fbbf24" opacity="0.8"/>
+  <circle cx="24" cy="8" r="0.7" fill="#f59e0b" opacity="0.9"/>
+  <circle cx="6" cy="20" r="0.4" fill="#fef3c7" opacity="0.7"/>
+  <circle cx="26" cy="24" r="0.5" fill="#fde68a" opacity="0.8"/>
+  
+  <!-- Main asteroid -->
+  <g transform="translate(16, 16)">
+    <!-- Asteroid body -->
+    <circle cx="0" cy="0" r="8" fill="url(#asteroidGrad)"/>
+    <!-- Craters for texture -->
+    <circle cx="-3" cy="-2" r="1.5" fill="#4b5563" opacity="0.4"/>
+    <circle cx="2" cy="-3" r="1" fill="#4b5563" opacity="0.3"/>
+    <circle cx="1" cy="3" r="1.2" fill="#4b5563" opacity="0.35"/>
+    <!-- Highlight -->
+    <ellipse cx="-2" cy="-3" rx="3" ry="2" fill="#f3f4f6" opacity="0.3"/>
+  </g>
+  
+  <!-- Orbital ring/trajectory hint -->
+  <ellipse cx="16" cy="16" rx="13" ry="6" fill="none" stroke="#60a5fa" stroke-width="0.5" opacity="0.5" transform="rotate(-20 16 16)"/>
+</svg>

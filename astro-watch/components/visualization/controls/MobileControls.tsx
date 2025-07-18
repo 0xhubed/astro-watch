@@ -23,10 +23,10 @@ export function MobileControls() {
 
   return (
     <>
-      {/* Mobile Menu Button */}
+      {/* Mobile Menu Button - Only visible on mobile */}
       <button
         onClick={toggleMenu}
-        className="md:hidden p-2 rounded-lg bg-gray-800 text-white touch-target"
+        className="flex md:!hidden p-2 rounded-lg bg-gray-800 text-white min-h-[44px] min-w-[44px] items-center justify-center"
         aria-label="Toggle menu"
       >
         {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -36,22 +36,22 @@ export function MobileControls() {
       <AnimatePresence>
         {isOpen && (
           <>
-            {/* Backdrop */}
+            {/* Backdrop - Only on mobile */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={toggleMenu}
-              className="md:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+              className="md:!hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
             />
 
-            {/* Menu Panel */}
+            {/* Menu Panel - Only on mobile */}
             <motion.div
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 20 }}
-              className="md:hidden fixed right-0 top-0 h-full w-80 max-w-full bg-gray-900 border-l border-gray-800 z-50 overflow-y-auto"
+              className="md:!hidden fixed right-0 top-0 h-full w-[85vw] max-w-sm bg-gray-900 border-l border-gray-800 z-50 overflow-y-auto"
             >
               <div className="p-4">
                 {/* Header */}
@@ -59,7 +59,7 @@ export function MobileControls() {
                   <h2 className="text-xl font-bold text-white">Controls</h2>
                   <button
                     onClick={toggleMenu}
-                    className="p-2 rounded-lg bg-gray-800 text-white touch-target"
+                    className="p-2 rounded-lg bg-gray-800 text-white min-h-[44px] min-w-[44px] flex items-center justify-center"
                     aria-label="Close menu"
                   >
                     <X className="w-6 h-6" />

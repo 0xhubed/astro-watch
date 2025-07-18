@@ -27,7 +27,9 @@ export default function RootLayout({
         <title>AstroWatch - Asteroid Impact Visualization</title>
         <meta name="description" content="Real-time asteroid tracking and impact visualization" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
-        <meta name="theme-color" content="#0a0a0f" />
+        <meta name="theme-color" content="#1e3a8a" />
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="apple-touch-icon" href="/apple-icon.png" />
       </head>
       <body className={inter.className}>
         <QueryClientProvider client={queryClient}>

@@ -325,29 +325,17 @@ function generateMockAsteroids(): EnhancedAsteroid[] {
     const isPHA = Math.random() < 0.2; // 20% chance of being PHA
     
     mockAsteroids.push({
+      // Base Asteroid properties
       id: `mock-${i + 1}`,
       name: `Mock Asteroid ${i + 1}`,
-      size,
-      velocity,
-      missDistance,
-      isPotentiallyHazardous: isPHA,
-      torinoScale: Math.floor(Math.random() * 5), // 0-4 scale
       close_approach_data: [{
         close_approach_date: approachDate.toISOString().split('T')[0],
-        close_approach_date_full: approachDate.toISOString(),
-        epoch_date_close_approach: approachDate.getTime(),
         relative_velocity: {
-          kilometers_per_second: velocity.toString(),
-          kilometers_per_hour: (velocity * 3600).toString(),
-          miles_per_hour: (velocity * 2236.94).toString()
+          kilometers_per_second: velocity.toString()
         },
         miss_distance: {
-          astronomical: missDistance.toString(),
-          lunar: (missDistance * 384).toString(),
-          kilometers: (missDistance * 149597870.7).toString(),
-          miles: (missDistance * 92955807.3).toString()
-        },
-        orbiting_body: 'Earth'
+          astronomical: missDistance.toString()
+        }
       }],
       estimated_diameter: {
         meters: {
@@ -356,24 +344,50 @@ function generateMockAsteroids(): EnhancedAsteroid[] {
         }
       },
       is_potentially_hazardous_asteroid: isPHA,
-      is_sentry_object: false,
+      orbital_data: {
+        eccentricity: (0.1 + Math.random() * 0.8).toString(),
+        inclination: (Math.random() * 30).toString(),
+        semi_major_axis: (1 + Math.random() * 2).toString(),
+        ascending_node_longitude: (Math.random() * 360).toString(),
+        perihelion_argument: (Math.random() * 360).toString()
+      },
       // Enhanced properties
+      risk: Math.random(),
+      torinoScale: Math.floor(Math.random() * 5),
+      hazardLevel: isPHA ? 'threatening' : 'normal' as any,
+      confidence: 0.7 + Math.random() * 0.3,
+      size,
+      velocity,
+      missDistance,
       impactEnergy: Math.pow(size, 3) * Math.pow(velocity, 2) * 0.5,
       orbit: {
-        eccentricity: 0.1 + Math.random() * 0.8,
-        semiMajorAxis: 1 + Math.random() * 2,
+        radius: missDistance * 149597870.7,
+        speed: velocity,
+        phase: Math.random() * Math.PI * 2,
         inclination: Math.random() * 30,
-        aphelion: 1.5 + Math.random() * 2,
-        perihelion: 0.8 + Math.random() * 0.7
+        eccentricity: 0.1 + Math.random() * 0.8,
+        semi_major_axis: 1 + Math.random() * 2,
+        isInnerOrbit: missDistance < 0.1
       },
       position: {
         x: (Math.random() - 0.5) * 10,
         y: (Math.random() - 0.5) * 2,
         z: (Math.random() - 0.5) * 10
       },
-      mlPrediction: {
-        risk: Math.random(),
-        confidence: 0.7 + Math.random() * 0.3
+      moonCollisionData: {
+        probability: Math.random() * 0.1,
+        confidence: 0.7 + Math.random() * 0.3,
+        impactVelocity: velocity + Math.random() * 5,
+        impactEnergy: Math.pow(size, 3) * Math.pow(velocity, 2) * 0.3,
+        craterDiameter: size * 10 + Math.random() * 50,
+        observableFromEarth: Math.random() > 0.5,
+        closestMoonApproach: missDistance + Math.random() * 0.1,
+        moonEncounterDate: approachDate.toISOString(),
+        comparisonToEarth: {
+          earthProbability: Math.random() * 0.05,
+          moonToEarthRatio: 1 + Math.random() * 3,
+          interpretation: 'Low risk assessment based on trajectory analysis'
+        }
       }
     });
   }

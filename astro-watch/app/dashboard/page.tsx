@@ -85,13 +85,13 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-space-dark">
+    <div className="min-h-screen bg-space-dark w-full overflow-x-hidden">
       {/* ML Indicator */}
       <MLIndicator isMLReady={isMLReady} mlStats={mlStats} />
       
       {/* Header */}
       <header className="fixed top-0 z-50 w-full bg-gray-900/80 backdrop-blur-md border-b border-gray-800">
-        <div className="container mx-auto px-4 py-3 md:py-4">
+        <div className="w-full px-4 py-3 md:py-4">
           <div className="flex items-center justify-between gap-2">
             <motion.h1 
               initial={{ opacity: 0, x: -20 }}
@@ -134,7 +134,7 @@ export default function Home() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
               transition={{ duration: 0.5 }}
-              className="container mx-auto px-4 py-4 md:py-8"
+              className="w-full px-4 py-4 md:py-8"
             >
               <RiskDashboard asteroids={filteredAsteroids} timeRange={timeRange} />
             </motion.div>
@@ -157,7 +157,7 @@ export default function Home() {
       
       {/* Statistics Footer */}
       <footer className="fixed bottom-0 w-full bg-gray-900/80 backdrop-blur-md border-t border-gray-800">
-        <div className="container mx-auto px-4 py-2">
+        <div className="w-full px-4 py-2">
           <div className="flex flex-col md:flex-row md:justify-between md:items-center text-xs md:text-sm text-gray-400">
             <div className="text-center md:text-left">
               <span className="hidden md:inline">Total Asteroids: {asteroids.length} | </span>

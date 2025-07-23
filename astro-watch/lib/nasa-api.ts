@@ -110,7 +110,8 @@ export async function fetchNEOFeed(startDate: string, endDate: string): Promise<
   
   try {
     const response = await fetch(url, {
-      next: { revalidate: 3600 } // Cache for 1 hour
+      next: { revalidate: 3600 }, // Cache for 1 hour
+      signal: AbortSignal.timeout(15000) // 15 second timeout
     });
     
     if (!response.ok) {
@@ -128,6 +129,13 @@ export async function fetchNEOFeed(startDate: string, endDate: string): Promise<
     return await Promise.all(asteroids.map(enhanceAsteroidData));
   } catch (error) {
     console.error('Failed to fetch NEO data:', error);
+    
+    // In development, return mock data instead of throwing
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Using fallback mock data for development...');
+      return generateMockAsteroids();
+    }
+    
     throw error;
   }
 }
@@ -300,4 +308,75 @@ function calculateAdvancedRiskRuleBased(asteroid: Asteroid): { risk: number; con
     risk: riskScore,
     confidence: Math.min(0.99, confidence)
   };
+}
+
+// Mock data generator for development fallback
+function generateMockAsteroids(): EnhancedAsteroid[] {
+  const mockAsteroids: EnhancedAsteroid[] = [];
+  const today = new Date();
+  
+  for (let i = 0; i < 15; i++) {
+    const approachDate = new Date(today);
+    approachDate.setDate(today.getDate() + Math.floor(Math.random() * 7));
+    
+    const size = 0.1 + Math.random() * 2; // 0.1 to 2.1 km
+    const velocity = 5 + Math.random() * 30; // 5 to 35 km/s
+    const missDistance = 0.01 + Math.random() * 0.5; // 0.01 to 0.51 AU
+    const isPHA = Math.random() < 0.2; // 20% chance of being PHA
+    
+    mockAsteroids.push({
+      id: `mock-${i + 1}`,
+      name: `Mock Asteroid ${i + 1}`,
+      size,
+      velocity,
+      missDistance,
+      isPotentiallyHazardous: isPHA,
+      torinoScale: Math.floor(Math.random() * 5), // 0-4 scale
+      close_approach_data: [{
+        close_approach_date: approachDate.toISOString().split('T')[0],
+        close_approach_date_full: approachDate.toISOString(),
+        epoch_date_close_approach: approachDate.getTime(),
+        relative_velocity: {
+          kilometers_per_second: velocity.toString(),
+          kilometers_per_hour: (velocity * 3600).toString(),
+          miles_per_hour: (velocity * 2236.94).toString()
+        },
+        miss_distance: {
+          astronomical: missDistance.toString(),
+          lunar: (missDistance * 384).toString(),
+          kilometers: (missDistance * 149597870.7).toString(),
+          miles: (missDistance * 92955807.3).toString()
+        },
+        orbiting_body: 'Earth'
+      }],
+      estimated_diameter: {
+        meters: {
+          estimated_diameter_min: size * 800,
+          estimated_diameter_max: size * 1000
+        }
+      },
+      is_potentially_hazardous_asteroid: isPHA,
+      is_sentry_object: false,
+      // Enhanced properties
+      impactEnergy: Math.pow(size, 3) * Math.pow(velocity, 2) * 0.5,
+      orbit: {
+        eccentricity: 0.1 + Math.random() * 0.8,
+        semiMajorAxis: 1 + Math.random() * 2,
+        inclination: Math.random() * 30,
+        aphelion: 1.5 + Math.random() * 2,
+        perihelion: 0.8 + Math.random() * 0.7
+      },
+      position: {
+        x: (Math.random() - 0.5) * 10,
+        y: (Math.random() - 0.5) * 2,
+        z: (Math.random() - 0.5) * 10
+      },
+      mlPrediction: {
+        risk: Math.random(),
+        confidence: 0.7 + Math.random() * 0.3
+      }
+    });
+  }
+  
+  return mockAsteroids;
 }

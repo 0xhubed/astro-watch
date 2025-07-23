@@ -48,10 +48,10 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-800"
+        className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-800 w-full max-w-full overflow-hidden"
       >
         <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-white">Torino Scale Risk Over Time</h3>
-        <ResponsiveContainer width="100%" height={250} className="md:h-[300px]">
+        <ResponsiveContainer width="100%" height={250} className="md:h-[300px] max-w-full">
           <AreaChart data={data}>
             <defs>
               <linearGradient id="riskGradient" x1="0" y1="0" x2="0" y2="1">
@@ -110,10 +110,10 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
       <motion.div
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
-        className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-800"
+        className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-800 w-full max-w-full overflow-hidden"
       >
         <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-white">Torino Scale Distribution</h3>
-        <ResponsiveContainer width="100%" height={250} className="md:h-[300px]">
+        <ResponsiveContainer width="100%" height={250} className="md:h-[300px] max-w-full">
           <PieChart>
             <Pie
               data={torinoGroups}
@@ -144,7 +144,7 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-800"
+        className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-800 w-full max-w-full overflow-hidden"
       >
         <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-white">Top Threats by Torino Scale</h3>
         <div className="space-y-3">
@@ -274,7 +274,7 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-800"
+        className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-800 w-full max-w-full overflow-hidden"
       >
         <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-white">Impact Scenarios by Size</h3>
         <div className="space-y-4 overflow-y-auto max-h-[300px] custom-scrollbar">
@@ -309,10 +309,10 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
       <motion.div
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
-        className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-800"
+        className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-800 w-full max-w-full overflow-hidden"
       >
         <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-white">Size vs Velocity Distribution</h3>
-        <ResponsiveContainer width="100%" height={250} className="md:h-[300px]">
+        <ResponsiveContainer width="100%" height={250} className="md:h-[300px] max-w-full">
           <ScatterChart>
             <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
             <XAxis 
@@ -367,7 +367,7 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-800"
+        className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-800 w-full max-w-full overflow-hidden"
       >
         <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-white">Torino Impact Hazard Scale</h3>
         <div className="space-y-2 overflow-y-auto max-h-[300px] custom-scrollbar">
@@ -403,7 +403,7 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-800"
+        className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-800 w-full max-w-full overflow-hidden"
       >
         <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-white">Data & API Information</h3>
         <div className="space-y-4">
@@ -447,29 +447,29 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
   };
   
   return (
-    <div className="space-y-4 md:space-y-6">
+    <div className="space-y-4 md:space-y-6 w-full max-w-full overflow-x-hidden">
       {/* ML Model Performance Section */}
       <MLModelStats />
       {/* Primary Analytics Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 w-full">
         <TimeSeriesRisk />
         <RiskDistribution />
       </div>
       
       {/* Secondary Analytics Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 w-full">
         <TopThreats />
         <SizeVelocityChart />
       </div>
       
       {/* Educational Content Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 w-full">
         <AsteroidFacts />
         <ImpactScenarios />
       </div>
       
       {/* Bottom Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 w-full">
         <APIStatus />
         <TorinoScaleCard />
       </div>

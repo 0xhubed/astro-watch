@@ -1545,7 +1545,7 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
   };
   
   return (
-    <div className="w-full h-full bg-gradient-to-b from-space-dark via-blue-900/20 to-space-dark relative">
+    <div className="w-full h-full bg-gradient-to-b from-space-dark via-blue-900/20 to-space-dark relative overflow-hidden">
       <Canvas 
         camera={{ position: [earthPosition[0] + 50, earthPosition[1] + 40, earthPosition[2] + 80], fov: 60 }}
         dpr={[1, 2]}

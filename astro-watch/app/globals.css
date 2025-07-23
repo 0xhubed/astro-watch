@@ -47,11 +47,30 @@ body {
 @media (max-width: 768px) {
   html {
     font-size: 14px;
+    /* Ensure full viewport width on mobile */
+    width: 100vw;
+    overflow-x: hidden;
   }
   
-  /* Prevent horizontal scroll */
+  /* Prevent horizontal scroll and ensure full width coverage */
   body {
     overflow-x: hidden;
+    width: 100vw;
+    position: relative;
+  }
+  
+  /* Fix for mobile viewport issues */
+  body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100vw;
+    height: 100vh;
+    background: var(--background);
+    z-index: -2;
   }
   
   /* Mobile-optimized scrollbar */

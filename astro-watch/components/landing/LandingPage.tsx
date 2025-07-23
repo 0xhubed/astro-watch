@@ -55,12 +55,12 @@ export function LandingPage() {
   return (
     <div className="min-h-screen bg-black overflow-hidden relative">
       {/* Deep Space Background */}
-      <div className="fixed inset-0 z-0">
+      <div className="fixed inset-0 z-0 w-screen overflow-hidden">
         {/* Gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-blue-950/10 to-purple-950/20" />
         
         {/* Static stars */}
-        <div className="absolute inset-0 bg-stars opacity-60" />
+        <div className="absolute inset-0 w-full h-full bg-stars opacity-60" />
         
         {/* Moving stars */}
         <motion.div
@@ -72,7 +72,7 @@ export function LandingPage() {
             ease: 'linear',
             repeat: Infinity,
           }}
-          className="absolute inset-0 opacity-40"
+          className="absolute inset-0 w-full h-full opacity-40"
           style={{
             backgroundImage: 'radial-gradient(1px 1px at 10% 10%, white, transparent), radial-gradient(1px 1px at 90% 30%, white, transparent), radial-gradient(2px 2px at 50% 60%, white, transparent)',
             backgroundSize: '400px 400px',
@@ -85,14 +85,14 @@ export function LandingPage() {
       </div>
 
       {/* Navigation */}
-      <nav className="relative z-10 flex justify-between items-center px-6 py-4 md:px-12 md:py-6">
+      <nav className="relative z-10 flex justify-between items-center px-4 py-3 md:px-12 md:py-6">
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           className="flex items-center gap-2"
         >
-          <Orbit className="w-8 h-8 text-blue-400" />
-          <span className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-600 bg-clip-text text-transparent">
+          <Orbit className="w-6 h-6 md:w-8 md:h-8 text-blue-400" />
+          <span className="text-xl md:text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-600 bg-clip-text text-transparent">
             AstroWatch
           </span>
         </motion.div>
@@ -102,8 +102,8 @@ export function LandingPage() {
           animate={{ opacity: 1, x: 0 }}
           className="flex items-center gap-6"
         >
-          <a href="#features" className="text-gray-500 hover:text-gray-300 transition-colors text-sm">Features</a>
-          <a href="#about" className="text-gray-500 hover:text-gray-300 transition-colors text-sm">About</a>
+          <a href="#features" className="hidden sm:block text-gray-500 hover:text-gray-300 transition-colors text-sm">Features</a>
+          <a href="#about" className="hidden sm:block text-gray-500 hover:text-gray-300 transition-colors text-sm">About</a>
           <Link 
             href="/dashboard"
             className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-all backdrop-blur-sm border border-white/10 text-sm"
@@ -114,7 +114,7 @@ export function LandingPage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="relative z-10 px-6 py-20 md:px-12 md:py-32 text-center">
+      <section className="relative z-10 px-4 py-16 md:px-12 md:py-32 text-center">
         {/* Floating asteroid animation */}
         <motion.div
           animate={{
@@ -142,7 +142,7 @@ export function LandingPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-6"
+          className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-4 md:mb-6 px-2"
         >
           Explore Near-Earth
           <span className="block bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
@@ -154,7 +154,7 @@ export function LandingPage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
-          className="text-lg md:text-xl text-gray-400 mb-8 max-w-2xl mx-auto"
+          className="text-base sm:text-lg md:text-xl text-gray-400 mb-6 md:mb-8 max-w-2xl mx-auto px-4"
         >
           An interactive visualization platform for NASA's asteroid data. 
           Track orbital paths, analyze trajectories, and understand what's moving through our solar system.
@@ -168,7 +168,7 @@ export function LandingPage() {
         >
           <Link
             href="/dashboard"
-            className="px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-lg transition-all transform hover:scale-105 flex items-center gap-2 group"
+            className="px-6 py-3 md:px-8 md:py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-lg transition-all transform hover:scale-105 flex items-center gap-2 group text-sm md:text-base"
           >
             Enter Dashboard
             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -176,7 +176,7 @@ export function LandingPage() {
           
           <Link
             href="/apod"
-            className="px-8 py-4 bg-gray-800 hover:bg-gray-700 text-white font-semibold rounded-lg transition-all flex items-center gap-2"
+            className="px-6 py-3 md:px-8 md:py-4 bg-gray-800 hover:bg-gray-700 text-white font-semibold rounded-lg transition-all flex items-center gap-2 text-sm md:text-base"
           >
             <Telescope className="w-5 h-5" />
             Picture of the Day
@@ -203,7 +203,7 @@ export function LandingPage() {
       </section>
 
       {/* Features Section */}
-      <section id="features" className="relative z-10 px-6 py-20 md:px-12">
+      <section id="features" className="relative z-10 px-4 py-16 md:px-12 md:py-20">
         <motion.div
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
@@ -239,7 +239,7 @@ export function LandingPage() {
       </section>
 
       {/* About Section */}
-      <section id="about" className="relative z-10 px-6 py-20 md:px-12">
+      <section id="about" className="relative z-10 px-4 py-16 md:px-12 md:py-20">
         <motion.div
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
@@ -250,17 +250,17 @@ export function LandingPage() {
             Understanding Our Cosmic Neighborhood
           </h2>
           <div className="space-y-6 text-gray-400">
-            <p className="text-lg">
+            <p className="text-base md:text-lg px-4 md:px-0">
               AstroWatch transforms NASA's asteroid data into interactive visualizations that make 
               complex orbital mechanics accessible to everyone. We combine real-time data with 
               intuitive interfaces to help you understand what's moving through our solar system.
             </p>
-            <p className="text-lg">
+            <p className="text-base md:text-lg px-4 md:px-0">
               Our platform includes experimental machine learning models for trajectory prediction 
               and risk assessment. While NASA's data is authoritative and updated regularly, 
               our ML predictions are research-grade and should be considered alongside official sources.
             </p>
-            <p className="text-lg">
+            <p className="text-base md:text-lg px-4 md:px-0">
               Whether you're a researcher, student, or space enthusiast, AstroWatch provides 
               the tools to explore and understand near-Earth asteroids. No specialized knowledge 
               required – just curiosity about our place in space.
@@ -284,7 +284,7 @@ export function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="relative z-10 px-6 py-20 md:px-12">
+      <section className="relative z-10 px-4 py-16 md:px-12 md:py-20">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           whileInView={{ opacity: 1, scale: 1 }}
@@ -338,7 +338,7 @@ export function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="relative z-10 px-6 py-8 md:px-12 border-t border-gray-800">
+      <footer className="relative z-10 px-4 py-6 md:px-12 md:py-8 border-t border-gray-800">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-2">
             <Orbit className="w-6 h-6 text-blue-400" />

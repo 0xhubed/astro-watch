@@ -7,6 +7,7 @@ import { EnhancedSolarSystem } from '@/components/visualization/3d/EnhancedSolar
 import { RiskDashboard } from '@/components/visualization/charts/RiskDashboard';
 import { MobileControls } from '@/components/visualization/controls/MobileControls';
 import { AsteroidAnalysisHub } from '@/components/visualization/analysis/AsteroidAnalysisHub';
+import { InteractiveMapsView } from '@/components/visualization/InteractiveMapsView';
 import { EnhancedAsteroid } from '@/lib/nasa-api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMLPredictions } from '@/hooks/useMLPredictions';
@@ -150,6 +151,19 @@ export default function Home() {
               className="h-[calc(100vh-5rem)]"
             >
               <AsteroidAnalysisHub asteroids={filteredAsteroids} />
+            </motion.div>
+          )}
+          
+          {viewMode === 'interactive-maps' && (
+            <motion.div
+              key="interactive-maps"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="h-[calc(100vh-5rem)] w-full"
+            >
+              <InteractiveMapsView asteroids={filteredAsteroids} />
             </motion.div>
           )}
         </AnimatePresence>

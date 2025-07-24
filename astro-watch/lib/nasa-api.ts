@@ -77,11 +77,11 @@ export interface EnhancedAsteroid extends Asteroid {
   };
 }
 
-const NASA_API_KEY = process.env.NASA_API_KEY;
+const NASA_API_KEY = process.env.NASA_API_KEY || 'DEMO_KEY';
 const BASE_URL = 'https://api.nasa.gov/neo/rest/v1';
 
 export async function getAPOD(date?: string): Promise<APOD> {
-  const apiKey = NASA_API_KEY || 'DEMO_KEY';
+  const apiKey = NASA_API_KEY;
   let url = `https://api.nasa.gov/planetary/apod?api_key=${apiKey}`;
   
   if (date) {
@@ -106,15 +106,20 @@ export async function getAPOD(date?: string): Promise<APOD> {
 }
 
 export async function fetchNEOFeed(startDate: string, endDate: string): Promise<EnhancedAsteroid[]> {
-  const url = `${BASE_URL}/feed?start_date=${startDate}&end_date=${endDate}&api_key=${NASA_API_KEY}`;
+  const apiKey = NASA_API_KEY || 'DEMO_KEY';
+  const url = `${BASE_URL}/feed?start_date=${startDate}&end_date=${endDate}&api_key=${apiKey}`;
   
   try {
     const response = await fetch(url, {
       next: { revalidate: 3600 }, // Cache for 1 hour
-      signal: AbortSignal.timeout(15000) // 15 second timeout
+      signal: AbortSignal.timeout(15000), // 15 second timeout
+      headers: {
+        'Accept': 'application/json',
+      }
     });
     
     if (!response.ok) {
+      console.error(`NASA API Response: ${response.status} ${response.statusText}`);
       throw new Error(`NASA API error: ${response.status}`);
     }
     

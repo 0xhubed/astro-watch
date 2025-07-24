@@ -117,7 +117,8 @@ export function MobileControls() {
                     {[
                       { value: 'solar-system', label: '3D Solar System', icon: Orbit, desc: 'Interactive 3D view' },
                       { value: 'dashboard', label: 'Analytics Dashboard', icon: BarChart3, desc: 'Charts and statistics' },
-                      { value: 'impact-globe', label: 'Analysis Hub', icon: Shield, desc: 'Detailed analysis tools' }
+                      { value: 'impact-globe', label: 'Analysis Hub', icon: Shield, desc: 'Detailed analysis tools' },
+                      { value: 'interactive-maps', label: 'Interactive Maps', icon: Globe, desc: 'Real-time map visualizations' }
                     ].map(({ value, label, icon: Icon, desc }) => (
                       <button
                         key={value}
@@ -312,7 +313,8 @@ export function MobileControls() {
           {[
             { value: 'solar-system', label: 'Solar System' },
             { value: 'dashboard', label: 'Dashboard' },
-            { value: 'impact-globe', label: 'Analysis Hub' }
+            { value: 'impact-globe', label: 'Analysis Hub' },
+            { value: 'interactive-maps', label: 'Interactive Maps' }
           ].map(({ value, label }) => (
             <button
               key={value}

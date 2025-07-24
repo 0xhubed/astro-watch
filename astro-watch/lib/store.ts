@@ -6,14 +6,14 @@ interface AsteroidStore {
   selectedAsteroid: EnhancedAsteroid | null;
   riskFilter: 'all' | 'threatening' | 'attention' | 'normal';
   timeRange: 'day' | 'week' | 'month';
-  viewMode: 'solar-system' | 'dashboard' | 'impact-globe';
+  viewMode: 'solar-system' | 'dashboard' | 'impact-globe' | 'interactive-maps';
   showTrajectories: boolean;
   
   setAsteroids: (asteroids: EnhancedAsteroid[]) => void;
   selectAsteroid: (asteroid: EnhancedAsteroid | null) => void;
   setRiskFilter: (filter: 'all' | 'threatening' | 'attention' | 'normal') => void;
   setTimeRange: (range: 'day' | 'week' | 'month') => void;
-  setViewMode: (mode: 'solar-system' | 'dashboard' | 'impact-globe') => void;
+  setViewMode: (mode: 'solar-system' | 'dashboard' | 'impact-globe' | 'interactive-maps') => void;
   toggleTrajectories: () => void;
   
   getFilteredAsteroids: () => EnhancedAsteroid[];

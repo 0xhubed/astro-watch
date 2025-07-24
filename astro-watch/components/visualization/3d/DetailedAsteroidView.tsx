@@ -82,6 +82,7 @@ export function DetailedAsteroidView({ asteroid, isOpen, onClose }: DetailedAste
                 </div>
               </div>
               <button
+                type="button"
                 onClick={onClose}
                 className="text-white/40 hover:text-white/80 transition-colors p-2 hover:bg-white/10 rounded-lg"
               >

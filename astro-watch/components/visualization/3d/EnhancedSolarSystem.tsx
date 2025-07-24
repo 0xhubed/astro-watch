@@ -758,52 +758,173 @@ function Sun() {
   const coronaRef = useRef<THREE.Mesh>(null);
   const atmosphereRef = useRef<THREE.Mesh>(null);
   
-  // Enhanced sun texture with better surface details
-  const sunTexture = useMemo(() => {
+  // Sun texture state that can be updated
+  const [sunTexture, setSunTexture] = useState<THREE.Texture>(() => createProceduralSunTexture());
+  
+  // Try to load NASA/ESA solar texture on component mount with proper error handling
+  useEffect(() => {
+    let isMounted = true;
+    
+    const loadTexture = async () => {
+      try {
+        const loader = new THREE.TextureLoader();
+        
+        // Try to load realistic solar texture
+        const texture = await new Promise<THREE.Texture>((resolve, reject) => {
+          loader.load(
+            '/textures/sun_surface.jpg', // We'll need to add this texture
+            (texture) => resolve(texture),
+            undefined,
+            (error) => reject(error)
+          );
+        });
+        
+        // Success - Solar texture loaded
+        if (isMounted) {
+          console.log('✅ Solar surface texture loaded successfully');
+          texture.wrapS = THREE.RepeatWrapping;
+          texture.wrapT = THREE.ClampToEdgeWrapping;
+          texture.generateMipmaps = true;
+          texture.minFilter = THREE.LinearMipmapLinearFilter;
+          texture.magFilter = THREE.LinearFilter;
+          setSunTexture(texture);
+        }
+      } catch (error) {
+        // Error handled - Solar texture failed to load
+        if (isMounted) {
+          console.log('⚠️ Solar texture not found, using enhanced procedural texture');
+          console.log('To add realistic solar textures, add sun_surface.jpg to /public/textures/');
+          // Keep using the procedural texture that's already set
+        }
+      }
+    };
+    
+    // Call the async function
+    loadTexture();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+  
+  // Enhanced procedural solar texture creation (fallback)
+  function createProceduralSunTexture() {
     const canvas = document.createElement('canvas');
-    canvas.width = 1024;
-    canvas.height = 512;
+    canvas.width = 2048; // Higher resolution for better quality
+    canvas.height = 1024;
     const ctx = canvas.getContext('2d')!;
     
-    // Base bright solar gradient
-    const gradient = ctx.createRadialGradient(512, 256, 0, 512, 256, 400);
-    gradient.addColorStop(0, '#ffffff');     // Bright white core
-    gradient.addColorStop(0.2, '#ffff99');  // Bright yellow
-    gradient.addColorStop(0.4, '#ffcc00');  // Golden yellow
-    gradient.addColorStop(0.7, '#ff9900');  // Orange
-    gradient.addColorStop(1, '#ff6600');    // Deep orange edge
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, 1024, 512);
+    // Create realistic solar surface base
+    const baseGradient = ctx.createRadialGradient(1024, 512, 0, 1024, 512, 800);
+    baseGradient.addColorStop(0, '#fff8dc');    // Warm white core
+    baseGradient.addColorStop(0.1, '#ffff99');  // Bright yellow
+    baseGradient.addColorStop(0.3, '#ffcc00');  // Golden yellow  
+    baseGradient.addColorStop(0.6, '#ff9900');  // Orange
+    baseGradient.addColorStop(0.8, '#ff6600');  // Deep orange
+    baseGradient.addColorStop(1, '#cc4400');    // Dark orange edge
+    ctx.fillStyle = baseGradient;
+    ctx.fillRect(0, 0, 2048, 1024);
     
-    // Add solar granulation pattern (small bright cells)
-    for (let i = 0; i < 100; i++) {
-      const x = Math.random() * 1024;
-      const y = Math.random() * 512;
-      const radius = 8 + Math.random() * 16;
-      const brightness = 0.3 + Math.random() * 0.4;
+    // Add solar granulation (convection cells) - more realistic pattern
+    for (let i = 0; i < 300; i++) {
+      const x = Math.random() * 2048;
+      const y = Math.random() * 1024;
+      const radius = 6 + Math.random() * 12;
+      const brightness = 0.2 + Math.random() * 0.3;
       
       const cellGradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
-      cellGradient.addColorStop(0, `rgba(255, 255, 255, ${brightness})`);
-      cellGradient.addColorStop(1, `rgba(255, 204, 0, ${brightness * 0.3})`);
+      cellGradient.addColorStop(0, `rgba(255, 255, 220, ${brightness})`);
+      cellGradient.addColorStop(0.7, `rgba(255, 200, 100, ${brightness * 0.5})`);
+      cellGradient.addColorStop(1, `rgba(255, 150, 50, ${brightness * 0.2})`);
       ctx.fillStyle = cellGradient;
       ctx.beginPath();
       ctx.arc(x, y, radius, 0, Math.PI * 2);
       ctx.fill();
     }
     
-    // Add some darker areas (sunspots)
-    ctx.fillStyle = 'rgba(200, 100, 0, 0.4)';
-    for (let i = 0; i < 8; i++) {
-      const x = Math.random() * 1024;
-      const y = Math.random() * 512;
-      const radius = 12 + Math.random() * 20;
+    // Add supergranulation (larger convection patterns)
+    for (let i = 0; i < 50; i++) {
+      const x = Math.random() * 2048;
+      const y = Math.random() * 1024;
+      const radius = 30 + Math.random() * 60;
+      const brightness = 0.1 + Math.random() * 0.2;
+      
+      const superGradient = ctx.createRadialGradient(x, y, radius * 0.3, x, y, radius);
+      superGradient.addColorStop(0, `rgba(255, 220, 150, ${brightness})`);
+      superGradient.addColorStop(1, `rgba(255, 180, 100, ${brightness * 0.3})`);
+      ctx.fillStyle = superGradient;
       ctx.beginPath();
       ctx.arc(x, y, radius, 0, Math.PI * 2);
       ctx.fill();
     }
     
-    return new THREE.CanvasTexture(canvas);
-  }, []);
+    // Add realistic sunspots with penumbra and umbra
+    for (let i = 0; i < 12; i++) {
+      const x = 200 + Math.random() * 1648; // Avoid edges
+      const y = 200 + Math.random() * 624;  // Avoid edges
+      const size = 15 + Math.random() * 35;
+      
+      // Penumbra (outer, lighter part)
+      const penumbraGradient = ctx.createRadialGradient(x, y, 0, x, y, size * 1.8);
+      penumbraGradient.addColorStop(0, 'rgba(100, 50, 0, 0.6)');
+      penumbraGradient.addColorStop(0.5, 'rgba(150, 75, 25, 0.4)');
+      penumbraGradient.addColorStop(1, 'rgba(200, 100, 50, 0.1)');
+      ctx.fillStyle = penumbraGradient;
+      ctx.beginPath();
+      ctx.arc(x, y, size * 1.8, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Umbra (inner, darker core)
+      const umbraGradient = ctx.createRadialGradient(x, y, 0, x, y, size);
+      umbraGradient.addColorStop(0, 'rgba(20, 10, 0, 0.8)');
+      umbraGradient.addColorStop(0.7, 'rgba(60, 30, 10, 0.6)');
+      umbraGradient.addColorStop(1, 'rgba(100, 50, 20, 0.3)');
+      ctx.fillStyle = umbraGradient;
+      ctx.beginPath();
+      ctx.arc(x, y, size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    // Add solar prominences/flares (bright areas)
+    for (let i = 0; i < 8; i++) {
+      const x = Math.random() * 2048;
+      const y = Math.random() * 1024;
+      const width = 40 + Math.random() * 100;
+      const height = 20 + Math.random() * 40;
+      
+      const flareGradient = ctx.createRadialGradient(x, y, 0, x, y, Math.max(width, height));
+      flareGradient.addColorStop(0, 'rgba(255, 255, 255, 0.3)');
+      flareGradient.addColorStop(0.5, 'rgba(255, 200, 100, 0.2)');
+      flareGradient.addColorStop(1, 'rgba(255, 150, 50, 0.05)');
+      ctx.fillStyle = flareGradient;
+      ctx.beginPath();
+      ctx.ellipse(x, y, width, height, Math.random() * Math.PI, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    
+    // Add magnetic field lines (subtle curved lines)
+    ctx.strokeStyle = 'rgba(255, 200, 100, 0.15)';
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 20; i++) {
+      const startX = Math.random() * 2048;
+      const startY = Math.random() * 1024;
+      const endX = startX + (Math.random() - 0.5) * 400;
+      const endY = startY + (Math.random() - 0.5) * 200;
+      const cpX = (startX + endX) / 2 + (Math.random() - 0.5) * 200;
+      const cpY = (startY + endY) / 2 + (Math.random() - 0.5) * 100;
+      
+      ctx.beginPath();
+      ctx.moveTo(startX, startY);
+      ctx.quadraticCurveTo(cpX, cpY, endX, endY);
+      ctx.stroke();
+    }
+    
+    const sunTexture = new THREE.CanvasTexture(canvas);
+    sunTexture.wrapS = THREE.RepeatWrapping;
+    sunTexture.wrapT = THREE.ClampToEdgeWrapping;
+    
+    return sunTexture;
+  }
   
   useFrame((state, delta) => {
     if (sunRef.current) {

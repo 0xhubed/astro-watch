@@ -39,6 +39,7 @@ export function AsteroidAnalysisHub({ asteroids }: Props) {
             {tabs.map((tab) => (
               <motion.button
                 key={tab.id}
+                type="button"
                 onClick={() => setActiveTab(tab.id)}
                 className={`px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm font-medium transition-all duration-200 whitespace-nowrap ${
                   activeTab === tab.id

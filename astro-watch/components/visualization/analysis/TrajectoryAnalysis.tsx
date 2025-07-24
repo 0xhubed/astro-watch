@@ -261,6 +261,7 @@ export function TrajectoryAnalysis({ asteroids }: Props) {
                 </div>
               </div>
               <button 
+                type="button"
                 onClick={() => setSelectedAsteroid(null)}
                 className="text-white/60 hover:text-white text-2xl hover:bg-white/10 rounded-full w-8 h-8 flex items-center justify-center"
               >

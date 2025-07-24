@@ -134,30 +134,12 @@ export async function trainModel(
   if (config.earlyStopping) {
     callbacks.push(tf.callbacks.earlyStopping({
       monitor: 'val_loss',
-      patience: config.patience,
-      restoreBestWeights: true
+      patience: config.patience
     }));
   }
 
-  // Training progress callback - use a simplified approach
-  const progressCallback = {
-    onEpochEnd: async (epoch: number, logs?: any) => {
-      if (epoch % 10 === 0 || epoch < 5) {
-        console.log(`Epoch ${epoch + 1}/${config.epochs}`);
-        try {
-          const loss = typeof logs?.loss === 'number' ? logs.loss : (logs?.loss ? Number(logs.loss) : 0);
-          const valLoss = typeof logs?.val_loss === 'number' ? logs.val_loss : (logs?.val_loss ? Number(logs.val_loss) : 0);
-          const mae = typeof logs?.mae === 'number' ? logs.mae : (logs?.mae ? Number(logs.mae) : 0);
-          const valMae = typeof logs?.val_mae === 'number' ? logs.val_mae : (logs?.val_mae ? Number(logs.val_mae) : 0);
-          console.log(`  Loss: ${loss.toFixed(4)}, Val Loss: ${valLoss.toFixed(4)}`);
-          console.log(`  MAE: ${mae.toFixed(4)}, Val MAE: ${valMae.toFixed(4)}`);
-        } catch (e) {
-          console.log(`  Epoch ${epoch + 1} completed`);
-        }
-      }
-    }
-  };
-  callbacks.push(progressCallback as any);
+  // Use verbose output for training progress
+  console.log('Starting training...');
 
   try {
     // Train the model
@@ -167,7 +149,7 @@ export async function trainModel(
       validationSplit: config.validationSplit,
       callbacks: callbacks,
       shuffle: true,
-      verbose: 0 // We handle logging in callbacks
+      verbose: 1 // Show training progress
     });
 
     const trainingTime = Date.now() - startTime;

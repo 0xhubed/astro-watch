@@ -155,7 +155,7 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
                 <div>
                   <div className="text-white font-medium">{asteroid.name}</div>
                   <div className="text-gray-400 text-sm">
-                    {asteroid.size.toFixed(1)} km | {asteroid.velocity.toFixed(1)} km/s
+                    {asteroid.size.toFixed(1)} m | {asteroid.velocity.toFixed(1)} km/s
                   </div>
                 </div>
                 <div className={`${torinoInfo.bgColor} px-3 py-1 rounded-full`}>

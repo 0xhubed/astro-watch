@@ -84,7 +84,7 @@ export function MonitoringDashboard({ asteroids }: Props) {
         id: `discovery-${asteroid.id}`,
         type: 'new-discovery',
         severity: 'medium',
-        message: `New NEO discovered: ${asteroid.name} (${asteroid.size.toFixed(1)} km)`,
+        message: `New NEO discovered: ${asteroid.name} (${asteroid.size.toFixed(1)} m)`,
         timestamp: new Date(baseTime.getTime() - timeOffset),
         asteroid
       });
@@ -472,7 +472,7 @@ export function MonitoringDashboard({ asteroids }: Props) {
                   <div className="bg-gray-800/50 rounded-lg p-4">
                     <div className="text-sm text-gray-400 mb-2">Asteroid Details</div>
                     <div className="space-y-1 text-sm">
-                      <div>Size: {selectedAlert.asteroid.size.toFixed(1)} km</div>
+                      <div>Size: {selectedAlert.asteroid.size.toFixed(1)} m</div>
                       <div>Velocity: {selectedAlert.asteroid.velocity.toFixed(1)} km/s</div>
                       <div>Miss Distance: {selectedAlert.asteroid.missDistance.toFixed(3)} AU</div>
                       <div>Torino Scale: {selectedAlert.asteroid.torinoScale}</div>

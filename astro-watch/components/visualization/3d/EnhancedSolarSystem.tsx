@@ -1860,7 +1860,7 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
                       <div className="text-left">
                         <div className="text-white font-medium text-sm">{asteroid.name}</div>
                         <div className="text-white/60 text-xs">
-                          {asteroid.size.toFixed(1)} km • {asteroid.velocity.toFixed(1)} km/s
+                          {asteroid.size.toFixed(1)} m • {asteroid.velocity.toFixed(1)} km/s
                         </div>
                       </div>
                       <div className={`${torinoInfo.bgColor} px-2 py-1 rounded-full`}>

@@ -243,34 +243,107 @@ export function TrajectoryAnalysis({ asteroids }: Props) {
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="fixed inset-4 z-50 bg-black/90 backdrop-blur-md rounded-xl p-6 border border-white/10"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
         >
-          <div className="flex justify-between items-start mb-4">
-            <h3 className="text-2xl font-bold text-white">{selectedAsteroid.name}</h3>
-            <button 
-              onClick={() => setSelectedAsteroid(null)}
-              className="text-white/60 hover:text-white text-2xl"
-            >
-              ×
-            </button>
-          </div>
-          <div className="grid grid-cols-2 gap-6 text-white">
-            <div>
-              <h4 className="text-lg font-semibold mb-2 text-blue-300">Physical Properties</h4>
-              <div className="space-y-2 text-sm">
-                <div>Size: {selectedAsteroid.size.toFixed(1)} km diameter</div>
-                <div>Velocity: {selectedAsteroid.velocity.toFixed(1)} km/s</div>
-                <div>Miss Distance: {selectedAsteroid.missDistance.toFixed(3)} AU</div>
-                <div>Impact Energy: {(selectedAsteroid.impactEnergy / 1e12).toFixed(1)} TJ</div>
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            onClick={() => setSelectedAsteroid(null)}
+          />
+          
+          {/* Modal */}
+          <div className="relative bg-gray-900/95 backdrop-blur-md rounded-xl p-6 border border-white/10 max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+            <div className="flex justify-between items-start mb-4">
+              <div>
+                <h3 className="text-2xl font-bold text-white">{selectedAsteroid.name}</h3>
+                <div className="text-sm text-gray-400 mt-1">
+                  {selectedAsteroid.is_potentially_hazardous_asteroid ? 'Potentially Hazardous Asteroid' : 'Near-Earth Object'}
+                </div>
+              </div>
+              <button 
+                onClick={() => setSelectedAsteroid(null)}
+                className="text-white/60 hover:text-white text-2xl hover:bg-white/10 rounded-full w-8 h-8 flex items-center justify-center"
+              >
+                ×
+              </button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-white">
+              <div>
+                <h4 className="text-lg font-semibold mb-3 text-blue-300">Physical Properties</h4>
+                <div className="space-y-3 text-sm">
+                  <div className="bg-white/5 rounded-lg p-3">
+                    <div className="text-white/60 text-xs mb-1">Size</div>
+                    <div className="text-white font-mono">
+                      {selectedAsteroid.size >= 1000 
+                        ? `${(selectedAsteroid.size / 1000).toFixed(2)} km`
+                        : `${selectedAsteroid.size.toFixed(1)} m`
+                      } diameter
+                    </div>
+                  </div>
+                  <div className="bg-white/5 rounded-lg p-3">
+                    <div className="text-white/60 text-xs mb-1">Velocity</div>
+                    <div className="text-white font-mono">{selectedAsteroid.velocity.toFixed(1)} km/s</div>
+                  </div>
+                  <div className="bg-white/5 rounded-lg p-3">
+                    <div className="text-white/60 text-xs mb-1">Miss Distance</div>
+                    <div className="text-white font-mono">{selectedAsteroid.missDistance.toFixed(3)} AU</div>
+                    <div className="text-white/40 text-xs mt-1">
+                      ({(selectedAsteroid.missDistance * 149.6).toFixed(1)} million km)
+                    </div>
+                  </div>
+                  <div className="bg-white/5 rounded-lg p-3">
+                    <div className="text-white/60 text-xs mb-1">Impact Energy</div>
+                    <div className="text-white font-mono">{(selectedAsteroid.impactEnergy / 1e12).toFixed(1)} TJ</div>
+                    <div className="text-white/40 text-xs mt-1">
+                      (≈ {(selectedAsteroid.impactEnergy / 4.184e15).toFixed(2)} megatons TNT)
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div>
+                <h4 className="text-lg font-semibold mb-3 text-green-300">Orbital Data</h4>
+                <div className="space-y-3 text-sm">
+                  <div className="bg-white/5 rounded-lg p-3">
+                    <div className="text-white/60 text-xs mb-1">Torino Scale</div>
+                    <div className="text-white font-mono text-lg">{selectedAsteroid.torinoScale}</div>
+                    <div className="text-white/40 text-xs mt-1">
+                      {selectedAsteroid.torinoScale === 0 ? 'No hazard' : 
+                       selectedAsteroid.torinoScale <= 3 ? 'Normal monitoring' : 
+                       selectedAsteroid.torinoScale <= 7 ? 'Threatening' : 'Certain collision'}
+                    </div>
+                  </div>
+                  <div className="bg-white/5 rounded-lg p-3">
+                    <div className="text-white/60 text-xs mb-1">Inclination</div>
+                    <div className="text-white font-mono">{(selectedAsteroid.orbit.inclination * 180 / Math.PI).toFixed(2)}°</div>
+                  </div>
+                  <div className="bg-white/5 rounded-lg p-3">
+                    <div className="text-white/60 text-xs mb-1">Eccentricity</div>
+                    <div className="text-white font-mono">{selectedAsteroid.orbit.eccentricity.toFixed(3)}</div>
+                  </div>
+                  <div className="bg-white/5 rounded-lg p-3">
+                    <div className="text-white/60 text-xs mb-1">Close Approach</div>
+                    <div className="text-white font-mono">{selectedAsteroid.close_approach_data[0].close_approach_date}</div>
+                  </div>
+                </div>
               </div>
             </div>
-            <div>
-              <h4 className="text-lg font-semibold mb-2 text-green-300">Orbital Data</h4>
-              <div className="space-y-2 text-sm">
-                <div>Orbital Radius: {selectedAsteroid.orbit.radius.toFixed(1)} units</div>
-                <div>Inclination: {(selectedAsteroid.orbit.inclination * 180 / Math.PI).toFixed(2)}°</div>
-                <div>Eccentricity: {selectedAsteroid.orbit.eccentricity.toFixed(3)}</div>
-                <div>Close Approach: {selectedAsteroid.close_approach_data[0].close_approach_date}</div>
+            
+            {/* Moon Collision Risk */}
+            <div className="mt-6 pt-4 border-t border-white/10">
+              <h4 className="text-lg font-semibold mb-3 text-purple-300">Additional Information</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div className="bg-white/5 rounded-lg p-3">
+                  <div className="text-white/60 text-xs mb-1">Moon Collision Risk</div>
+                  <div className="text-white font-mono">{(selectedAsteroid.moonCollisionData.probability * 100).toFixed(4)}%</div>
+                  <div className="text-white/40 text-xs mt-1">{selectedAsteroid.moonCollisionData.comparisonToEarth.interpretation}</div>
+                </div>
+                <div className="bg-white/5 rounded-lg p-3">
+                  <div className="text-white/60 text-xs mb-1">Confidence Level</div>
+                  <div className="text-white font-mono">{(selectedAsteroid.confidence * 100).toFixed(1)}%</div>
+                  <div className="text-white/40 text-xs mt-1">Risk assessment confidence</div>
+                </div>
               </div>
             </div>
           </div>

@@ -20,9 +20,19 @@ const path = require('path');
 // TensorFlow.js setup for Node.js
 require('@tensorflow/tfjs-node');
 
-// Import our ML modules (we'll need to compile TypeScript first)
-const { generateTrainingData, generateBalancedTrainingData } = require('../lib/ml/data-generator');
-const { trainModel, evaluateModel, saveModel, optimizeModelForProduction, generatePerformanceReport } = require('../lib/ml/model-trainer');
+// Import our ML modules from compiled JS (run `npm run ml:build` first)
+// Compiled output is in `dist/lib/ml/*` via tsconfig.build.json
+let generateTrainingData, generateBalancedTrainingData;
+let trainModel, evaluateModel, saveModel, optimizeModelForProduction, generatePerformanceReport;
+try {
+  ({ generateTrainingData, generateBalancedTrainingData } = require('../dist/lib/ml/data-generator'));
+  ({ trainModel, evaluateModel, saveModel, optimizeModelForProduction, generatePerformanceReport } = require('../dist/lib/ml/model-trainer'));
+} catch (e) {
+  console.error('\n❌ Could not load compiled ML modules.');
+  console.error('➡️  Please run: npm run ml:build');
+  console.error('   (This compiles TypeScript in lib/ml to dist/)\n');
+  throw e;
+}
 
 // Parse command line arguments
 function parseArgs() {
@@ -126,6 +136,7 @@ async function main() {
   console.log(`Balanced dataset: ${options.balanced ? 'Yes' : 'No'}`);
   console.log(`Output directory: ${options.output}`);
   console.log('');
+  console.log('📦 Using compiled modules from dist/. If this fails, run `npm run ml:build`.');
 
   try {
     // Create output directory if it doesn't exist

@@ -233,10 +233,47 @@ vercel --prod
 
 ### **Environment Variables Required**
 ```env
+# NASA / App
 NASA_API_KEY=your_nasa_api_key_here
 NEXT_PUBLIC_NASA_API_BASE=https://api.nasa.gov/neo/rest/v1
 NEXT_PUBLIC_ENABLE_PERFORMANCE_MONITORING=true
+
+# Monitoring & Alerts (optional)
+RESEND_API_KEY=your_resend_api_key
+NOTIFICATION_EMAIL=recipient@example.com
+# Optional thresholds (defaults shown)
+ALERT_TORINO_MIN=6
+ALERT_RISK_MIN=0.75
+ALERT_ONLY_PHA=true
+# Optional custom From address
+ALERT_FROM_EMAIL=alerts@your-domain.com
 ```
+
+## 🔔 Monitoring & Alerts
+
+AstroWatch can automatically check for critical asteroids and send an email summary.
+
+- Endpoint: `GET /api/monitoring`
+- Criteria (defaults, configurable via env):
+  - Torino Scale `>= ALERT_TORINO_MIN` (default 6), or
+  - Risk `>= ALERT_RISK_MIN` (default 0.75) and (optionally) PHA only (`ALERT_ONLY_PHA=true`)
+- Email: sent via Resend to `NOTIFICATION_EMAIL` when matches are found
+
+### Setup
+- Add to `.env.local`:
+  - `RESEND_API_KEY=...`
+  - `NOTIFICATION_EMAIL=...`
+  - Optionally override `ALERT_TORINO_MIN`, `ALERT_RISK_MIN`, `ALERT_ONLY_PHA`, `ALERT_FROM_EMAIL`
+
+### Testing Locally
+- Run the dev server, then visit `http://localhost:3000/api/monitoring?dryRun=1` to preview matches without sending
+- To force a test alert, temporarily reduce thresholds (e.g., `ALERT_TORINO_MIN=1`)
+- You can disable sending globally by setting `ALERTS_ENABLED=false`
+
+### Scheduled Runs (Vercel)
+- `vercel.json` includes a daily cron:
+  - Path: `/api/monitoring`
+  - Schedule: `0 0 * * *` (00:00 UTC)
 
 ### **Deployment Features**
 - ⚡ **Zero-config deployment** with Vercel

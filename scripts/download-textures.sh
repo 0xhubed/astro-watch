@@ -8,9 +8,16 @@ set -e  # Exit on any error
 echo "🌍 Downloading NASA Earth Textures..."
 echo "======================================"
 
-# Create textures directory
-mkdir -p public/textures
-cd public/textures
+# Determine target textures directory (prefer app dir)
+TARGET_DIR="astro-watch/public/textures"
+if [ ! -d "$TARGET_DIR" ]; then
+  # Fallback to repo root public if app dir not present
+  TARGET_DIR="public/textures"
+fi
+
+echo "Target textures directory: $TARGET_DIR"
+mkdir -p "$TARGET_DIR"
+cd "$TARGET_DIR"
 
 # Function to download with progress
 download_with_progress() {

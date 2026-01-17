@@ -11,6 +11,7 @@ import { EnhancedAsteroid } from '@/lib/nasa-api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMLPredictions } from '@/hooks/useMLPredictions';
 import { MLIndicator } from '@/components/visualization/MLIndicator';
+import { ChatPanel } from '@/components/chat';
 
 export default function Home() {
   const { 
@@ -162,7 +163,7 @@ export default function Home() {
             <div className="text-center md:text-left">
               <span className="hidden md:inline">Total Asteroids: {asteroids.length} | </span>
               <span className="md:hidden">Total: {asteroids.length} | </span>
-              Filtered: {filteredAsteroids.length} | 
+              Filtered: {filteredAsteroids.length} |
               <span className="hidden md:inline">Threatening: </span>
               <span className="md:hidden">High: </span>
               {asteroids.filter(a => a.torinoScale >= 5).length}
@@ -177,6 +178,9 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      {/* AI Chat Assistant */}
+      <ChatPanel />
     </div>
   );
 }

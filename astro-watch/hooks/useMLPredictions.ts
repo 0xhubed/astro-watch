@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { Asteroid, EnhancedAsteroid, enhanceAsteroidData } from '@/lib/nasa-api';
-import { predictRiskBatch } from '@/lib/ml/risk-predictor';
 
 export function useMLPredictions(asteroids: Asteroid[]) {
   const [enhancedAsteroids, setEnhancedAsteroids] = useState<EnhancedAsteroid[]>([]);
@@ -21,10 +20,13 @@ export function useMLPredictions(asteroids: Asteroid[]) {
       try {
         // Add a small delay to ensure initial render happens first
         await new Promise(resolve => setTimeout(resolve, 100));
-        
+
         console.log('Running ML predictions for', asteroids.length, 'asteroids...');
         const startTime = performance.now();
-        
+
+        // Dynamically import ML predictor (browser only)
+        const { predictRiskBatch } = await import('@/lib/ml/risk-predictor');
+
         // Get ML predictions for all asteroids
         const predictions = await predictRiskBatch(asteroids);
         

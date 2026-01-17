@@ -172,7 +172,7 @@ async function loadModelMetadata(): Promise<ModelMetadata | null> {
     }
     
     // Fallback to browser storage metadata
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined' && typeof localStorage.getItem === 'function') {
       const browserMetadata = localStorage.getItem('asteroid-model-metadata');
       if (browserMetadata) {
         return JSON.parse(browserMetadata);

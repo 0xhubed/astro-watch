@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import * as tf from '@tensorflow/tfjs';
 
 export default function TestMLPage() {
   const [status, setStatus] = useState('Testing...');
@@ -15,40 +14,43 @@ export default function TestMLPage() {
   useEffect(() => {
     async function testML() {
       try {
-        addLog('🧪 Starting ML test...');
-        
+        addLog('Starting ML test...');
+
+        // Dynamically import TensorFlow.js to avoid SSR issues
+        const tf = await import('@tensorflow/tfjs');
+
         // Test 1: Basic TensorFlow.js
-        addLog('1️⃣ Testing basic TensorFlow.js...');
+        addLog('1. Testing basic TensorFlow.js...');
         const tensor = tf.tensor2d([[1, 2], [3, 4]]);
-        addLog(`✅ Tensor created with shape: ${tensor.shape}`);
+        addLog(`   Tensor created with shape: ${tensor.shape}`);
         tensor.dispose();
-        
+
         // Test 2: Model creation
-        addLog('2️⃣ Testing model creation...');
+        addLog('2. Testing model creation...');
         const model = tf.sequential({
           layers: [
             tf.layers.dense({ inputShape: [6], units: 16, activation: 'relu' }),
             tf.layers.dense({ units: 2, activation: 'sigmoid' })
           ]
         });
-        addLog(`✅ Model created with ${model.countParams()} parameters`);
-        
+        addLog(`   Model created with ${model.countParams()} parameters`);
+
         // Test 3: Data generation
-        addLog('3️⃣ Testing data generation...');
+        addLog('3. Testing data generation...');
         const { generateTrainingData } = await import('@/lib/ml/data-generator');
         const data = generateTrainingData(100);
-        addLog(`✅ Generated ${data.features.length} training samples`);
-        
+        addLog(`   Generated ${data.features.length} training samples`);
+
         // Test 4: Browser training
-        addLog('4️⃣ Testing browser training...');
+        addLog('4. Testing browser training...');
         const { ensureModelAvailable } = await import('@/lib/ml/browser-trainer');
         const { model: trainedModel } = await ensureModelAvailable();
-        addLog(`✅ Model trained with ${trainedModel.countParams()} parameters`);
-        
+        addLog(`   Model trained with ${trainedModel.countParams()} parameters`);
+
         // Test 5: Risk prediction
-        addLog('5️⃣ Testing risk prediction...');
+        addLog('5. Testing risk prediction...');
         const { predictRisk } = await import('@/lib/ml/risk-predictor');
-        
+
         // Create a mock asteroid for testing
         const mockAsteroid = {
           id: 'test',
@@ -70,17 +72,17 @@ export default function TestMLPage() {
           }],
           is_potentially_hazardous_asteroid: true
         };
-        
+
         const prediction = await predictRisk(mockAsteroid);
-        addLog(`✅ Risk prediction: ${prediction.risk.toFixed(3)}, Confidence: ${prediction.confidence.toFixed(3)}`);
-        addLog(`📊 Model used: ${prediction.modelUsed}, Processing time: ${prediction.processingTime.toFixed(1)}ms`);
-        
-        setStatus('✅ All tests passed!');
-        addLog('🎉 ML system is working correctly!');
-        
+        addLog(`   Risk prediction: ${prediction.risk.toFixed(3)}, Confidence: ${prediction.confidence.toFixed(3)}`);
+        addLog(`   Model used: ${prediction.modelUsed}, Processing time: ${prediction.processingTime.toFixed(1)}ms`);
+
+        setStatus('All tests passed!');
+        addLog('ML system is working correctly!');
+
       } catch (error) {
-        addLog(`❌ Error: ${error}`);
-        setStatus('❌ Tests failed');
+        addLog(`Error: ${error}`);
+        setStatus('Tests failed');
         console.error('ML test failed:', error);
       }
     }
@@ -92,10 +94,10 @@ export default function TestMLPage() {
     <div className="min-h-screen bg-gray-900 text-white p-8">
       <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold mb-6">ML System Test</h1>
-        
+
         <div className="bg-gray-800 rounded-lg p-6 mb-6">
           <h2 className="text-xl font-semibold mb-4">Status: {status}</h2>
-          
+
           <div className="bg-gray-900 rounded p-4 font-mono text-sm overflow-auto max-h-96">
             {logs.map((log, index) => (
               <div key={index} className="mb-1">
@@ -104,10 +106,10 @@ export default function TestMLPage() {
             ))}
           </div>
         </div>
-        
+
         <div className="text-center">
-          <a 
-            href="/" 
+          <a
+            href="/"
             className="bg-blue-600 hover:bg-blue-700 px-6 py-3 rounded-lg font-semibold transition-colors"
           >
             Back to Main App

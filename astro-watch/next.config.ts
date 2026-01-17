@@ -11,6 +11,8 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'unpkg.com' },
     ],
   },
+  // Exclude TensorFlow.js from server-side bundling to prevent localStorage errors during SSR
+  serverExternalPackages: ['@tensorflow/tfjs'],
   experimental: {
     optimizeCss: true,
   },

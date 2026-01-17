@@ -17,7 +17,7 @@ from vector_store import VectorStore
 
 
 # Configuration
-API_TOKEN = os.getenv("API_TOKEN", "your-secret-token")
+API_TOKEN = os.getenv("API_TOKEN", "")
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:pass@localhost:5432/astrowatch")
 

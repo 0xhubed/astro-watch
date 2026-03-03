@@ -1,9 +1,9 @@
 'use client';
 
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Html } from '@react-three/drei';
+import { OrbitControls, Html, Environment } from '@react-three/drei';
 import { Suspense, useRef, useState, useMemo, useEffect } from 'react';
-// import { useSpring, animated } from '@react-spring/three';
+import { EffectComposer, Bloom, Vignette, DepthOfField } from '@react-three/postprocessing';
 import { motion } from 'framer-motion';
 import * as THREE from 'three';
 import { EnhancedAsteroid } from '@/lib/nasa-api';
@@ -737,16 +737,79 @@ function Earth() {
         />
       </mesh>
       
-      {/* Subtle single atmosphere layer */}
-      <mesh scale={[1.02, 1.02, 1.02]}>
-        <sphereGeometry args={[3.0, 32, 32]} />
-        <meshBasicMaterial
-          color={new THREE.Color(0x87ceeb)}
+      {/* Fresnel atmosphere glow - outer rim */}
+      <mesh scale={[1.06, 1.06, 1.06]}>
+        <sphereGeometry args={[3.0, 64, 64]} />
+        <shaderMaterial
           transparent
-          opacity={0.08}
+          depthWrite={false}
           side={THREE.BackSide}
           blending={THREE.AdditiveBlending}
+          uniforms={{
+            color: { value: new THREE.Color(0.3, 0.6, 1.0) },
+            power: { value: 3.5 },
+            intensity: { value: 0.8 },
+          }}
+          vertexShader={`
+            varying vec3 vNormal;
+            varying vec3 vWorldPosition;
+            void main() {
+              vNormal = normalize(normalMatrix * normal);
+              vec4 worldPos = modelMatrix * vec4(position, 1.0);
+              vWorldPosition = worldPos.xyz;
+              gl_Position = projectionMatrix * viewMatrix * worldPos;
+            }
+          `}
+          fragmentShader={`
+            varying vec3 vNormal;
+            varying vec3 vWorldPosition;
+            uniform vec3 color;
+            uniform float power;
+            uniform float intensity;
+            void main() {
+              vec3 viewDir = normalize(cameraPosition - vWorldPosition);
+              float fresnel = pow(1.0 - abs(dot(viewDir, vNormal)), power);
+              gl_FragColor = vec4(color * intensity, fresnel * 0.9);
+            }
+          `}
+        />
+      </mesh>
+
+      {/* Inner atmosphere - subtle haze */}
+      <mesh scale={[1.02, 1.02, 1.02]}>
+        <sphereGeometry args={[3.0, 64, 64]} />
+        <shaderMaterial
+          transparent
           depthWrite={false}
+          side={THREE.FrontSide}
+          blending={THREE.AdditiveBlending}
+          uniforms={{
+            color: { value: new THREE.Color(0.4, 0.7, 1.0) },
+            power: { value: 5.0 },
+            intensity: { value: 0.3 },
+          }}
+          vertexShader={`
+            varying vec3 vNormal;
+            varying vec3 vWorldPosition;
+            void main() {
+              vNormal = normalize(normalMatrix * normal);
+              vec4 worldPos = modelMatrix * vec4(position, 1.0);
+              vWorldPosition = worldPos.xyz;
+              gl_Position = projectionMatrix * viewMatrix * worldPos;
+            }
+          `}
+          fragmentShader={`
+            varying vec3 vNormal;
+            varying vec3 vWorldPosition;
+            uniform vec3 color;
+            uniform float power;
+            uniform float intensity;
+            void main() {
+              vec3 viewDir = normalize(cameraPosition - vWorldPosition);
+              float fresnel = pow(1.0 - abs(dot(viewDir, vNormal)), power);
+              gl_FragColor = vec4(color * intensity, fresnel * 0.5);
+            }
+          `}
         />
       </mesh>
     </group>
@@ -944,61 +1007,168 @@ function Sun() {
     }
   });
   
+  // Sun corona shader material with animated noise
+  const coronaShaderRef = useRef<THREE.ShaderMaterial>(null);
+  const outerCoronaShaderRef = useRef<THREE.ShaderMaterial>(null);
+
+  useFrame((state) => {
+    if (coronaShaderRef.current) {
+      coronaShaderRef.current.uniforms.time.value = state.clock.elapsedTime;
+    }
+    if (outerCoronaShaderRef.current) {
+      outerCoronaShaderRef.current.uniforms.time.value = state.clock.elapsedTime;
+    }
+  });
+
   return (
     <group position={[0, 0, 0]}>
-      {/* Main Sun body */}
+      {/* Main Sun body - HDR emissive for bloom */}
       <mesh ref={sunRef}>
         <sphereGeometry args={[10, 128, 64]} />
-        <meshStandardMaterial 
+        <meshStandardMaterial
           map={sunTexture}
-          emissive={0xffa500}
-          emissiveIntensity={0.2}
+          emissive={new THREE.Color(1.0, 0.6, 0.1)}
+          emissiveIntensity={2.5}
           roughness={1}
           metalness={0}
+          toneMapped={false}
         />
       </mesh>
-      
-      {/* Corona atmosphere - inner layer */}
-      <mesh ref={coronaRef} scale={1.08}>
+
+      {/* Corona - inner layer with animated noise shader */}
+      <mesh ref={coronaRef} scale={1.1}>
         <sphereGeometry args={[10, 64, 32]} />
-        <meshBasicMaterial 
-          color={0xFFD700}
+        <shaderMaterial
+          ref={coronaShaderRef}
           transparent
-          opacity={0.25}
+          depthWrite={false}
           side={THREE.BackSide}
           blending={THREE.AdditiveBlending}
-          depthWrite={false}
+          uniforms={{
+            time: { value: 0 },
+            color1: { value: new THREE.Color(1.0, 0.85, 0.2) },
+            color2: { value: new THREE.Color(1.0, 0.4, 0.0) },
+            intensity: { value: 1.5 },
+          }}
+          vertexShader={`
+            varying vec3 vNormal;
+            varying vec3 vWorldPosition;
+            varying vec2 vUv;
+            void main() {
+              vNormal = normalize(normalMatrix * normal);
+              vUv = uv;
+              vec4 worldPos = modelMatrix * vec4(position, 1.0);
+              vWorldPosition = worldPos.xyz;
+              gl_Position = projectionMatrix * viewMatrix * worldPos;
+            }
+          `}
+          fragmentShader={`
+            varying vec3 vNormal;
+            varying vec3 vWorldPosition;
+            varying vec2 vUv;
+            uniform float time;
+            uniform vec3 color1;
+            uniform vec3 color2;
+            uniform float intensity;
+
+            // Simple noise function
+            float hash(vec2 p) {
+              return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+            }
+            float noise(vec2 p) {
+              vec2 i = floor(p);
+              vec2 f = fract(p);
+              f = f * f * (3.0 - 2.0 * f);
+              float a = hash(i);
+              float b = hash(i + vec2(1.0, 0.0));
+              float c = hash(i + vec2(0.0, 1.0));
+              float d = hash(i + vec2(1.0, 1.0));
+              return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+            }
+            float fbm(vec2 p) {
+              float v = 0.0;
+              float a = 0.5;
+              for (int i = 0; i < 4; i++) {
+                v += a * noise(p);
+                p *= 2.0;
+                a *= 0.5;
+              }
+              return v;
+            }
+
+            void main() {
+              vec3 viewDir = normalize(cameraPosition - vWorldPosition);
+              float fresnel = pow(1.0 - abs(dot(viewDir, vNormal)), 2.0);
+
+              // Animated noise pattern
+              float n = fbm(vUv * 8.0 + time * 0.15);
+              float n2 = fbm(vUv * 4.0 - time * 0.1);
+              float pattern = n * 0.6 + n2 * 0.4;
+
+              vec3 col = mix(color1, color2, pattern);
+              float alpha = fresnel * (0.5 + pattern * 0.5) * intensity;
+
+              gl_FragColor = vec4(col * intensity, alpha * 0.4);
+            }
+          `}
         />
       </mesh>
-      
-      {/* Solar atmosphere - outer layer */}
-      <mesh ref={atmosphereRef} scale={1.18}>
+
+      {/* Outer corona / solar wind - large diffuse glow */}
+      <mesh ref={atmosphereRef} scale={1.35}>
         <sphereGeometry args={[10, 32, 16]} />
-        <meshBasicMaterial 
-          color={0xFFA500}
+        <shaderMaterial
+          ref={outerCoronaShaderRef}
           transparent
-          opacity={0.08}
+          depthWrite={false}
           side={THREE.BackSide}
           blending={THREE.AdditiveBlending}
-          depthWrite={false}
+          uniforms={{
+            time: { value: 0 },
+            color: { value: new THREE.Color(1.0, 0.5, 0.05) },
+            intensity: { value: 0.6 },
+          }}
+          vertexShader={`
+            varying vec3 vNormal;
+            varying vec3 vWorldPosition;
+            void main() {
+              vNormal = normalize(normalMatrix * normal);
+              vec4 worldPos = modelMatrix * vec4(position, 1.0);
+              vWorldPosition = worldPos.xyz;
+              gl_Position = projectionMatrix * viewMatrix * worldPos;
+            }
+          `}
+          fragmentShader={`
+            varying vec3 vNormal;
+            varying vec3 vWorldPosition;
+            uniform float time;
+            uniform vec3 color;
+            uniform float intensity;
+            void main() {
+              vec3 viewDir = normalize(cameraPosition - vWorldPosition);
+              float fresnel = pow(1.0 - abs(dot(viewDir, vNormal)), 4.0);
+              float pulse = 1.0 + sin(time * 0.5) * 0.15;
+              gl_FragColor = vec4(color * intensity * pulse, fresnel * 0.2);
+            }
+          `}
         />
       </mesh>
-      
+
       {/* Solar lighting system */}
-      <pointLight 
-        position={[0, 0, 0]} 
-        intensity={10} 
-        color={0xFFF8DC} 
+      <pointLight
+        position={[0, 0, 0]}
+        intensity={10}
+        color={0xFFF8DC}
         decay={2}
         distance={2500}
         castShadow={false}
       />
-      
+
       {/* Secondary warm illumination */}
-      <pointLight 
-        position={[0, 0, 0]} 
-        intensity={3} 
-        color={0xFFD700} 
+      <pointLight
+        position={[0, 0, 0]}
+        intensity={3}
+        color={0xFFD700}
         decay={2}
         distance={1200}
         castShadow={false}
@@ -1012,13 +1182,16 @@ function Sun() {
 function EnhancedStarField() {
   const starFieldRef = useRef<THREE.Points>(null);
   
-  const { starPositions, nebulaeData } = useMemo(() => {
+  const { starPositions, nebulaeData, twinklePhases } = useMemo(() => {
     // Enhanced star field with more variety
     const positions = new Float32Array(8000 * 3);
     const colors = new Float32Array(8000 * 3);
     const sizes = new Float32Array(8000);
-    
+    // Per-star random phases for twinkle animation
+    const phases = new Float32Array(8000);
+
     for (let i = 0; i < 8000; i++) {
+      phases[i] = Math.random() * Math.PI * 2;
       const radius = 400 + Math.random() * 600;
       const phi = Math.acos(2 * Math.random() - 1);
       const theta = 2 * Math.PI * Math.random();
@@ -1073,15 +1246,33 @@ function EnhancedStarField() {
       nebulaeSizes[i] = 20 + Math.random() * 40;
     }
     
-    return { 
+    return {
       starPositions: { positions, colors, sizes },
-      nebulaeData: { positions: nebulaePositions, colors: nebulaeColors, sizes: nebulaeSizes }
+      nebulaeData: { positions: nebulaePositions, colors: nebulaeColors, sizes: nebulaeSizes },
+      twinklePhases: phases
     };
   }, []);
-  
+
+  // Store base sizes for twinkle modulation
+  const baseSizes = useRef(new Float32Array(starPositions.sizes));
+
   useFrame((state) => {
     if (starFieldRef.current) {
       starFieldRef.current.rotation.y += 0.0001;
+
+      // Twinkle animation: modulate star sizes over time
+      const sizeAttr = starFieldRef.current.geometry.getAttribute('size');
+      if (sizeAttr) {
+        const t = state.clock.elapsedTime;
+        const arr = sizeAttr.array as Float32Array;
+        const base = baseSizes.current;
+        for (let i = 0; i < 8000; i++) {
+          // Each star twinkles at its own frequency and phase
+          const twinkle = 0.7 + 0.3 * Math.sin(t * (1.5 + (i % 7) * 0.3) + twinklePhases[i]);
+          arr[i] = base[i] * twinkle;
+        }
+        sizeAttr.needsUpdate = true;
+      }
     }
   });
   
@@ -1254,13 +1445,13 @@ function AsteroidSphere({ asteroid, index, isSelected, isHovered, onClick, onDou
         receiveShadow
       >
         {getGeometry()}
-        <meshStandardMaterial 
+        <meshStandardMaterial
           color={baseColor}
-          roughness={0.9}
-          metalness={0.1}
+          roughness={0.85}
+          metalness={0.15}
           transparent={false}
           emissive={color}
-          emissiveIntensity={0.1}
+          emissiveIntensity={isSelected ? 0.8 : isHovered ? 0.5 : 0.15 + asteroid.torinoScale * 0.08}
         />
       </mesh>
       
@@ -1403,27 +1594,60 @@ function AsteroidTrails({ asteroids }: { asteroids: EnhancedAsteroid[] }) {
   }, [asteroids]);
   
   return (
-    <points ref={trailsRef}>
-      <bufferGeometry>
-        <bufferAttribute 
-          attach="attributes-position" 
-          args={[trailData.positions, 3]} 
-          count={asteroids.length * 20} 
+    <group>
+      {/* Smooth trail lines per asteroid */}
+      {asteroids.map((asteroid, idx) => {
+        const orbit = asteroid.orbit;
+        const torinoColor = getTorino3DColor(asteroid.torinoScale);
+        const trailPoints: THREE.Vector3[] = [];
+        for (let i = 0; i < 20; i++) {
+          const angle = orbit.phase - (i * 0.05);
+          const actualRadius = Math.max(5.0, orbit.radius);
+          const x = Math.cos(angle) * actualRadius;
+          const z = Math.sin(angle) * actualRadius;
+          const y = Math.sin(angle * 0.2) * orbit.inclination * 0.15;
+          trailPoints.push(new THREE.Vector3(x, y, z));
+        }
+        if (trailPoints.length < 2) return null;
+        const curve = new THREE.CatmullRomCurve3(trailPoints);
+        return (
+          <mesh key={asteroid.id}>
+            <tubeGeometry args={[curve, 32, 0.06, 6, false]} />
+            <meshBasicMaterial
+              color={torinoColor}
+              transparent
+              opacity={0.5}
+              blending={THREE.AdditiveBlending}
+              depthWrite={false}
+            />
+          </mesh>
+        );
+      })}
+
+      {/* Fading particle halo at trail heads */}
+      <points ref={trailsRef}>
+        <bufferGeometry>
+          <bufferAttribute
+            attach="attributes-position"
+            args={[trailData.positions, 3]}
+            count={asteroids.length * 20}
+          />
+          <bufferAttribute
+            attach="attributes-color"
+            args={[trailData.colors, 3]}
+            count={asteroids.length * 20}
+          />
+        </bufferGeometry>
+        <pointsMaterial
+          size={0.2}
+          vertexColors
+          transparent
+          opacity={0.35}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
         />
-        <bufferAttribute 
-          attach="attributes-color" 
-          args={[trailData.colors, 3]} 
-          count={asteroids.length * 20} 
-        />
-      </bufferGeometry>
-      <pointsMaterial 
-        size={0.3} 
-        vertexColors 
-        transparent 
-        opacity={0.6}
-        blending={THREE.AdditiveBlending}
-      />
-    </points>
+      </points>
+    </group>
   );
 }
 
@@ -1667,14 +1891,16 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
   
   return (
     <div className="w-full h-full bg-gradient-to-b from-space-dark via-blue-900/20 to-space-dark relative overflow-hidden">
-      <Canvas 
+      <Canvas
         camera={{ position: [earthPosition[0] + 50, earthPosition[1] + 40, earthPosition[2] + 80], fov: 60 }}
         dpr={[1, 2]}
         performance={{ min: 0.5 }}
-        gl={{ 
-          antialias: true, 
+        gl={{
+          antialias: true,
           alpha: false,
-          powerPreference: 'high-performance'
+          powerPreference: 'high-performance',
+          toneMapping: THREE.ACESFilmicToneMapping,
+          toneMappingExposure: 1.0,
         }}
         raycaster={{ 
           params: { 
@@ -1793,6 +2019,25 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
               hideLabels={showDetailedView}
             />
           </group>
+
+          {/* Dark space environment for subtle reflections on PBR surfaces */}
+          <Environment preset="night" background={false} environmentIntensity={0.15} />
+
+          {/* Post-processing pipeline */}
+          <EffectComposer>
+            <Bloom
+              luminanceThreshold={0.9}
+              luminanceSmoothing={0.4}
+              intensity={1.2}
+              mipmapBlur
+            />
+            <DepthOfField
+              focusDistance={0}
+              focalLength={0.015}
+              bokehScale={2}
+            />
+            <Vignette darkness={0.35} offset={0.3} />
+          </EffectComposer>
         </Suspense>
       </Canvas>
       

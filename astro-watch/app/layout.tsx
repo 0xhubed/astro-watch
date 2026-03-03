@@ -25,10 +25,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <title>AstroWatch - Asteroid Impact Visualization</title>
-        <meta name="description" content="Real-time asteroid tracking and impact visualization" />
+        <title>AstroWatch - Near-Earth Asteroid Tracker</title>
+        <meta name="description" content="Browse and visualize near-Earth asteroids using NASA data" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
-        <meta name="theme-color" content="#1e3a8a" />
+        <meta name="theme-color" content="#0a0a0f" />
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/apple-icon.png" />
       </head>
@@ -39,7 +39,7 @@ export default function RootLayout({
               {children}
             </main>
             <footer className="text-center py-4 text-sm text-gray-500">
-              © 2025 Daniel Huber
+              © 2026 Daniel Huber
             </footer>
           </div>
         </QueryClientProvider>

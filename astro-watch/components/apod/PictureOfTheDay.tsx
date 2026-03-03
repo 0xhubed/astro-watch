@@ -124,6 +124,19 @@ export default function PictureOfTheDay() {
                 alt={apod.title}
                 className="w-full h-auto rounded-lg shadow-2xl"
               />
+            ) : apod.url.endsWith('.mp4') || apod.url.endsWith('.webm') ? (
+              <div className="relative aspect-video">
+                <video
+                  src={apod.url}
+                  controls
+                  autoPlay
+                  muted
+                  loop
+                  className="w-full h-full rounded-lg object-contain bg-black"
+                >
+                  Your browser does not support the video tag.
+                </video>
+              </div>
             ) : (
               <div className="relative aspect-video">
                 <iframe

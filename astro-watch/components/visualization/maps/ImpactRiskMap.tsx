@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { EnhancedAsteroid } from '@/lib/nasa-api';
-import { RiskLegend, getTorinoInfo, getTorinoColor } from '@/components/ui/RiskLegend';
+import { RiskLegend, getRarityInfo, getRarityColor } from '@/components/ui/RiskLegend';
 import dynamic from 'next/dynamic';
 
 // Dynamic import to prevent SSR issues
@@ -38,11 +38,11 @@ export function ImpactRiskMap({ asteroids }: Props) {
       const lat = ((hash * 123 + index * 456) % 180) - 90; // -90 to 90
       const lng = ((hash * 789 + index * 321) % 360) - 180; // -180 to 180
       
-      // Size based on actual asteroid size and Torino Scale
-      const size = Math.max(0.5, Math.min(3, asteroid.size / 200 + asteroid.torinoScale * 0.3));
-      
-      // Color based on Torino Scale
-      const color = getTorinoColor(asteroid.torinoScale);
+      // Size based on actual asteroid size and rarity
+      const size = Math.max(0.5, Math.min(3, asteroid.size / 200 + asteroid.rarity * 0.3));
+
+      // Color based on rarity
+      const color = getRarityColor(asteroid.rarity);
       
       return {
         lat,
@@ -68,13 +68,13 @@ export function ImpactRiskMap({ asteroids }: Props) {
       
       if (heatMap.has(key)) {
         const existing = heatMap.get(key)!;
-        existing.weight += point.asteroid.torinoScale;
+        existing.weight += point.asteroid.rarity;
         existing.count += 1;
       } else {
         heatMap.set(key, {
           lat: gridLat + gridSize / 2,
           lng: gridLng + gridSize / 2,
-          weight: point.asteroid.torinoScale,
+          weight: point.asteroid.rarity,
           count: 1
         });
       }
@@ -136,8 +136,8 @@ export function ImpactRiskMap({ asteroids }: Props) {
             <div class="bg-black/90 text-white px-3 py-2 rounded-lg text-sm border border-white/20">
               <div class="font-bold text-yellow-300">${point.asteroid.name}</div>
               <div class="text-gray-300 mt-1">
-                <div>Torino Scale: ${point.asteroid.torinoScale}</div>
-                <div>Risk Level: ${getTorinoInfo(point.asteroid.torinoScale).level}</div>
+                <div>Rarity: R${point.asteroid.rarity}</div>
+                <div>Level: ${getRarityInfo(point.asteroid.rarity).level}</div>
                 <div>Size: ${point.asteroid.size.toFixed(1)} m</div>
                 <div>Speed: ${point.asteroid.velocity.toFixed(1)} km/s</div>
                 <div>Distance: ${point.asteroid.missDistance.toFixed(3)} AU</div>
@@ -194,30 +194,30 @@ export function ImpactRiskMap({ asteroids }: Props) {
         </h3>
         
         <div className="space-y-3 text-sm text-white/90">
-          {/* Torino Scale Summary */}
+          {/* Rarity Distribution */}
           <div>
-            <div className="text-white/70 font-semibold mb-2">Torino Scale Distribution</div>
+            <div className="text-white/70 font-semibold mb-2">Rarity Distribution</div>
             <div className="grid grid-cols-3 gap-2 text-center">
               <div>
                 <div className="text-red-400 text-lg font-bold">
-                  {asteroids.filter(a => a.torinoScale >= 5).length}
+                  {asteroids.filter(a => a.rarity >= 4).length}
                 </div>
-                <div className="text-xs text-white/60">Threatening</div>
-                <div className="text-xs text-white/40">(5-10)</div>
+                <div className="text-xs text-white/60">Rare</div>
+                <div className="text-xs text-white/40">(R4+)</div>
               </div>
               <div className="border-x border-white/20">
                 <div className="text-yellow-400 text-lg font-bold">
-                  {asteroids.filter(a => a.torinoScale >= 2 && a.torinoScale < 5).length}
+                  {asteroids.filter(a => a.rarity >= 2 && a.rarity < 4).length}
                 </div>
-                <div className="text-xs text-white/60">Attention</div>
-                <div className="text-xs text-white/40">(2-4)</div>
+                <div className="text-xs text-white/60">Noteworthy</div>
+                <div className="text-xs text-white/40">(R2-3)</div>
               </div>
               <div>
-                <div className="text-green-400 text-lg font-bold">
-                  {asteroids.filter(a => a.torinoScale < 2).length}
+                <div className="text-blue-400 text-lg font-bold">
+                  {asteroids.filter(a => a.rarity < 2).length}
                 </div>
-                <div className="text-xs text-white/60">Normal</div>
-                <div className="text-xs text-white/40">(0-1)</div>
+                <div className="text-xs text-white/60">Routine</div>
+                <div className="text-xs text-white/40">(R0-1)</div>
               </div>
             </div>
           </div>
@@ -228,15 +228,15 @@ export function ImpactRiskMap({ asteroids }: Props) {
             <div className="space-y-1 text-xs">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                <span>Threatening (Torino 5+)</span>
+                <span>Rare (R4+)</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-                <span>Attention (Torino 2-4)</span>
+                <span>Noteworthy (R2-3)</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                <span>Normal (Torino 0-1)</span>
+                <div className="w-3 h-3 rounded-full bg-blue-400"></div>
+                <span>Routine (R0-1)</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-1 bg-gradient-to-r from-blue-500 to-transparent"></div>
@@ -263,13 +263,13 @@ export function ImpactRiskMap({ asteroids }: Props) {
             <span className="font-mono">{asteroids.length}</span>
           </div>
           <div className="flex justify-between">
-            <span>Threatening Objects:</span>
-            <span className="font-mono text-red-400">{asteroids.filter(a => a.torinoScale >= 5).length}</span>
+            <span>Rare Objects (R4+):</span>
+            <span className="font-mono text-red-400">{asteroids.filter(a => a.rarity >= 4).length}</span>
           </div>
           <div className="flex justify-between">
-            <span>Average Torino:</span>
+            <span>Average Rarity:</span>
             <span className="font-mono">
-              {asteroids.length > 0 ? (asteroids.reduce((sum, a) => sum + a.torinoScale, 0) / asteroids.length).toFixed(1) : 0}
+              {asteroids.length > 0 ? (asteroids.reduce((sum, a) => sum + a.rarity, 0) / asteroids.length).toFixed(1) : 0}
             </span>
           </div>
           <div className="flex justify-between">

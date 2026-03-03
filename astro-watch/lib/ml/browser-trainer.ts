@@ -127,15 +127,16 @@ export async function trainModelInBrowser(): Promise<{
  * Save model to browser IndexedDB for persistence
  */
 export async function saveModelToBrowser(model: tf.LayersModel, metadata: any): Promise<void> {
+  if (typeof window === 'undefined') return;
   try {
     console.log('💾 Saving model to browser storage...');
-    
+
     // Save model to IndexedDB
     await model.save('indexeddb://asteroid-risk-model');
-    
+
     // Save metadata to localStorage
-    localStorage.setItem('asteroid-model-metadata', JSON.stringify(metadata));
-    
+    window.localStorage.setItem('asteroid-model-metadata', JSON.stringify(metadata));
+
     console.log('✅ Model saved to browser storage');
   } catch (error) {
     console.error('❌ Failed to save model:', error);
@@ -147,19 +148,20 @@ export async function saveModelToBrowser(model: tf.LayersModel, metadata: any): 
  * Load model from browser IndexedDB
  */
 export async function loadModelFromBrowser(): Promise<{ model: tf.LayersModel; metadata: any } | null> {
+  if (typeof window === 'undefined') return null;
   try {
     console.log('📂 Loading model from browser storage...');
-    
+
     // Load model from IndexedDB
     const model = await tf.loadLayersModel('indexeddb://asteroid-risk-model');
-    
+
     // Load metadata from localStorage
-    const metadataStr = localStorage.getItem('asteroid-model-metadata');
+    const metadataStr = window.localStorage.getItem('asteroid-model-metadata');
     const metadata = metadataStr ? JSON.parse(metadataStr) : null;
-    
+
     console.log('✅ Model loaded from browser storage');
     return { model, metadata };
-    
+
   } catch (error) {
     console.warn('⚠️ No model found in browser storage:', error);
     return null;

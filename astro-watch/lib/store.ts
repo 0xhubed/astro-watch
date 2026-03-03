@@ -38,12 +38,12 @@ export const useAsteroidStore = create<AsteroidStore>((set, get) => ({
     const { asteroids, riskFilter } = get();
     
     if (riskFilter === 'all') return asteroids;
-    
+
     return asteroids.filter(asteroid => {
       switch (riskFilter) {
-        case 'threatening': return asteroid.torinoScale >= 5;
-        case 'attention': return asteroid.torinoScale >= 2 && asteroid.torinoScale < 5;
-        case 'normal': return asteroid.torinoScale < 2;
+        case 'threatening': return asteroid.rarity >= 4;
+        case 'attention': return asteroid.rarity >= 2 && asteroid.rarity < 4;
+        case 'normal': return asteroid.rarity < 2;
         default: return true;
       }
     });

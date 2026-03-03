@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getAPOD, APOD } from '@/lib/nasa-api';
+import { APOD } from '@/lib/nasa-api';
 import { Calendar, Download, Info, ChevronLeft, ChevronRight, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
@@ -21,7 +21,9 @@ export default function PictureOfTheDay() {
     setLoading(true);
     setError(null);
     try {
-      const data = await getAPOD(date);
+      const response = await fetch(`/api/apod?date=${date}`);
+      if (!response.ok) throw new Error(`API error: ${response.status}`);
+      const data = await response.json();
       setApod(data);
     } catch (err) {
       setError('Failed to load Picture of the Day');

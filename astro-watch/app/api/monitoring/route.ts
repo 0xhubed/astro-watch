@@ -24,7 +24,7 @@ export async function GET(request: Request) {
     const start = startDate.toISOString().split('T')[0];
     const end = endDate.toISOString().split('T')[0];
 
-    const torinoMin = getEnvNum('ALERT_TORINO_MIN', 6);
+    const rarityMin = getEnvNum('ALERT_RARITY_MIN', getEnvNum('ALERT_TORINO_MIN', 4));
     const riskMin = getEnvNum('ALERT_RISK_MIN', 0.75);
     const onlyPHA = getEnvBool('ALERT_ONLY_PHA', true);
 
@@ -39,7 +39,7 @@ export async function GET(request: Request) {
     const asteroids = await fetchNEOFeed(start, end);
 
     // Filter critical
-    const critical = asteroids.filter(isCritical(torinoMin, riskMin, onlyPHA));
+    const critical = asteroids.filter(isCritical(rarityMin, riskMin, onlyPHA));
 
     let sent = false;
     let emailId: string | undefined;
@@ -57,9 +57,9 @@ export async function GET(request: Request) {
     return NextResponse.json({
       range: { start, end },
       counts: { total: asteroids.length, critical: critical.length },
-      thresholds: { torinoMin, riskMin, onlyPHA },
+      thresholds: { rarityMin, riskMin, onlyPHA },
       email: { enabled: sendingEnabled, sent, id: emailId, to, dryRun, alertsEnabled },
-      sample: critical.slice(0, 5).map(a => ({ id: a.id, name: a.name, torinoScale: a.torinoScale, risk: a.risk })),
+      sample: critical.slice(0, 5).map(a => ({ id: a.id, name: a.name, rarity: a.rarity, risk: a.risk })),
     });
   } catch (error) {
     console.error('Monitoring error:', error);
@@ -67,11 +67,11 @@ export async function GET(request: Request) {
   }
 }
 
-function isCritical(torinoMin: number, riskMin: number, onlyPHA: boolean) {
+function isCritical(rarityMin: number, riskMin: number, onlyPHA: boolean) {
   return (a: EnhancedAsteroid) => {
-    const torinoMatch = a.torinoScale >= torinoMin;
+    const rarityMatch = a.rarity >= rarityMin;
     const riskMatch = a.risk >= riskMin && (!onlyPHA || a.is_potentially_hazardous_asteroid);
-    return torinoMatch || riskMatch;
+    return rarityMatch || riskMatch;
   };
 }
 
@@ -79,7 +79,7 @@ function toSummary(a: EnhancedAsteroid) {
   return {
     id: a.id,
     name: a.name,
-    torinoScale: a.torinoScale,
+    rarity: a.rarity,
     risk: a.risk,
     isPHA: a.is_potentially_hazardous_asteroid,
     size: a.estimated_diameter.meters.estimated_diameter_max,

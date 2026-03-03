@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 
-interface TorinoLevel {
+interface RarityLevel {
   scale: number;
   level: string;
   color: string;
@@ -11,83 +11,62 @@ interface TorinoLevel {
   bgColor: string;
 }
 
-const TORINO_SCALE: TorinoLevel[] = [
+const RARITY_SCALE: RarityLevel[] = [
   {
     scale: 0,
-    level: 'No Hazard',
-    color: 'text-gray-300',
-    bgColor: 'bg-gray-500/20',
-    description: 'Zero likelihood of collision. No hazard.'
+    level: 'Routine',
+    color: 'text-blue-300',
+    bgColor: 'bg-blue-500/20',
+    description: 'Close approaches of this size happen multiple times per year.'
   },
   {
     scale: 1,
-    level: 'Normal',
+    level: 'Common',
     color: 'text-green-300',
     bgColor: 'bg-green-500/20',
-    description: 'Routine discovery. Will pass near Earth with no unusual level of danger.'
+    description: 'Expected roughly once per year. Typical small-body flyby.'
   },
   {
     scale: 2,
-    level: 'Meriting Attention',
-    color: 'text-yellow-300',
-    bgColor: 'bg-yellow-500/20',
-    description: 'Somewhat close but not unusual pass. Merits attention by astronomers.'
+    level: 'Noteworthy',
+    color: 'text-green-400',
+    bgColor: 'bg-green-500/30',
+    description: 'Expected roughly once per decade. Merits public interest.'
   },
   {
     scale: 3,
-    level: 'Meriting Attention',
-    color: 'text-yellow-400',
-    bgColor: 'bg-yellow-500/30',
-    description: 'Close encounter. 1% or greater chance of collision capable of localized destruction.'
+    level: 'Uncommon',
+    color: 'text-yellow-300',
+    bgColor: 'bg-yellow-500/20',
+    description: 'Expected roughly once per century. Unusual close approach.'
   },
   {
     scale: 4,
-    level: 'Meriting Attention',
+    level: 'Rare',
     color: 'text-orange-300',
     bgColor: 'bg-orange-500/20',
-    description: 'Close encounter. 1% or greater chance of collision capable of regional devastation.'
+    description: 'Expected roughly once per millennium. Very rare event.'
   },
   {
     scale: 5,
-    level: 'Threatening',
+    level: 'Very Rare',
     color: 'text-orange-400',
     bgColor: 'bg-orange-500/30',
-    description: 'Extremely close encounter with significant threat of collision causing regional devastation.'
+    description: 'Expected roughly once per 10,000 years. Extremely uncommon.'
   },
   {
     scale: 6,
-    level: 'Threatening',
-    color: 'text-red-300',
+    level: 'Exceptionally Rare',
+    color: 'text-red-400',
     bgColor: 'bg-red-500/20',
-    description: 'Large object with significant threat of collision causing global catastrophe.'
+    description: 'Expected roughly once per 100,000 years. Historic-scale event.'
   },
   {
     scale: 7,
-    level: 'Threatening',
-    color: 'text-red-400',
-    bgColor: 'bg-red-500/30',
-    description: 'Very close encounter with extremely significant threat of collision causing global catastrophe.'
-  },
-  {
-    scale: 8,
-    level: 'Certain Collision',
+    level: 'Extraordinary',
     color: 'text-red-500',
-    bgColor: 'bg-red-600/40',
-    description: 'Collision certain, capable of causing localized destruction.'
-  },
-  {
-    scale: 9,
-    level: 'Certain Collision',
-    color: 'text-red-600',
-    bgColor: 'bg-red-700/50',
-    description: 'Collision certain, capable of causing regional devastation.'
-  },
-  {
-    scale: 10,
-    level: 'Certain Collision',
-    color: 'text-red-700',
-    bgColor: 'bg-red-800/60',
-    description: 'Collision certain, capable of causing global climatic catastrophe.'
+    bgColor: 'bg-red-500/30',
+    description: 'Expected less than once per million years. Unprecedented.'
   }
 ];
 
@@ -99,18 +78,18 @@ interface Props {
 
 export function RiskLegend({ expanded = false, position = 'left', onToggle }: Props) {
   const [isExpanded, setIsExpanded] = useState(expanded);
-  
+
   const handleToggle = () => {
     setIsExpanded(!isExpanded);
     onToggle?.();
   };
-  
+
   const positionClasses = {
     left: 'left-4',
     right: 'right-4',
     center: 'left-1/2 -translate-x-1/2'
   };
-  
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -124,7 +103,7 @@ export function RiskLegend({ expanded = false, position = 'left', onToggle }: Pr
         >
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-blue-400 animate-pulse"></div>
-            <h3 className="text-white text-sm font-semibold">Torino Impact Hazard Scale</h3>
+            <h3 className="text-white text-sm font-semibold">Close-Approach Rarity Scale</h3>
           </div>
           <svg
             className={`w-4 h-4 text-white/60 transform transition-transform ${isExpanded ? 'rotate-180' : ''}`}
@@ -135,7 +114,7 @@ export function RiskLegend({ expanded = false, position = 'left', onToggle }: Pr
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
           </svg>
         </button>
-        
+
         <motion.div
           initial={false}
           animate={{ height: isExpanded ? 'auto' : 0 }}
@@ -144,11 +123,12 @@ export function RiskLegend({ expanded = false, position = 'left', onToggle }: Pr
         >
           <div className="px-4 pb-4 space-y-2">
             <p className="text-white/60 text-xs mb-3">
-              NASA's standard scale for communicating asteroid impact risk (0-10)
+              Based on Farnocchia & Chodas (2021). Measures how many years between
+              close approaches of this size at this distance (log scale, 0-7).
             </p>
-            
+
             <div className="space-y-1 max-h-64 overflow-y-auto custom-scrollbar">
-              {TORINO_SCALE.map((item) => (
+              {RARITY_SCALE.map((item) => (
                 <div
                   key={item.scale}
                   className={`${item.bgColor} rounded-lg px-3 py-2 border border-white/5`}
@@ -169,18 +149,19 @@ export function RiskLegend({ expanded = false, position = 'left', onToggle }: Pr
                 </div>
               ))}
             </div>
-            
+
             <div className="mt-3 pt-3 border-t border-white/10">
               <p className="text-white/40 text-xs">
-                <strong>Note:</strong> This app uses simplified calculations. 
-                Actual impact probabilities require complex orbital mechanics calculations.
-                No known asteroid currently poses a significant threat to Earth.
+                <strong>Note:</strong> Rarity reflects how statistically uncommon
+                the close approach is, not impact probability. Higher values mean
+                the event is rarer. No known asteroid currently poses a significant
+                threat to Earth.
               </p>
             </div>
           </div>
         </motion.div>
       </div>
-      
+
       <style jsx>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 4px;
@@ -201,40 +182,36 @@ export function RiskLegend({ expanded = false, position = 'left', onToggle }: Pr
   );
 }
 
-// Helper function to get Torino Scale info
-export function getTorinoInfo(torinoScale: number): TorinoLevel {
-  return TORINO_SCALE[Math.min(Math.max(0, Math.round(torinoScale)), 10)];
+// Helper function to get rarity info
+export function getRarityInfo(rarity: number): RarityLevel {
+  return RARITY_SCALE[Math.min(Math.max(0, Math.round(rarity)), 7)];
 }
 
-// Helper function to get risk color based on Torino Scale
-export function getTorinoColor(torinoScale: number): string {
-  const info = getTorinoInfo(torinoScale);
+// Helper function to get risk color based on rarity
+export function getRarityColor(rarity: number): string {
+  const info = getRarityInfo(rarity);
   const colorMap: Record<string, string> = {
-    'text-gray-300': '#f3f4f6',     // Much brighter gray
-    'text-green-300': '#6ee7b7',    // Brighter green
-    'text-yellow-300': '#fef08a',   // Brighter yellow
-    'text-yellow-400': '#fbbf24',   // Brighter yellow
-    'text-orange-300': '#fed7aa',   // Brighter orange
-    'text-orange-400': '#fb923c',   // Keep as is
-    'text-red-300': '#fca5a5',      // Keep as is
-    'text-red-400': '#f87171',      // Keep as is
-    'text-red-500': '#ef4444',      // Keep as is
-    'text-red-600': '#dc2626',      // Keep as is
-    'text-red-700': '#b91c1c'       // Keep as is
+    'text-blue-300': '#93c5fd',
+    'text-green-300': '#6ee7b7',
+    'text-green-400': '#4ade80',
+    'text-yellow-300': '#fef08a',
+    'text-orange-300': '#fed7aa',
+    'text-orange-400': '#fb923c',
+    'text-red-400': '#f87171',
+    'text-red-500': '#ef4444'
   };
   return colorMap[info.color] || '#ffffff';
 }
 
 // Helper function to get brighter colors specifically for 3D rendering
-export function getTorino3DColor(torinoScale: number): string {
-  // Much brighter, saturated colors for maximum visibility
-  if (torinoScale === 0) return '#ffffff';        // Pure white for no hazard
-  if (torinoScale === 1) return '#00ff00';        // Pure green for normal
-  if (torinoScale === 2) return '#ffff00';        // Pure yellow for attention
-  if (torinoScale === 3) return '#ff8000';        // Bright orange for attention
-  if (torinoScale === 4) return '#ff4000';        // Orange-red for attention
-  if (torinoScale === 5) return '#ff0000';        // Pure red for threatening
-  if (torinoScale === 6) return '#ff0080';        // Pink-red for threatening
-  if (torinoScale >= 7) return '#ff00ff';         // Pure magenta for high threatening
-  return '#ffffff';
+export function getRarity3DColor(rarity: number): string {
+  if (rarity === 0) return '#4488ff';  // Blue for routine
+  if (rarity === 1) return '#00ff00';  // Green for common
+  if (rarity === 2) return '#44ff44';  // Bright green for noteworthy
+  if (rarity === 3) return '#ffff00';  // Yellow for uncommon
+  if (rarity === 4) return '#ff8800';  // Orange for rare
+  if (rarity === 5) return '#ff4400';  // Orange-red for very rare
+  if (rarity === 6) return '#ff0000';  // Red for exceptionally rare
+  if (rarity >= 7) return '#ff00ff';   // Magenta for extraordinary
+  return '#4488ff';
 }

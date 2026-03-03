@@ -1,14 +1,13 @@
 'use client';
 
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Html, Environment } from '@react-three/drei';
+import { OrbitControls, Html } from '@react-three/drei';
 import { Suspense, useRef, useState, useMemo, useEffect } from 'react';
-import { EffectComposer, Bloom, Vignette, DepthOfField } from '@react-three/postprocessing';
 import { motion } from 'framer-motion';
 import * as THREE from 'three';
 import { EnhancedAsteroid } from '@/lib/nasa-api';
 import { useAsteroidStore } from '@/lib/store';
-import { RiskLegend, getTorinoInfo, getTorinoColor, getTorino3DColor } from '@/components/ui/RiskLegend';
+import { RiskLegend, getRarityInfo, getRarityColor, getRarity3DColor } from '@/components/ui/RiskLegend';
 import { DetailedAsteroidView } from './DetailedAsteroidView';
 
 interface Props {
@@ -156,6 +155,31 @@ const FRESNEL_FRAGMENT_SHADER = `
 const SUN_EMISSIVE_COLOR = new THREE.Color(1.0, 0.6, 0.1);
 const EARTH_NORMAL_SCALE = new THREE.Vector2(0.2, 0.2);
 
+// Shared glow sprite texture for asteroid auras
+let _glowTexture: THREE.CanvasTexture | null = null;
+
+function getGlowTexture(): THREE.CanvasTexture {
+  if (_glowTexture) return _glowTexture;
+
+  const size = 128;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+
+  const half = size / 2;
+  const grad = ctx.createRadialGradient(half, half, 0, half, half, half);
+  grad.addColorStop(0, 'rgba(255,255,255,0.6)');
+  grad.addColorStop(0.25, 'rgba(255,255,255,0.3)');
+  grad.addColorStop(0.5, 'rgba(255,255,255,0.1)');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, size, size);
+
+  _glowTexture = new THREE.CanvasTexture(canvas);
+  return _glowTexture;
+}
+
 // Create procedural planet textures
 function createPlanetTexture(textureType: string, baseColor: string): THREE.Texture {
   const canvas = document.createElement('canvas');
@@ -247,157 +271,151 @@ function createPlanetTexture(textureType: string, baseColor: string): THREE.Text
 
 function createMoonTexture(): THREE.Texture {
   const canvas = document.createElement('canvas');
-  canvas.width = 256;
-  canvas.height = 128;
+  canvas.width = 1024;
+  canvas.height = 512;
   const ctx = canvas.getContext('2d')!;
-  
-  // Base gray surface
-  ctx.fillStyle = '#c0c0c0';
-  ctx.fillRect(0, 0, 256, 128);
-  
-  // Add many craters
-  for (let i = 0; i < 80; i++) {
-    const x = Math.random() * 256;
-    const y = Math.random() * 128;
-    const radius = Math.random() * 8 + 2;
-    
+
+  // Base lunar surface - varied grey tones
+  const baseGradient = ctx.createLinearGradient(0, 0, 1024, 512);
+  baseGradient.addColorStop(0, '#b8b8b0');
+  baseGradient.addColorStop(0.3, '#a0a098');
+  baseGradient.addColorStop(0.6, '#b0b0a8');
+  baseGradient.addColorStop(1, '#a8a8a0');
+  ctx.fillStyle = baseGradient;
+  ctx.fillRect(0, 0, 1024, 512);
+
+  // Add surface noise/regolith texture
+  for (let i = 0; i < 3000; i++) {
+    const x = Math.random() * 1024;
+    const y = Math.random() * 512;
+    const size = 1 + Math.random() * 3;
+    const brightness = 140 + Math.floor(Math.random() * 60);
+    ctx.fillStyle = `rgb(${brightness},${brightness},${brightness - 5})`;
+    ctx.fillRect(x, y, size, size);
+  }
+
+  // Dark maria (lunar seas) - large dark basaltic plains
+  const maria = [
+    { x: 350, y: 180, rx: 120, ry: 80, color: '#6b6b65' },   // Mare Imbrium
+    { x: 500, y: 200, rx: 80, ry: 60, color: '#707068' },     // Mare Serenitatis
+    { x: 580, y: 260, rx: 70, ry: 55, color: '#686862' },     // Mare Tranquillitatis
+    { x: 450, y: 280, rx: 50, ry: 40, color: '#6e6e66' },     // Mare Nubium
+    { x: 280, y: 240, rx: 60, ry: 45, color: '#6a6a64' },     // Oceanus Procellarum
+    { x: 220, y: 200, rx: 90, ry: 70, color: '#656560' },     // Oceanus Procellarum extended
+    { x: 620, y: 220, rx: 45, ry: 35, color: '#6c6c66' },     // Mare Crisium
+    { x: 480, y: 320, rx: 40, ry: 30, color: '#6d6d67' },     // Mare Fecunditatis
+  ];
+
+  for (const m of maria) {
+    ctx.save();
+    ctx.globalAlpha = 0.7;
+    const grad = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, Math.max(m.rx, m.ry));
+    grad.addColorStop(0, m.color);
+    grad.addColorStop(0.7, m.color);
+    grad.addColorStop(1, 'transparent');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.ellipse(m.x, m.y, m.rx, m.ry, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Craters - various sizes
+  for (let i = 0; i < 200; i++) {
+    const x = Math.random() * 1024;
+    const y = Math.random() * 512;
+    const radius = 1 + Math.random() * 12;
+
+    // Crater shadow (dark interior)
     ctx.beginPath();
     ctx.arc(x, y, radius, 0, Math.PI * 2);
-    ctx.fillStyle = `rgba(0,0,0,${0.3 + Math.random() * 0.4})`;
+    ctx.fillStyle = `rgba(60,60,55,${0.2 + Math.random() * 0.3})`;
     ctx.fill();
-    
-    // Crater rim
-    ctx.beginPath();
-    ctx.arc(x, y, radius + 1, 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(200,200,200,${0.5})`;
-    ctx.lineWidth = 1;
-    ctx.stroke();
+
+    // Crater rim highlight
+    if (radius > 3) {
+      ctx.beginPath();
+      ctx.arc(x - radius * 0.2, y - radius * 0.2, radius + 1, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(200,200,195,${0.3 + Math.random() * 0.2})`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
   }
-  
-  // Add dark maria (seas)
-  for (let i = 0; i < 5; i++) {
-    const x = Math.random() * 256;
-    const y = Math.random() * 128;
-    const width = 30 + Math.random() * 50;
-    const height = 20 + Math.random() * 30;
-    
+
+  // Highland brightness variations
+  ctx.globalAlpha = 0.15;
+  for (let i = 0; i < 20; i++) {
+    const x = Math.random() * 1024;
+    const y = Math.random() * 512;
+    const r = 30 + Math.random() * 60;
+    const grad = ctx.createRadialGradient(x, y, 0, x, y, r);
+    grad.addColorStop(0, '#d0d0c8');
+    grad.addColorStop(1, 'transparent');
+    ctx.fillStyle = grad;
     ctx.beginPath();
-    ctx.ellipse(x, y, width, height, 0, 0, Math.PI * 2);
-    ctx.fillStyle = '#808080';
+    ctx.arc(x, y, r, 0, Math.PI * 2);
     ctx.fill();
   }
-  
+  ctx.globalAlpha = 1.0;
+
   return new THREE.CanvasTexture(canvas);
 }
 
-function Planet({ planetData, time, hideLabels }: { planetData: any; time: number; hideLabels?: boolean }) {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const groupRef = useRef<THREE.Group>(null);
-  
-  // Calculate position around Sun (at center 0,0,0)
-  // Add initial phase to spread planets around their orbits
-  const initialAngle = (planetData.initialPhase || 0) * Math.PI * 2;
-  const angle = initialAngle + time * planetData.speed;
-  const x = Math.cos(angle) * planetData.distanceFromSun;
-  const z = Math.sin(angle) * planetData.distanceFromSun;
-  const y = Math.sin(angle * 0.3) * planetData.inclination * 10;
-  
-  // Create texture for this planet
-  const planetTexture = useMemo(() => 
-    createPlanetTexture(planetData.textureType, planetData.baseColor), 
-    [planetData.textureType, planetData.baseColor]
-  );
-  
-  useFrame((state, delta) => {
-    if (meshRef.current) {
-      meshRef.current.rotation.y += delta * 0.3;
-    }
-  });
-  
-  return (
-    <group ref={groupRef} position={[x, y, z]}>
-      <mesh ref={meshRef} castShadow receiveShadow>
-        <sphereGeometry args={[planetData.size, 64, 32]} />
-        <meshStandardMaterial 
-          map={planetTexture}
-          roughness={planetData.textureType === 'iceGiant' ? 0.1 : 0.8}
-          metalness={planetData.textureType === 'iceGiant' ? 0.3 : 0.1}
-        />
-      </mesh>
-      
-      {/* Enhanced Saturn's rings */}
-      {planetData.hasRings && (
-        <>
-          <mesh rotation={[Math.PI / 2.2, 0, 0]}>
-            <ringGeometry args={[planetData.size * 1.2, planetData.size * 2.0, 64]} />
-            <meshStandardMaterial 
-              color="#fad5a5"
-              transparent={true}
-              opacity={0.7}
-              roughness={0.9}
-            />
-          </mesh>
-          <mesh rotation={[Math.PI / 2.2, 0, 0]}>
-            <ringGeometry args={[planetData.size * 2.1, planetData.size * 2.8, 64]} />
-            <meshStandardMaterial 
-              color="#e8c547"
-              transparent={true}
-              opacity={0.5}
-              roughness={0.9}
-            />
-          </mesh>
-        </>
-      )}
-      
-      {/* Planet label */}
-      {!hideLabels && (
-        <Html position={[0, planetData.size + 3, 0]} center style={{ zIndex: 10 }}>
-          <div className="bg-black/90 text-white px-3 py-1 rounded-lg text-sm font-medium pointer-events-none border border-white/20">
-            {planetData.name}
-          </div>
-        </Html>
-      )}
-    </group>
-  );
-}
 
 function Moon({ earthPosition, hideLabels }: { earthPosition: [number, number, number]; hideLabels?: boolean }) {
   const meshRef = useRef<THREE.Mesh>(null);
   const groupRef = useRef<THREE.Group>(null);
-  
-  // Create realistic moon texture
-  const moonTexture = useMemo(() => createMoonTexture(), []);
-  
+
+  // Load NASA LROC moon texture with procedural fallback
+  const [moonTexture, setMoonTexture] = useState<THREE.Texture>(() => createMoonTexture());
+
+  useEffect(() => {
+    let isMounted = true;
+    const loader = new THREE.TextureLoader();
+    loader.load(
+      '/textures/moon.jpg',
+      (texture) => {
+        if (isMounted) {
+          texture.generateMipmaps = true;
+          texture.minFilter = THREE.LinearMipmapLinearFilter;
+          texture.magFilter = THREE.LinearFilter;
+          setMoonTexture(texture);
+        }
+      },
+      undefined,
+      () => { /* keep procedural fallback */ }
+    );
+    return () => { isMounted = false; };
+  }, []);
+
   useFrame((state) => {
     if (meshRef.current && groupRef.current) {
       const time = state.clock.elapsedTime;
-      // Realistic Moon distance: ~384,400 km = ~60 Earth radii
-      // Earth radius in our scale = 3.0, so Moon distance = 60 * 3.0 = 180 units
-      // Scaled down for visibility and to avoid crossing Venus orbit (46 units)
-      const moonDistance = 12; // Reduced to stay within Earth's vicinity
-      const moonAngle = time * 0.5; // Moon orbit speed (27.3 days in real life)
-      
-      // Position relative to Earth
+      const moonDistance = 12;
+      const moonAngle = time * 0.5;
+
       const x = earthPosition[0] + Math.cos(moonAngle) * moonDistance;
       const z = earthPosition[2] + Math.sin(moonAngle) * moonDistance;
       const y = earthPosition[1] + Math.sin(moonAngle * 0.1) * 1;
-      
+
       groupRef.current.position.set(x, y, z);
-      meshRef.current.rotation.y += 0.01;
+      // Tidally locked - slow sync rotation
+      meshRef.current.rotation.y = moonAngle + Math.PI;
     }
   });
-  
+
   return (
     <group ref={groupRef}>
       <mesh ref={meshRef} castShadow receiveShadow>
-        <sphereGeometry args={[0.7, 32, 16]} />
-        <meshStandardMaterial 
+        <sphereGeometry args={[0.7, 64, 32]} />
+        <meshStandardMaterial
           map={moonTexture}
-          roughness={0.95}
+          roughness={0.9}
           metalness={0.0}
+          envMapIntensity={0.1}
         />
       </mesh>
-      
+
       {/* Moon label */}
       {!hideLabels && (
         <Html position={[0, 2.5, 0]} center style={{ zIndex: 10 }}>
@@ -732,27 +750,53 @@ function Earth() {
     return new THREE.CanvasTexture(specCanvas);
   }
   
-  // Memoized atmosphere uniforms to avoid per-render allocations
+  // Load cloud texture
+  const [cloudTexture, setCloudTexture] = useState<THREE.Texture | null>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+    const loader = new THREE.TextureLoader();
+    loader.load(
+      '/textures/earth_clouds.jpg',
+      (texture) => {
+        if (isMounted) {
+          texture.wrapS = THREE.RepeatWrapping;
+          texture.wrapT = THREE.ClampToEdgeWrapping;
+          texture.generateMipmaps = true;
+          texture.minFilter = THREE.LinearMipmapLinearFilter;
+          setCloudTexture(texture);
+        }
+      },
+      undefined,
+      () => { /* no clouds - fine */ }
+    );
+    return () => { isMounted = false; };
+  }, []);
+
+  const cloudRef = useRef<THREE.Mesh>(null);
+
+  // Memoized atmosphere uniforms — thinned out so the surface is visible
   const earthOuterAtmosphereUniforms = useMemo(() => ({
     color: { value: new THREE.Color(0.3, 0.6, 1.0) },
-    power: { value: 3.5 },
-    intensity: { value: 0.8 },
-    alphaScale: { value: 0.9 },
+    power: { value: 4.0 },
+    intensity: { value: 0.6 },
+    alphaScale: { value: 0.5 },
   }), []);
 
   const earthInnerAtmosphereUniforms = useMemo(() => ({
     color: { value: new THREE.Color(0.4, 0.7, 1.0) },
-    power: { value: 5.0 },
-    intensity: { value: 0.3 },
-    alphaScale: { value: 0.5 },
+    power: { value: 6.0 },
+    intensity: { value: 0.15 },
+    alphaScale: { value: 0.25 },
   }), []);
 
-  useFrame((state, delta) => {
+  useFrame((state) => {
     if (meshRef.current) {
-      // Rotate Earth to show Europe facing the Sun
-      // Add an offset to position Europe (~50-60 degrees) toward the Sun
-      // Use elapsedTime directly for consistent rotation
       meshRef.current.rotation.y = Math.PI * 0.3 + state.clock.elapsedTime * 0.005;
+    }
+    // Clouds rotate slightly faster than the surface
+    if (cloudRef.current) {
+      cloudRef.current.rotation.y = Math.PI * 0.3 + state.clock.elapsedTime * 0.007;
     }
   });
 
@@ -772,8 +816,23 @@ function Earth() {
         />
       </mesh>
       
-      {/* Fresnel atmosphere glow - outer rim */}
-      <mesh scale={[1.06, 1.06, 1.06]}>
+      {/* Cloud layer */}
+      {cloudTexture && (
+        <mesh ref={cloudRef}>
+          <sphereGeometry args={[3.04, 128, 64]} />
+          <meshStandardMaterial
+            map={cloudTexture}
+            transparent
+            opacity={0.35}
+            depthWrite={false}
+            roughness={1.0}
+            metalness={0.0}
+          />
+        </mesh>
+      )}
+
+      {/* Fresnel atmosphere glow - thin outer rim */}
+      <mesh scale={[1.04, 1.04, 1.04]}>
         <sphereGeometry args={[3.0, 64, 64]} />
         <shaderMaterial
           transparent
@@ -786,8 +845,8 @@ function Earth() {
         />
       </mesh>
 
-      {/* Inner atmosphere - subtle haze */}
-      <mesh scale={[1.02, 1.02, 1.02]}>
+      {/* Inner atmosphere - very subtle haze */}
+      <mesh scale={[1.015, 1.015, 1.015]}>
         <sphereGeometry args={[3.0, 64, 64]} />
         <shaderMaterial
           transparent
@@ -807,174 +866,6 @@ function Sun() {
   const sunRef = useRef<THREE.Mesh>(null);
   const coronaRef = useRef<THREE.Mesh>(null);
   const atmosphereRef = useRef<THREE.Mesh>(null);
-  
-  // Sun texture state that can be updated
-  const [sunTexture, setSunTexture] = useState<THREE.Texture>(() => createProceduralSunTexture());
-  
-  // Try to load NASA/ESA solar texture on component mount with proper error handling
-  useEffect(() => {
-    let isMounted = true;
-    
-    const loadTexture = async () => {
-      try {
-        const loader = new THREE.TextureLoader();
-        
-        // Try to load realistic solar texture
-        const texture = await new Promise<THREE.Texture>((resolve, reject) => {
-          loader.load(
-            '/textures/sun_surface.jpg', // We'll need to add this texture
-            (texture) => resolve(texture),
-            undefined,
-            (error) => reject(error)
-          );
-        });
-        
-        // Success - Solar texture loaded
-        if (isMounted) {
-          console.log('✅ Solar surface texture loaded successfully');
-          texture.wrapS = THREE.RepeatWrapping;
-          texture.wrapT = THREE.ClampToEdgeWrapping;
-          texture.generateMipmaps = true;
-          texture.minFilter = THREE.LinearMipmapLinearFilter;
-          texture.magFilter = THREE.LinearFilter;
-          setSunTexture(texture);
-        }
-      } catch (error) {
-        // Error handled - Solar texture failed to load
-        if (isMounted) {
-          console.log('⚠️ Solar texture not found, using enhanced procedural texture');
-          console.log('To add realistic solar textures, add sun_surface.jpg to /public/textures/');
-          // Keep using the procedural texture that's already set
-        }
-      }
-    };
-    
-    // Call the async function
-    loadTexture();
-    
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-  
-  // Enhanced procedural solar texture creation (fallback)
-  function createProceduralSunTexture() {
-    const canvas = document.createElement('canvas');
-    canvas.width = 2048; // Higher resolution for better quality
-    canvas.height = 1024;
-    const ctx = canvas.getContext('2d')!;
-    
-    // Create realistic solar surface base
-    const baseGradient = ctx.createRadialGradient(1024, 512, 0, 1024, 512, 800);
-    baseGradient.addColorStop(0, '#fff8dc');    // Warm white core
-    baseGradient.addColorStop(0.1, '#ffff99');  // Bright yellow
-    baseGradient.addColorStop(0.3, '#ffcc00');  // Golden yellow  
-    baseGradient.addColorStop(0.6, '#ff9900');  // Orange
-    baseGradient.addColorStop(0.8, '#ff6600');  // Deep orange
-    baseGradient.addColorStop(1, '#cc4400');    // Dark orange edge
-    ctx.fillStyle = baseGradient;
-    ctx.fillRect(0, 0, 2048, 1024);
-    
-    // Add solar granulation (convection cells) - more realistic pattern
-    for (let i = 0; i < 300; i++) {
-      const x = Math.random() * 2048;
-      const y = Math.random() * 1024;
-      const radius = 6 + Math.random() * 12;
-      const brightness = 0.2 + Math.random() * 0.3;
-      
-      const cellGradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
-      cellGradient.addColorStop(0, `rgba(255, 255, 220, ${brightness})`);
-      cellGradient.addColorStop(0.7, `rgba(255, 200, 100, ${brightness * 0.5})`);
-      cellGradient.addColorStop(1, `rgba(255, 150, 50, ${brightness * 0.2})`);
-      ctx.fillStyle = cellGradient;
-      ctx.beginPath();
-      ctx.arc(x, y, radius, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    
-    // Add supergranulation (larger convection patterns)
-    for (let i = 0; i < 50; i++) {
-      const x = Math.random() * 2048;
-      const y = Math.random() * 1024;
-      const radius = 30 + Math.random() * 60;
-      const brightness = 0.1 + Math.random() * 0.2;
-      
-      const superGradient = ctx.createRadialGradient(x, y, radius * 0.3, x, y, radius);
-      superGradient.addColorStop(0, `rgba(255, 220, 150, ${brightness})`);
-      superGradient.addColorStop(1, `rgba(255, 180, 100, ${brightness * 0.3})`);
-      ctx.fillStyle = superGradient;
-      ctx.beginPath();
-      ctx.arc(x, y, radius, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    
-    // Add realistic sunspots with penumbra and umbra
-    for (let i = 0; i < 12; i++) {
-      const x = 200 + Math.random() * 1648; // Avoid edges
-      const y = 200 + Math.random() * 624;  // Avoid edges
-      const size = 15 + Math.random() * 35;
-      
-      // Penumbra (outer, lighter part)
-      const penumbraGradient = ctx.createRadialGradient(x, y, 0, x, y, size * 1.8);
-      penumbraGradient.addColorStop(0, 'rgba(100, 50, 0, 0.6)');
-      penumbraGradient.addColorStop(0.5, 'rgba(150, 75, 25, 0.4)');
-      penumbraGradient.addColorStop(1, 'rgba(200, 100, 50, 0.1)');
-      ctx.fillStyle = penumbraGradient;
-      ctx.beginPath();
-      ctx.arc(x, y, size * 1.8, 0, Math.PI * 2);
-      ctx.fill();
-      
-      // Umbra (inner, darker core)
-      const umbraGradient = ctx.createRadialGradient(x, y, 0, x, y, size);
-      umbraGradient.addColorStop(0, 'rgba(20, 10, 0, 0.8)');
-      umbraGradient.addColorStop(0.7, 'rgba(60, 30, 10, 0.6)');
-      umbraGradient.addColorStop(1, 'rgba(100, 50, 20, 0.3)');
-      ctx.fillStyle = umbraGradient;
-      ctx.beginPath();
-      ctx.arc(x, y, size, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    
-    // Add solar prominences/flares (bright areas)
-    for (let i = 0; i < 8; i++) {
-      const x = Math.random() * 2048;
-      const y = Math.random() * 1024;
-      const width = 40 + Math.random() * 100;
-      const height = 20 + Math.random() * 40;
-      
-      const flareGradient = ctx.createRadialGradient(x, y, 0, x, y, Math.max(width, height));
-      flareGradient.addColorStop(0, 'rgba(255, 255, 255, 0.3)');
-      flareGradient.addColorStop(0.5, 'rgba(255, 200, 100, 0.2)');
-      flareGradient.addColorStop(1, 'rgba(255, 150, 50, 0.05)');
-      ctx.fillStyle = flareGradient;
-      ctx.beginPath();
-      ctx.ellipse(x, y, width, height, Math.random() * Math.PI, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    
-    // Add magnetic field lines (subtle curved lines)
-    ctx.strokeStyle = 'rgba(255, 200, 100, 0.15)';
-    ctx.lineWidth = 2;
-    for (let i = 0; i < 20; i++) {
-      const startX = Math.random() * 2048;
-      const startY = Math.random() * 1024;
-      const endX = startX + (Math.random() - 0.5) * 400;
-      const endY = startY + (Math.random() - 0.5) * 200;
-      const cpX = (startX + endX) / 2 + (Math.random() - 0.5) * 200;
-      const cpY = (startY + endY) / 2 + (Math.random() - 0.5) * 100;
-      
-      ctx.beginPath();
-      ctx.moveTo(startX, startY);
-      ctx.quadraticCurveTo(cpX, cpY, endX, endY);
-      ctx.stroke();
-    }
-    
-    const sunTexture = new THREE.CanvasTexture(canvas);
-    sunTexture.wrapS = THREE.RepeatWrapping;
-    sunTexture.wrapT = THREE.ClampToEdgeWrapping;
-    
-    return sunTexture;
-  }
   
   // Sun corona shader material refs
   const coronaShaderRef = useRef<THREE.ShaderMaterial>(null);
@@ -1022,9 +913,9 @@ function Sun() {
       <mesh ref={sunRef}>
         <sphereGeometry args={[10, 128, 64]} />
         <meshStandardMaterial
-          map={sunTexture}
+          color={SUN_EMISSIVE_COLOR}
           emissive={SUN_EMISSIVE_COLOR}
-          emissiveIntensity={2.5}
+          emissiveIntensity={2.0}
           roughness={1}
           metalness={0}
           toneMapped={false}
@@ -1317,9 +1208,10 @@ function AsteroidSphere({ asteroid, index, isSelected, isHovered, onClick, onDou
   onPointerOut: () => void;
 }) {
   const meshRef = useRef<THREE.Mesh>(null);
+  const glowTexture = useMemo(() => getGlowTexture(), []);
   const orbit = asteroid.orbit;
   const angle = orbit.phase;
-  
+
   // Use actual asteroid distance from NASA API data
   // orbit.radius already contains the scaled distance (missDistance * 64)
   // Add minimum offset to ensure asteroids are always outside Earth's surface
@@ -1336,8 +1228,8 @@ function AsteroidSphere({ asteroid, index, isSelected, isHovered, onClick, onDou
   const baseScale = Math.max(0.1, Math.log10(Math.max(1, asteroid.size)) * 0.2) * distanceFactor;
   const scale = isSelected ? baseScale * 2.0 : isHovered ? baseScale * 1.5 : baseScale;
   
-  const torinoColor = getTorino3DColor(asteroid.torinoScale);
-  const color = new THREE.Color(torinoColor);
+  const rarityColor = getRarity3DColor(asteroid.rarity);
+  const color = new THREE.Color(rarityColor);
   
   // Create a slightly darker, more muted version for realism
   const baseColor = color.clone().multiplyScalar(0.7);
@@ -1418,17 +1310,29 @@ function AsteroidSphere({ asteroid, index, isSelected, isHovered, onClick, onDou
           metalness={0.15}
           transparent={false}
           emissive={color}
-          emissiveIntensity={isSelected ? 0.8 : isHovered ? 0.5 : 0.15 + asteroid.torinoScale * 0.08}
+          emissiveIntensity={isSelected ? 0.8 : isHovered ? 0.5 : 0.15 + asteroid.rarity * 0.08}
         />
       </mesh>
-      
+
+      {/* Glow aura sprite */}
+      <sprite scale={[scale * 4, scale * 4, 1]}>
+        <spriteMaterial
+          map={glowTexture}
+          color={color}
+          transparent
+          opacity={isSelected ? 0.7 : isHovered ? 0.5 : 0.25 + asteroid.rarity * 0.06}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </sprite>
+
       {/* 3D positioned tooltip */}
       {isHovered && (
         <Html position={[0, scale * 2, 0]} center style={{ zIndex: 10 }}>
           <div className="bg-black/90 text-white px-3 py-2 rounded-lg shadow-xl backdrop-blur-sm border border-white/20 pointer-events-none whitespace-nowrap">
             <div className="text-sm font-bold text-yellow-300">{asteroid.name}</div>
             <div className="text-xs text-gray-300 mt-1">
-              Torino Scale: {asteroid.torinoScale} | Size: {asteroid.size >= 1000 
+              Rarity: R{asteroid.rarity} | Size: {asteroid.size >= 1000 
                 ? `${(asteroid.size / 1000).toFixed(2)} km`
                 : `${asteroid.size.toFixed(1)} m`
               }
@@ -1531,8 +1435,8 @@ function AsteroidTrails({ asteroids }: { asteroids: EnhancedAsteroid[] }) {
     
     asteroids.forEach((asteroid, asteroidIndex) => {
       const orbit = asteroid.orbit;
-      const torinoColor = getTorino3DColor(asteroid.torinoScale);
-      const rgb = parseInt(torinoColor.slice(1), 16);
+      const rarityColor = getRarity3DColor(asteroid.rarity);
+      const rgb = parseInt(rarityColor.slice(1), 16);
       const baseColor = [(rgb >> 16) / 255, ((rgb >> 8) & 0xff) / 255, (rgb & 0xff) / 255];
 
       for (let i = 0; i < 20; i++) {
@@ -1575,7 +1479,7 @@ function AsteroidTrails({ asteroids }: { asteroids: EnhancedAsteroid[] }) {
       }
       return {
         curve: trailPoints.length >= 2 ? new THREE.CatmullRomCurve3(trailPoints) : null,
-        color: getTorino3DColor(asteroid.torinoScale),
+        color: getRarity3DColor(asteroid.rarity),
         id: asteroid.id,
       };
     });
@@ -1647,7 +1551,7 @@ function TrajectoryLine({ asteroid }: { asteroid: EnhancedAsteroid }) {
     <mesh>
       <tubeGeometry args={[curve, 64, 0.05, 8, true]} />
       <meshBasicMaterial
-        color={getTorino3DColor(asteroid.torinoScale)}
+        color={getRarity3DColor(asteroid.rarity)}
         transparent
         opacity={0.4}
       />
@@ -1704,8 +1608,8 @@ function AsteroidInfoPanel({ asteroid, onClose, onOpenDetailed }: {
   onClose: () => void;
   onOpenDetailed: () => void;
 }) {
-  const torinoInfo = getTorinoInfo(asteroid.torinoScale);
-  const riskBgColor = torinoInfo.bgColor;
+  const rarityInfo = getRarityInfo(asteroid.rarity);
+  const riskBgColor = rarityInfo.bgColor;
   
   return (
     <motion.div 
@@ -1718,9 +1622,9 @@ function AsteroidInfoPanel({ asteroid, onClose, onOpenDetailed }: {
         <div>
           <h3 className="text-white text-lg font-bold mb-1">{asteroid.name}</h3>
           <div className={`inline-flex items-center gap-2 px-2 py-1 rounded-full text-xs font-medium ${riskBgColor}`}>
-            <div className={`w-2 h-2 rounded-full bg-current animate-pulse ${torinoInfo.color}`}></div>
-            <span className={torinoInfo.color}>
-              Torino {asteroid.torinoScale} - {torinoInfo.level}
+            <div className={`w-2 h-2 rounded-full bg-current animate-pulse ${rarityInfo.color}`}></div>
+            <span className={rarityInfo.color}>
+              R{asteroid.rarity} - {rarityInfo.level}
             </span>
           </div>
         </div>
@@ -1746,9 +1650,9 @@ function AsteroidInfoPanel({ asteroid, onClose, onOpenDetailed }: {
               </span>
             </div>
             <div className="flex justify-between">
-              <span>Torino Scale:</span>
-              <span className={`font-mono font-medium ${torinoInfo.color}`}>
-                {asteroid.torinoScale}
+              <span>Rarity:</span>
+              <span className={`font-mono font-medium ${rarityInfo.color}`}>
+                {asteroid.rarity}
               </span>
             </div>
           </div>
@@ -1784,30 +1688,204 @@ function AsteroidInfoPanel({ asteroid, onClose, onOpenDetailed }: {
   );
 }
 
-export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSelect, hoveredAsteroid, setHoveredAsteroid }: Props) {
-  const [activePreset, setActivePreset] = useState('Near-Earth Objects');
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const [internalHoveredAsteroid, setInternalHoveredAsteroid] = useState<number | null>(null);
-  const [time, setTime] = useState(0);
-  const [showDetailedView, setShowDetailedView] = useState(false);
-  const controlsRef = useRef<any>(null);
-  
-  // Update time for planet animations
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTime(prev => prev + 0.01);
-    }, 50);
-    return () => clearInterval(interval);
-  }, []);
-  
-  // Calculate Earth's position for Moon and asteroids
+// Inner scene component that drives animation via useFrame (no React re-renders)
+function SolarSystemScene({
+  asteroids, selectedAsteroid, onAsteroidSelect,
+  hoveredAsteroid, setHoveredAsteroid,
+  controlsRef, onOpenDetailed, showDetailedView
+}: {
+  asteroids: EnhancedAsteroid[];
+  selectedAsteroid?: EnhancedAsteroid | null;
+  onAsteroidSelect?: (asteroid: EnhancedAsteroid | null) => void;
+  hoveredAsteroid: number | null;
+  setHoveredAsteroid: (id: number | null) => void;
+  controlsRef: React.RefObject<any>;
+  onOpenDetailed: () => void;
+  showDetailedView: boolean;
+}) {
+  const timeRef = useRef(0);
+  const earthPositionRef = useRef<[number, number, number]>([0, 0, 0]);
+  const earthGroupRef = useRef<THREE.Group>(null);
+  const [, forceUpdate] = useState(0);
+
+  // Calculate initial Earth position
   const earthData = PLANET_DATA.find(p => p.name === 'Earth')!;
   const earthInitialAngle = (earthData.initialPhase || 0) * Math.PI * 2;
-  const earthAngle = earthInitialAngle + time * earthData.speed;
+
+  // Drive animation from useFrame — no React state updates
+  useFrame((_, delta) => {
+    timeRef.current += delta * 0.2;
+    const angle = earthInitialAngle + timeRef.current * earthData.speed;
+    const x = Math.cos(angle) * earthData.distanceFromSun;
+    const y = Math.sin(angle * 0.3) * earthData.inclination * 10;
+    const z = Math.sin(angle) * earthData.distanceFromSun;
+    earthPositionRef.current = [x, y, z];
+
+    if (earthGroupRef.current) {
+      earthGroupRef.current.position.set(x, y, z);
+    }
+    if (controlsRef.current) {
+      if (selectedAsteroid) {
+        // When an asteroid is selected, track its world position
+        // (asteroid is a child of Earth group, so world pos = earth + local offset)
+        const orbit = selectedAsteroid.orbit;
+        const aAngle = orbit.phase;
+        const minDist = 5.0; // earthRadius + buffer
+        const aRadius = Math.max(minDist, orbit.radius);
+        const ax = Math.cos(aAngle) * aRadius;
+        const az = Math.sin(aAngle) * aRadius;
+        const ay = Math.sin(aAngle * 0.2) * orbit.inclination * 0.15;
+        controlsRef.current.target.set(x + ax, y + ay, z + az);
+      } else {
+        controlsRef.current.target.set(x, y, z);
+      }
+      controlsRef.current.update();
+    }
+  });
+
+  const earthPos = earthPositionRef.current;
+
+  return (
+    <>
+      <fog attach="fog" args={['#000011', 1500, 4000]} />
+      <EnhancedStarField />
+
+      {/* Balanced lighting */}
+      <ambientLight intensity={0.3} color={0x404080} />
+      <directionalLight
+        position={[-earthPos[0], -earthPos[1], -earthPos[2]]}
+        intensity={3.0}
+        color={0xFDB813}
+        castShadow={true}
+        shadow-mapSize-width={2048}
+        shadow-mapSize-height={2048}
+        shadow-camera-near={0.1}
+        shadow-camera-far={3000}
+        shadow-camera-left={-300}
+        shadow-camera-right={300}
+        shadow-camera-top={300}
+        shadow-camera-bottom={-300}
+      />
+      <pointLight position={[0, 0, 0]} intensity={8} color={0xFDB813} decay={2} distance={1500} castShadow={false} />
+      <hemisphereLight args={[0x87ceeb, 0x111122, 0.05]} />
+      <directionalLight
+        position={[earthPos[0] * 0.5, earthPos[1] + 30, earthPos[2] * 0.5]}
+        intensity={0.4}
+        color={0x4488ff}
+        castShadow={false}
+      />
+      <pointLight position={[0, 50, 0]} intensity={1.2} color={0xffffff} decay={2} distance={200} castShadow={false} />
+
+      <OrbitControls
+        ref={controlsRef}
+        target={earthPos}
+        enablePan={true}
+        enableZoom={true}
+        minDistance={5}
+        maxDistance={3000}
+        enableDamping
+        dampingFactor={0.08}
+        rotateSpeed={0.5}
+        zoomSpeed={1.2}
+        panSpeed={0.8}
+        maxPolarAngle={Math.PI * 0.9}
+        minPolarAngle={Math.PI * 0.1}
+      />
+
+      <PlanetaryTrajectories />
+      <Sun />
+
+      {PLANET_DATA.filter(p => p.name !== 'Earth').map((planetData) => (
+        <AnimatedPlanet key={planetData.name} planetData={planetData} earthInitialAngle={earthInitialAngle} timeRef={timeRef} hideLabels={showDetailedView} />
+      ))}
+
+      <group ref={earthGroupRef} position={earthPos}>
+        <Earth />
+        <Moon earthPosition={[0, 0, 0]} hideLabels={showDetailedView} />
+        <AsteroidField
+          asteroids={asteroids}
+          onAsteroidSelect={onAsteroidSelect}
+          selectedAsteroid={selectedAsteroid}
+          hoveredAsteroid={hoveredAsteroid}
+          setHoveredAsteroid={setHoveredAsteroid}
+          onOpenDetailed={onOpenDetailed}
+          hideLabels={showDetailedView}
+        />
+      </group>
+
+      {/* Environment and post-processing disabled — incompatible with three 0.178 */}
+    </>
+  );
+}
+
+// Wrapper for Planet that reads time from a ref instead of prop (avoids React re-renders)
+function AnimatedPlanet({ planetData, earthInitialAngle, timeRef, hideLabels }: { planetData: any; earthInitialAngle: number; timeRef: React.RefObject<number>; hideLabels?: boolean }) {
+  const groupRef = useRef<THREE.Group>(null);
+  const meshRef = useRef<THREE.Mesh>(null);
+  const initialAngle = (planetData.initialPhase || 0) * Math.PI * 2;
+
+  const planetTexture = useMemo(() =>
+    createPlanetTexture(planetData.textureType, planetData.baseColor),
+    [planetData.textureType, planetData.baseColor]
+  );
+
+  useFrame((_, delta) => {
+    const time = timeRef.current;
+    const angle = initialAngle + time * planetData.speed;
+    const x = Math.cos(angle) * planetData.distanceFromSun;
+    const z = Math.sin(angle) * planetData.distanceFromSun;
+    const y = Math.sin(angle * 0.3) * planetData.inclination * 10;
+    if (groupRef.current) groupRef.current.position.set(x, y, z);
+    if (meshRef.current) meshRef.current.rotation.y += delta * 0.3;
+  });
+
+  return (
+    <group ref={groupRef}>
+      <mesh ref={meshRef} castShadow receiveShadow>
+        <sphereGeometry args={[planetData.size, 64, 32]} />
+        <meshStandardMaterial
+          map={planetTexture}
+          roughness={planetData.textureType === 'iceGiant' ? 0.1 : 0.8}
+          metalness={planetData.textureType === 'iceGiant' ? 0.3 : 0.1}
+        />
+      </mesh>
+      {planetData.hasRings && (
+        <>
+          <mesh rotation={[Math.PI / 2.2, 0, 0]}>
+            <ringGeometry args={[planetData.size * 1.2, planetData.size * 2.0, 64]} />
+            <meshStandardMaterial color="#fad5a5" transparent opacity={0.7} roughness={0.9} />
+          </mesh>
+          <mesh rotation={[Math.PI / 2.2, 0, 0]}>
+            <ringGeometry args={[planetData.size * 2.1, planetData.size * 2.8, 64]} />
+            <meshStandardMaterial color="#e8c547" transparent opacity={0.5} roughness={0.9} />
+          </mesh>
+        </>
+      )}
+      {!hideLabels && (
+        <Html position={[0, planetData.size + 3, 0]} center style={{ zIndex: 10 }}>
+          <div className="bg-black/90 text-white px-3 py-1 rounded-lg text-sm font-medium pointer-events-none border border-white/20">
+            {planetData.name}
+          </div>
+        </Html>
+      )}
+    </group>
+  );
+}
+
+export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSelect, hoveredAsteroid, setHoveredAsteroid }: Props) {
+  const [activePreset, setActivePreset] = useState('NEO Overview');
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [internalHoveredAsteroid, setInternalHoveredAsteroid] = useState<number | null>(null);
+  const [showDetailedView, setShowDetailedView] = useState(false);
+  const controlsRef = useRef<any>(null);
+
+  // Static initial Earth position (for camera init only)
+  const earthData = PLANET_DATA.find(p => p.name === 'Earth')!;
+  const earthInitialAngle = (earthData.initialPhase || 0) * Math.PI * 2;
   const earthPosition: [number, number, number] = [
-    Math.cos(earthAngle) * earthData.distanceFromSun,
-    Math.sin(earthAngle * 0.3) * earthData.inclination * 10,
-    Math.sin(earthAngle) * earthData.distanceFromSun
+    Math.cos(earthInitialAngle) * earthData.distanceFromSun,
+    Math.sin(earthInitialAngle * 0.3) * earthData.inclination * 10,
+    Math.sin(earthInitialAngle) * earthData.distanceFromSun
   ];
   
   // Use provided props or internal state
@@ -1859,11 +1937,72 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
       animate();
     }
   };
-  
+
+  // Fly camera to selected asteroid when selection changes
+  const prevSelectedRef = useRef<string | null>(null);
+  useEffect(() => {
+    const newId = selectedAsteroid?.id ?? null;
+    if (newId === prevSelectedRef.current) return;
+    prevSelectedRef.current = newId;
+
+    if (!selectedAsteroid || !controlsRef.current || isTransitioning) return;
+
+    // Calculate asteroid's local position (relative to Earth group)
+    const orbit = selectedAsteroid.orbit;
+    const angle = orbit.phase;
+    const earthRadius = 3.0;
+    const minDistance = earthRadius + 2.0;
+    const actualRadius = Math.max(minDistance, orbit.radius);
+
+    const ax = Math.cos(angle) * actualRadius;
+    const az = Math.sin(angle) * actualRadius;
+    const ay = Math.sin(angle * 0.2) * orbit.inclination * 0.15;
+
+    // World position = current Earth position + asteroid offset
+    const controls = controlsRef.current;
+    const currentTarget = controls.target.clone(); // Earth's current world pos
+    const asteroidWorld = new THREE.Vector3(
+      currentTarget.x + ax,
+      currentTarget.y + ay,
+      currentTarget.z + az
+    );
+
+    // Camera offset: position the camera at a comfortable viewing distance from the asteroid
+    const viewDist = Math.max(8, actualRadius * 0.3);
+    const camOffset = new THREE.Vector3(ax, ay + viewDist * 0.5, az).normalize().multiplyScalar(viewDist);
+
+    const startPos = controls.object.position.clone();
+    const startTarget = controls.target.clone();
+    const endPos = asteroidWorld.clone().add(camOffset);
+    const endTarget = asteroidWorld.clone();
+
+    setIsTransitioning(true);
+    const duration = 1200;
+    const startTime = Date.now();
+
+    const animateFlyTo = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+
+      controls.object.position.lerpVectors(startPos, endPos, eased);
+      controls.target.lerpVectors(startTarget, endTarget, eased);
+      controls.update();
+
+      if (progress < 1) {
+        requestAnimationFrame(animateFlyTo);
+      } else {
+        setIsTransitioning(false);
+      }
+    };
+
+    animateFlyTo();
+  }, [selectedAsteroid, isTransitioning, earthPosition]);
+
   return (
     <div className="w-full h-full bg-gradient-to-b from-space-dark via-blue-900/20 to-space-dark relative overflow-hidden">
       <Canvas
-        camera={{ position: [earthPosition[0] + 50, earthPosition[1] + 40, earthPosition[2] + 80], fov: 60 }}
+        camera={{ position: [earthPosition[0] + 0, earthPosition[1] + 100, earthPosition[2] + 150], fov: 60 }}
         dpr={[1, 2]}
         performance={{ min: 0.5 }}
         gl={{
@@ -1891,124 +2030,16 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
         }}
       >
         <Suspense fallback={null}>
-          <fog attach="fog" args={['#000011', 1500, 4000]} />
-          
-          <EnhancedStarField />
-          
-          {/* Balanced lighting for both Earth and asteroids */}
-          <ambientLight intensity={0.3} color={0x404080} />
-          
-          {/* Main sunlight - directional light FROM the Sun's position */}
-          <directionalLight 
-            position={[-earthPosition[0], -earthPosition[1], -earthPosition[2]]} 
-            intensity={3.0} 
-            color={0xFDB813}
-            castShadow={true}
-            shadow-mapSize-width={2048}
-            shadow-mapSize-height={2048}
-            shadow-camera-near={0.1}
-            shadow-camera-far={3000}
-            shadow-camera-left={-300}
-            shadow-camera-right={300}
-            shadow-camera-top={300}
-            shadow-camera-bottom={-300}
+          <SolarSystemScene
+            asteroids={asteroids}
+            selectedAsteroid={selectedAsteroid}
+            onAsteroidSelect={onAsteroidSelect}
+            hoveredAsteroid={actualHoveredAsteroid}
+            setHoveredAsteroid={actualSetHoveredAsteroid}
+            controlsRef={controlsRef}
+            onOpenDetailed={() => setShowDetailedView(true)}
+            showDetailedView={showDetailedView}
           />
-          
-          {/* Sun's point light for close illumination - at center */}
-          <pointLight 
-            position={[0, 0, 0]} 
-            intensity={8} 
-            color={0xFDB813} 
-            decay={2}
-            distance={1500}
-            castShadow={false}
-          />
-          
-          {/* Starlight hemisphere lighting */}
-          <hemisphereLight 
-            args={[0x87ceeb, 0x111122, 0.05]}
-          />
-          
-          {/* Rim lighting for dramatic effect - positioned relative to Sun */}
-          <directionalLight 
-            position={[earthPosition[0] * 0.5, earthPosition[1] + 30, earthPosition[2] * 0.5]} 
-            intensity={0.4} 
-            color={0x4488ff}
-            castShadow={false}
-          />
-          
-          {/* Additional lighting for asteroids */}
-          <pointLight 
-            position={[0, 50, 0]} 
-            intensity={1.2} 
-            color={0xffffff} 
-            decay={2}
-            distance={200}
-            castShadow={false}
-          />
-          
-          <OrbitControls 
-            ref={controlsRef}
-            target={earthPosition}
-            enablePan={true} 
-            enableZoom={true} 
-            minDistance={5}
-            maxDistance={3000}
-            enableDamping
-            dampingFactor={0.08}
-            rotateSpeed={0.5}
-            zoomSpeed={1.2}
-            panSpeed={0.8}
-            maxPolarAngle={Math.PI * 0.9}
-            minPolarAngle={Math.PI * 0.1}
-          />
-          
-          {/* Planetary orbital trajectories */}
-          <PlanetaryTrajectories />
-          
-          {/* The Sun at center of solar system */}
-          <Sun />
-          
-          {/* All planets except Earth orbiting around Sun */}
-          {PLANET_DATA.filter(p => p.name !== 'Earth').map((planetData) => (
-            <Planet key={planetData.name} planetData={planetData} time={time} hideLabels={showDetailedView} />
-          ))}
-          
-          {/* Earth-centric view: Earth at center with detailed textures */}
-          <group position={earthPosition}>
-            <Earth />
-            <Moon earthPosition={[0, 0, 0]} hideLabels={showDetailedView} />
-            
-            {/* Asteroids around Earth (Near Earth Objects) */}
-            <AsteroidField 
-              asteroids={asteroids} 
-              onAsteroidSelect={onAsteroidSelect}
-              selectedAsteroid={selectedAsteroid}
-              hoveredAsteroid={actualHoveredAsteroid}
-              setHoveredAsteroid={actualSetHoveredAsteroid}
-              onOpenDetailed={() => setShowDetailedView(true)}
-              hideLabels={showDetailedView}
-            />
-          </group>
-
-          {/* Dark space environment for subtle reflections on PBR surfaces */}
-          <Environment preset="night" background={false} environmentIntensity={0.15} />
-
-          {/* Post-processing pipeline */}
-          <EffectComposer>
-            <Bloom
-              luminanceThreshold={0.9}
-              luminanceSmoothing={0.4}
-              intensity={1.2}
-              mipmapBlur
-            />
-            <DepthOfField
-              focusDistance={0}
-              focalLength={0.015}
-              bokehScale={2}
-            />
-            <Vignette darkness={0.35} offset={0.3} />
-          </EffectComposer>
         </Suspense>
       </Canvas>
       
@@ -2049,7 +2080,7 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
         <div className="overflow-y-auto h-[calc(100%-80px)] custom-scrollbar">
           <div className="p-2 space-y-1">
             {asteroids.map((asteroid, index) => {
-              const torinoInfo = getTorinoInfo(asteroid.torinoScale);
+              const rarityInfo = getRarityInfo(asteroid.rarity);
               const isSelected = selectedAsteroid?.id === asteroid.id;
               const isHovered = actualHoveredAsteroid === index;
               
@@ -2074,9 +2105,9 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
                     <div className="flex-1">
                       <div className="text-white text-sm font-medium">{asteroid.name}</div>
                       <div className="flex items-center gap-2 mt-1">
-                        <div className={`w-2 h-2 rounded-full bg-current ${torinoInfo.color} ${isSelected || isHovered ? 'animate-pulse' : ''}`}></div>
-                        <span className={`text-xs ${torinoInfo.color}`}>
-                          Torino {asteroid.torinoScale}
+                        <div className={`w-2 h-2 rounded-full bg-current ${rarityInfo.color} ${isSelected || isHovered ? 'animate-pulse' : ''}`}></div>
+                        <span className={`text-xs ${rarityInfo.color}`}>
+                          R{asteroid.rarity}
                         </span>
                         <span className="text-white/40 text-xs">•</span>
                         <span className="text-white/60 text-xs">
@@ -2170,7 +2201,7 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
           <div className="overflow-y-auto h-[calc(100%-80px)] custom-scrollbar p-4">
             <div className="space-y-2">
               {asteroids.map((asteroid) => {
-                const torinoInfo = getTorinoInfo(asteroid.torinoScale);
+                const rarityInfo = getRarityInfo(asteroid.rarity);
                 const isSelected = selectedAsteroid?.id === asteroid.id;
                 const isHovered = actualHoveredAsteroid === parseInt(asteroid.id);
                 
@@ -2200,9 +2231,9 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
                           {asteroid.size.toFixed(1)} m • {asteroid.velocity.toFixed(1)} km/s
                         </div>
                       </div>
-                      <div className={`${torinoInfo.bgColor} px-2 py-1 rounded-full`}>
-                        <span className={`text-xs font-medium ${torinoInfo.color}`}>
-                          T{asteroid.torinoScale}
+                      <div className={`${rarityInfo.bgColor} px-2 py-1 rounded-full`}>
+                        <span className={`text-xs font-medium ${rarityInfo.color}`}>
+                          R{asteroid.rarity}
                         </span>
                       </div>
                     </div>

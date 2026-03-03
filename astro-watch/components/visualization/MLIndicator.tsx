@@ -23,10 +23,10 @@ export function MLIndicator({ isMLReady, mlStats }: MLIndicatorProps) {
       <div className={`
         flex items-center gap-2 px-4 py-2 rounded-lg backdrop-blur-md transition-colors duration-300
         ${isLoading
-          ? 'bg-blue-500/20 border border-blue-500/30 text-blue-400'
-          : isUsingML 
-          ? 'bg-green-500/20 border border-green-500/30 text-green-400' 
-          : 'bg-yellow-500/20 border border-yellow-500/30 text-yellow-400'
+          ? 'bg-white/5 border border-white/10 text-zinc-400'
+          : isUsingML
+          ? 'bg-white/5 border border-white/10 text-zinc-300'
+          : 'bg-white/5 border border-white/10 text-zinc-500'
         }
       `}>
         {isLoading ? (
@@ -55,10 +55,10 @@ export function MLIndicator({ isMLReady, mlStats }: MLIndicatorProps) {
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="absolute bottom-0 left-0 right-0 h-1 bg-blue-500/20 rounded-b-lg overflow-hidden"
+          className="absolute bottom-0 left-0 right-0 h-0.5 bg-white/10 rounded-b-lg overflow-hidden"
         >
           <motion.div
-            className="h-full bg-blue-500"
+            className="h-full bg-zinc-400"
             initial={{ width: '0%' }}
             animate={{ width: '100%' }}
             transition={{ duration: 2, ease: 'easeInOut' }}

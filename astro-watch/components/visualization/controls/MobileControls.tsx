@@ -22,8 +22,8 @@ export function MobileControls() {
   } = useAsteroidStore();
   
   const filteredAsteroids = getFilteredAsteroids();
-  const highRiskCount = asteroids.filter(a => a.torinoScale >= 5).length;
-  const mediumRiskCount = asteroids.filter(a => a.torinoScale >= 2 && a.torinoScale < 5).length;
+  const highRiskCount = asteroids.filter(a => a.rarity >= 4).length;
+  const mediumRiskCount = asteroids.filter(a => a.rarity >= 2 && a.rarity < 4).length;
   const todayCount = asteroids.filter(a => {
     const today = new Date().toISOString().split('T')[0];
     return a.close_approach_data[0].close_approach_date === today;
@@ -97,11 +97,11 @@ export function MobileControls() {
                     </div>
                     {highRiskCount > 0 && (
                       <div className="flex justify-between">
-                        <span className="text-red-400 flex items-center gap-1">
+                        <span className="text-zinc-300 flex items-center gap-1">
                           <AlertTriangle className="w-3 h-3" />
-                          High Risk:
+                          Rare (R4+):
                         </span>
-                        <span className="text-red-400 font-medium">{highRiskCount}</span>
+                        <span className="text-zinc-300 font-medium">{highRiskCount}</span>
                       </div>
                     )}
                   </div>
@@ -127,7 +127,7 @@ export function MobileControls() {
                         }}
                         className={`w-full p-3 rounded-lg text-left transition-colors ${
                           viewMode === value
-                            ? 'bg-purple-600 text-white'
+                            ? 'bg-white/10 text-white border border-white/15'
                             : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                         }`}
                       >
@@ -163,7 +163,7 @@ export function MobileControls() {
                         }}
                         className={`py-3 px-2 rounded-lg text-sm font-medium transition-colors ${
                           timeRange === value
-                            ? 'bg-blue-600 text-white'
+                            ? 'bg-white/10 text-white border border-white/15'
                             : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                         }`}
                       >
@@ -180,15 +180,15 @@ export function MobileControls() {
                 <div className="mb-6">
                   <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
                     <Shield className="w-4 h-4" />
-                    Show Risk Level
+                    Rarity Level
                   </h3>
                   <div className="space-y-2">
                     {[
-                      { value: 'all', label: 'All Asteroids', count: asteroids.length, color: 'bg-gray-600' },
-                      { value: 'threatening', label: 'High Risk', count: highRiskCount, color: 'bg-red-600' },
-                      { value: 'attention', label: 'Medium Risk', count: mediumRiskCount, color: 'bg-orange-600' },
-                      { value: 'normal', label: 'Low Risk', count: asteroids.length - highRiskCount - mediumRiskCount, color: 'bg-green-600' }
-                    ].map(({ value, label, count, color }) => (
+                      { value: 'all', label: 'All Asteroids', count: asteroids.length },
+                      { value: 'threatening', label: 'Rare (R4+)', count: highRiskCount },
+                      { value: 'attention', label: 'Noteworthy (R2-3)', count: mediumRiskCount },
+                      { value: 'normal', label: 'Routine (R0-1)', count: asteroids.length - highRiskCount - mediumRiskCount }
+                    ].map(({ value, label, count }) => (
                       <button
                         key={value}
                         onClick={() => {
@@ -197,7 +197,7 @@ export function MobileControls() {
                         }}
                         className={`w-full p-3 rounded-lg text-left transition-colors ${
                           riskFilter === value
-                            ? color + ' text-white'
+                            ? 'bg-white/10 text-white border border-white/15'
                             : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                         }`}
                       >
@@ -220,7 +220,7 @@ export function MobileControls() {
                     <Link
                       href="/apod"
                       onClick={() => setIsOpen(false)}
-                      className="flex items-center gap-3 w-full p-3 rounded-lg bg-orange-600 text-white hover:bg-orange-700 transition-colors"
+                      className="flex items-center gap-3 w-full p-3 rounded-lg bg-white/5 border border-white/10 text-zinc-300 hover:bg-white/10 transition-colors"
                     >
                       <Image className="w-5 h-5" />
                       <div>
@@ -257,7 +257,7 @@ export function MobileControls() {
                         }}
                         className={`w-full py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
                           showTrajectories
-                            ? 'bg-green-600 text-white'
+                            ? 'bg-white/10 text-white border border-white/15'
                             : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                         }`}
                       >
@@ -284,10 +284,10 @@ export function MobileControls() {
             <button
               key={range}
               onClick={() => setTimeRange(range)}
-              className={`px-3 py-1 rounded-md text-sm capitalize ${
+              className={`px-3 py-1 rounded-md text-sm capitalize transition-colors ${
                 timeRange === range
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  ? 'bg-white/10 text-white border border-white/20'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/5'
               }`}
             >
               {range}
@@ -299,12 +299,12 @@ export function MobileControls() {
         <select
           value={riskFilter}
           onChange={(e) => setRiskFilter(e.target.value as any)}
-          className="px-3 py-1 rounded-md bg-gray-700 text-gray-300 border border-gray-600"
+          className="px-3 py-1 rounded-md bg-white/5 text-zinc-300 border border-white/10"
         >
-          <option value="all">All Torino Levels</option>
-          <option value="threatening">Threatening (5-10)</option>
-          <option value="attention">Attention (2-4)</option>
-          <option value="normal">Normal (0-1)</option>
+          <option value="all">All Rarity Levels</option>
+          <option value="threatening">Rare (R4+)</option>
+          <option value="attention">Noteworthy (R2-3)</option>
+          <option value="normal">Routine (R0-1)</option>
         </select>
 
         {/* View Mode */}
@@ -317,10 +317,10 @@ export function MobileControls() {
             <button
               key={value}
               onClick={() => setViewMode(value as any)}
-              className={`px-3 py-1 rounded-md text-sm ${
+              className={`px-3 py-1 rounded-md text-sm transition-colors ${
                 viewMode === value
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  ? 'bg-white/10 text-white border border-white/20'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/5'
               }`}
             >
               {label}
@@ -331,10 +331,10 @@ export function MobileControls() {
         {/* Visual Options */}
         <button
           onClick={toggleTrajectories}
-          className={`px-3 py-1 rounded-md text-sm ${
+          className={`px-3 py-1 rounded-md text-sm transition-colors ${
             showTrajectories
-              ? 'bg-green-600 text-white'
-              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              ? 'bg-white/10 text-white border border-white/20'
+              : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/5'
           }`}
         >
           Trajectories
@@ -343,7 +343,7 @@ export function MobileControls() {
         {/* APOD Link */}
         <Link
           href="/apod"
-          className="flex items-center gap-2 px-3 py-1 rounded-md text-sm bg-orange-600 text-white hover:bg-orange-700 transition-colors"
+          className="flex items-center gap-2 px-3 py-1 rounded-md text-sm text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"
         >
           <Image className="w-4 h-4" />
           Picture of the Day

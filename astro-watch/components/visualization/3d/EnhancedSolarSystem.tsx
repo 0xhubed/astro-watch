@@ -1566,7 +1566,7 @@ function CameraControls({ activePreset, onPresetChange, isTransitioning }: {
   isTransitioning?: boolean;
 }) {
   return (
-    <div className="absolute top-2 left-2 md:top-4 md:left-4 z-10 bg-black/40 backdrop-blur-sm rounded-lg p-2 md:p-3 border border-white/20 max-w-[140px] md:max-w-[180px]">
+    <div className="absolute top-2 left-2 md:top-4 md:left-4 z-10 bg-black/60 backdrop-blur-sm rounded-lg p-2 md:p-3 border border-white/20 max-w-[160px] md:max-w-[180px] pointer-events-auto">
       <h3 className="text-white text-xs font-semibold mb-2 flex items-center gap-2">
         <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
         Camera Views
@@ -1577,9 +1577,9 @@ function CameraControls({ activePreset, onPresetChange, isTransitioning }: {
             key={preset.name}
             onClick={() => onPresetChange(preset.name)}
             disabled={isTransitioning}
-            className={`w-full text-left px-2 py-1.5 rounded text-xs transition-all duration-200 ${
-              activePreset === preset.name 
-                ? 'bg-blue-500/70 text-white shadow-sm' 
+            className={`w-full text-left px-2 py-2 md:py-1.5 rounded text-xs transition-all duration-200 min-h-[36px] md:min-h-0 ${
+              activePreset === preset.name
+                ? 'bg-blue-500/70 text-white shadow-sm'
                 : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'
             } ${isTransitioning ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
           >
@@ -1616,7 +1616,7 @@ function AsteroidInfoPanel({ asteroid, onClose, onOpenDetailed }: {
       initial={{ opacity: 0, y: 20, scale: 0.9 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 20, scale: 0.9 }}
-      className="absolute bottom-2 right-2 md:bottom-4 md:right-4 z-10 bg-black/40 backdrop-blur-md rounded-xl p-3 md:p-5 max-w-[calc(100vw-1rem)] md:max-w-sm border border-white/10 shadow-2xl"
+      className="absolute bottom-2 left-2 right-2 md:left-auto md:bottom-4 md:right-4 z-10 bg-black/60 backdrop-blur-md rounded-xl p-3 md:p-5 md:max-w-sm border border-white/10 shadow-2xl pointer-events-auto"
     >
       <div className="flex justify-between items-start mb-4">
         <div>

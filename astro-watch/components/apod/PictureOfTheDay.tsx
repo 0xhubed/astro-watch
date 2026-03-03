@@ -71,14 +71,15 @@ export default function PictureOfTheDay() {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-4xl font-bold">NASA Picture of the Day</h1>
+          <div className="flex items-center justify-between mb-4 gap-3">
+            <h1 className="text-2xl md:text-4xl font-bold">NASA Picture of the Day</h1>
             <Link
               href="/"
-              className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+              className="flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors shrink-0 text-sm"
             >
               <ArrowLeft className="w-4 h-4" />
-              Back to AstroWatch
+              <span className="hidden sm:inline">Back to AstroWatch</span>
+              <span className="sm:hidden">Back</span>
             </Link>
           </div>
           

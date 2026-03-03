@@ -52,7 +52,7 @@ export function MobileControls() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={toggleMenu}
-              className="md:!hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+              className="md:!hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-[60]"
             />
 
             {/* Menu Panel - Only on mobile */}
@@ -61,7 +61,7 @@ export function MobileControls() {
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 20 }}
-              className="md:!hidden fixed right-0 top-0 h-full w-[85vw] max-w-sm bg-gray-900 border-l border-gray-800 z-50 overflow-y-auto"
+              className="md:!hidden fixed right-0 top-0 h-full w-[85vw] max-w-sm bg-gray-900 border-l border-gray-800 z-[70] overflow-y-auto"
             >
               <div className="p-4">
                 {/* Header */}

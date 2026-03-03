@@ -55,7 +55,7 @@ export function LandingPage() {
   return (
     <div className="min-h-screen bg-black overflow-hidden relative">
       {/* Deep Space Background */}
-      <div className="fixed inset-0 z-0 w-screen overflow-hidden">
+      <div className="fixed inset-0 z-0 overflow-hidden">
         {/* Gradient overlay */}
         <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/30" />
 

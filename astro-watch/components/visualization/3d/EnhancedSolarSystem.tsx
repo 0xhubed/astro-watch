@@ -119,6 +119,43 @@ const PLANET_DATA = [
   }
 ];
 
+// Star count used across star field generation and animation
+const STAR_COUNT = 8000;
+
+// Shared Fresnel vertex shader used by atmosphere and corona effects
+// Includes vUv for shaders that need UV coords; unused varyings are optimized away by the GPU
+const FRESNEL_VERTEX_SHADER = `
+  varying vec3 vNormal;
+  varying vec3 vWorldPosition;
+  varying vec2 vUv;
+  void main() {
+    vNormal = normalize(normalMatrix * normal);
+    vUv = uv;
+    vec4 worldPos = modelMatrix * vec4(position, 1.0);
+    vWorldPosition = worldPos.xyz;
+    gl_Position = projectionMatrix * viewMatrix * worldPos;
+  }
+`;
+
+// Shared Fresnel fragment shader parameterized by uniforms (color, power, intensity, alphaScale)
+const FRESNEL_FRAGMENT_SHADER = `
+  varying vec3 vNormal;
+  varying vec3 vWorldPosition;
+  uniform vec3 color;
+  uniform float power;
+  uniform float intensity;
+  uniform float alphaScale;
+  void main() {
+    vec3 viewDir = normalize(cameraPosition - vWorldPosition);
+    float fresnel = pow(1.0 - abs(dot(viewDir, vNormal)), power);
+    gl_FragColor = vec4(color * intensity, fresnel * alphaScale);
+  }
+`;
+
+// Reusable constant objects to avoid per-render allocations
+const SUN_EMISSIVE_COLOR = new THREE.Color(1.0, 0.6, 0.1);
+const EARTH_NORMAL_SCALE = new THREE.Vector2(0.2, 0.2);
+
 // Create procedural planet textures
 function createPlanetTexture(textureType: string, baseColor: string): THREE.Texture {
   const canvas = document.createElement('canvas');
@@ -650,24 +687,7 @@ function Earth() {
     const earthTexture = new THREE.CanvasTexture(canvas);
     earthTexture.wrapS = THREE.RepeatWrapping;
     earthTexture.wrapT = THREE.ClampToEdgeWrapping;
-    
-    // Create specular map (water reflects, land doesn't)
-    const specCanvas = document.createElement('canvas');
-    specCanvas.width = 1024;
-    specCanvas.height = 512;
-    const specCtx = specCanvas.getContext('2d')!;
-    
-    specCtx.fillStyle = '#ffffff'; // Water reflects
-    specCtx.fillRect(0, 0, 1024, 512);
-    
-    specCtx.fillStyle = '#000000'; // Land doesn't reflect
-    // Copy land masses as black areas
-    specCtx.fillRect(150, 120, 180, 140);
-    specCtx.fillRect(200, 280, 80, 180);
-    specCtx.fillRect(480, 200, 140, 200);
-    
-    const earthSpecularMap = new THREE.CanvasTexture(specCanvas);
-    
+
     return earthTexture;
   }
   
@@ -712,6 +732,21 @@ function Earth() {
     return new THREE.CanvasTexture(specCanvas);
   }
   
+  // Memoized atmosphere uniforms to avoid per-render allocations
+  const earthOuterAtmosphereUniforms = useMemo(() => ({
+    color: { value: new THREE.Color(0.3, 0.6, 1.0) },
+    power: { value: 3.5 },
+    intensity: { value: 0.8 },
+    alphaScale: { value: 0.9 },
+  }), []);
+
+  const earthInnerAtmosphereUniforms = useMemo(() => ({
+    color: { value: new THREE.Color(0.4, 0.7, 1.0) },
+    power: { value: 5.0 },
+    intensity: { value: 0.3 },
+    alphaScale: { value: 0.5 },
+  }), []);
+
   useFrame((state, delta) => {
     if (meshRef.current) {
       // Rotate Earth to show Europe facing the Sun
@@ -729,7 +764,7 @@ function Earth() {
         <meshStandardMaterial
           map={earthTexture}
           normalMap={earthNormalMap}
-          normalScale={new THREE.Vector2(0.2, 0.2)}
+          normalScale={EARTH_NORMAL_SCALE}
           roughnessMap={earthSpecularMap}
           roughness={0.7}
           metalness={0.02}
@@ -745,33 +780,9 @@ function Earth() {
           depthWrite={false}
           side={THREE.BackSide}
           blending={THREE.AdditiveBlending}
-          uniforms={{
-            color: { value: new THREE.Color(0.3, 0.6, 1.0) },
-            power: { value: 3.5 },
-            intensity: { value: 0.8 },
-          }}
-          vertexShader={`
-            varying vec3 vNormal;
-            varying vec3 vWorldPosition;
-            void main() {
-              vNormal = normalize(normalMatrix * normal);
-              vec4 worldPos = modelMatrix * vec4(position, 1.0);
-              vWorldPosition = worldPos.xyz;
-              gl_Position = projectionMatrix * viewMatrix * worldPos;
-            }
-          `}
-          fragmentShader={`
-            varying vec3 vNormal;
-            varying vec3 vWorldPosition;
-            uniform vec3 color;
-            uniform float power;
-            uniform float intensity;
-            void main() {
-              vec3 viewDir = normalize(cameraPosition - vWorldPosition);
-              float fresnel = pow(1.0 - abs(dot(viewDir, vNormal)), power);
-              gl_FragColor = vec4(color * intensity, fresnel * 0.9);
-            }
-          `}
+          uniforms={earthOuterAtmosphereUniforms}
+          vertexShader={FRESNEL_VERTEX_SHADER}
+          fragmentShader={FRESNEL_FRAGMENT_SHADER}
         />
       </mesh>
 
@@ -783,33 +794,9 @@ function Earth() {
           depthWrite={false}
           side={THREE.FrontSide}
           blending={THREE.AdditiveBlending}
-          uniforms={{
-            color: { value: new THREE.Color(0.4, 0.7, 1.0) },
-            power: { value: 5.0 },
-            intensity: { value: 0.3 },
-          }}
-          vertexShader={`
-            varying vec3 vNormal;
-            varying vec3 vWorldPosition;
-            void main() {
-              vNormal = normalize(normalMatrix * normal);
-              vec4 worldPos = modelMatrix * vec4(position, 1.0);
-              vWorldPosition = worldPos.xyz;
-              gl_Position = projectionMatrix * viewMatrix * worldPos;
-            }
-          `}
-          fragmentShader={`
-            varying vec3 vNormal;
-            varying vec3 vWorldPosition;
-            uniform vec3 color;
-            uniform float power;
-            uniform float intensity;
-            void main() {
-              vec3 viewDir = normalize(cameraPosition - vWorldPosition);
-              float fresnel = pow(1.0 - abs(dot(viewDir, vNormal)), power);
-              gl_FragColor = vec4(color * intensity, fresnel * 0.5);
-            }
-          `}
+          uniforms={earthInnerAtmosphereUniforms}
+          vertexShader={FRESNEL_VERTEX_SHADER}
+          fragmentShader={FRESNEL_FRAGMENT_SHADER}
         />
       </mesh>
     </group>
@@ -989,29 +976,38 @@ function Sun() {
     return sunTexture;
   }
   
+  // Sun corona shader material refs
+  const coronaShaderRef = useRef<THREE.ShaderMaterial>(null);
+  const outerCoronaShaderRef = useRef<THREE.ShaderMaterial>(null);
+
+  // Memoized corona uniform objects to avoid per-render allocations
+  const coronaUniforms = useMemo(() => ({
+    time: { value: 0 },
+    color1: { value: new THREE.Color(1.0, 0.85, 0.2) },
+    color2: { value: new THREE.Color(1.0, 0.4, 0.0) },
+    intensity: { value: 1.5 },
+  }), []);
+
+  const outerCoronaUniforms = useMemo(() => ({
+    time: { value: 0 },
+    color: { value: new THREE.Color(1.0, 0.5, 0.05) },
+    intensity: { value: 0.6 },
+  }), []);
+
+  // Single consolidated useFrame for all Sun animations
   useFrame((state, delta) => {
     if (sunRef.current) {
-      sunRef.current.rotation.y += delta * 0.01; // Slow rotation
+      sunRef.current.rotation.y += delta * 0.01;
     }
     if (coronaRef.current) {
       coronaRef.current.rotation.y -= delta * 0.005;
-      // Subtle pulsing
       const scale = 1 + Math.sin(state.clock.elapsedTime * 0.8) * 0.015;
       coronaRef.current.scale.setScalar(scale);
     }
     if (atmosphereRef.current) {
       atmosphereRef.current.rotation.y += delta * 0.003;
-      // Gentle breathing effect
-      const scale = 1 + Math.sin(state.clock.elapsedTime * 0.3) * 0.008;
-      atmosphereRef.current.scale.setScalar(scale);
+      // Scale pulsing handled by the outer corona shader's pulse uniform
     }
-  });
-  
-  // Sun corona shader material with animated noise
-  const coronaShaderRef = useRef<THREE.ShaderMaterial>(null);
-  const outerCoronaShaderRef = useRef<THREE.ShaderMaterial>(null);
-
-  useFrame((state) => {
     if (coronaShaderRef.current) {
       coronaShaderRef.current.uniforms.time.value = state.clock.elapsedTime;
     }
@@ -1027,7 +1023,7 @@ function Sun() {
         <sphereGeometry args={[10, 128, 64]} />
         <meshStandardMaterial
           map={sunTexture}
-          emissive={new THREE.Color(1.0, 0.6, 0.1)}
+          emissive={SUN_EMISSIVE_COLOR}
           emissiveIntensity={2.5}
           roughness={1}
           metalness={0}
@@ -1044,24 +1040,8 @@ function Sun() {
           depthWrite={false}
           side={THREE.BackSide}
           blending={THREE.AdditiveBlending}
-          uniforms={{
-            time: { value: 0 },
-            color1: { value: new THREE.Color(1.0, 0.85, 0.2) },
-            color2: { value: new THREE.Color(1.0, 0.4, 0.0) },
-            intensity: { value: 1.5 },
-          }}
-          vertexShader={`
-            varying vec3 vNormal;
-            varying vec3 vWorldPosition;
-            varying vec2 vUv;
-            void main() {
-              vNormal = normalize(normalMatrix * normal);
-              vUv = uv;
-              vec4 worldPos = modelMatrix * vec4(position, 1.0);
-              vWorldPosition = worldPos.xyz;
-              gl_Position = projectionMatrix * viewMatrix * worldPos;
-            }
-          `}
+          uniforms={coronaUniforms}
+          vertexShader={FRESNEL_VERTEX_SHADER}
           fragmentShader={`
             varying vec3 vNormal;
             varying vec3 vWorldPosition;
@@ -1123,21 +1103,8 @@ function Sun() {
           depthWrite={false}
           side={THREE.BackSide}
           blending={THREE.AdditiveBlending}
-          uniforms={{
-            time: { value: 0 },
-            color: { value: new THREE.Color(1.0, 0.5, 0.05) },
-            intensity: { value: 0.6 },
-          }}
-          vertexShader={`
-            varying vec3 vNormal;
-            varying vec3 vWorldPosition;
-            void main() {
-              vNormal = normalize(normalMatrix * normal);
-              vec4 worldPos = modelMatrix * vec4(position, 1.0);
-              vWorldPosition = worldPos.xyz;
-              gl_Position = projectionMatrix * viewMatrix * worldPos;
-            }
-          `}
+          uniforms={outerCoronaUniforms}
+          vertexShader={FRESNEL_VERTEX_SHADER}
           fragmentShader={`
             varying vec3 vNormal;
             varying vec3 vWorldPosition;
@@ -1184,13 +1151,13 @@ function EnhancedStarField() {
   
   const { starPositions, nebulaeData, twinklePhases } = useMemo(() => {
     // Enhanced star field with more variety
-    const positions = new Float32Array(8000 * 3);
-    const colors = new Float32Array(8000 * 3);
-    const sizes = new Float32Array(8000);
+    const positions = new Float32Array(STAR_COUNT * 3);
+    const colors = new Float32Array(STAR_COUNT * 3);
+    const sizes = new Float32Array(STAR_COUNT);
     // Per-star random phases for twinkle animation
-    const phases = new Float32Array(8000);
+    const phases = new Float32Array(STAR_COUNT);
 
-    for (let i = 0; i < 8000; i++) {
+    for (let i = 0; i < STAR_COUNT; i++) {
       phases[i] = Math.random() * Math.PI * 2;
       const radius = 400 + Math.random() * 600;
       const phi = Math.acos(2 * Math.random() - 1);
@@ -1266,7 +1233,7 @@ function EnhancedStarField() {
         const t = state.clock.elapsedTime;
         const arr = sizeAttr.array as Float32Array;
         const base = baseSizes.current;
-        for (let i = 0; i < 8000; i++) {
+        for (let i = 0; i < STAR_COUNT; i++) {
           // Each star twinkles at its own frequency and phase
           const twinkle = 0.7 + 0.3 * Math.sin(t * (1.5 + (i % 7) * 0.3) + twinklePhases[i]);
           arr[i] = base[i] * twinkle;
@@ -1284,17 +1251,17 @@ function EnhancedStarField() {
           <bufferAttribute 
             attach="attributes-position" 
             args={[starPositions.positions, 3]} 
-            count={8000} 
+            count={STAR_COUNT} 
           />
           <bufferAttribute 
             attach="attributes-color" 
             args={[starPositions.colors, 3]} 
-            count={8000} 
+            count={STAR_COUNT} 
           />
           <bufferAttribute 
             attach="attributes-size" 
             args={[starPositions.sizes, 1]} 
-            count={8000} 
+            count={STAR_COUNT} 
           />
         </bufferGeometry>
         <pointsMaterial 
@@ -1567,21 +1534,20 @@ function AsteroidTrails({ asteroids }: { asteroids: EnhancedAsteroid[] }) {
       const torinoColor = getTorino3DColor(asteroid.torinoScale);
       const rgb = parseInt(torinoColor.slice(1), 16);
       const baseColor = [(rgb >> 16) / 255, ((rgb >> 8) & 0xff) / 255, (rgb & 0xff) / 255];
-      
+
       for (let i = 0; i < 20; i++) {
         const trailIndex = asteroidIndex * 20 + i;
-        const angle = orbit.phase - (i * 0.05); // Trail behind the asteroid
-        
-        const actualRadius = orbit.radius; // Use actual distance
+        const angle = orbit.phase - (i * 0.05);
+
+        const actualRadius = Math.max(5.0, orbit.radius);
         const x = Math.cos(angle) * actualRadius;
         const z = Math.sin(angle) * actualRadius;
         const y = Math.sin(angle * 0.2) * orbit.inclination * 0.15;
-        
+
         positions[trailIndex * 3] = x;
         positions[trailIndex * 3 + 1] = y;
         positions[trailIndex * 3 + 2] = z;
-        
-        // Fade trail from bright to transparent
+
         const alpha = (20 - i) / 20;
         colors[trailIndex * 3] = baseColor[0] * alpha;
         colors[trailIndex * 3 + 1] = baseColor[1] * alpha;
@@ -1589,32 +1555,42 @@ function AsteroidTrails({ asteroids }: { asteroids: EnhancedAsteroid[] }) {
         alphas[trailIndex] = alpha * 0.8;
       }
     });
-    
+
     return { positions, colors, alphas };
   }, [asteroids]);
-  
+
+  // Memoize trail curves to avoid recreating geometry every render
+  const trailCurves = useMemo(() => {
+    return asteroids.map((asteroid) => {
+      const orbit = asteroid.orbit;
+      const trailPoints: THREE.Vector3[] = [];
+      for (let i = 0; i < 20; i++) {
+        const angle = orbit.phase - (i * 0.05);
+        const actualRadius = Math.max(5.0, orbit.radius);
+        trailPoints.push(new THREE.Vector3(
+          Math.cos(angle) * actualRadius,
+          Math.sin(angle * 0.2) * orbit.inclination * 0.15,
+          Math.sin(angle) * actualRadius,
+        ));
+      }
+      return {
+        curve: trailPoints.length >= 2 ? new THREE.CatmullRomCurve3(trailPoints) : null,
+        color: getTorino3DColor(asteroid.torinoScale),
+        id: asteroid.id,
+      };
+    });
+  }, [asteroids]);
+
   return (
     <group>
       {/* Smooth trail lines per asteroid */}
-      {asteroids.map((asteroid, idx) => {
-        const orbit = asteroid.orbit;
-        const torinoColor = getTorino3DColor(asteroid.torinoScale);
-        const trailPoints: THREE.Vector3[] = [];
-        for (let i = 0; i < 20; i++) {
-          const angle = orbit.phase - (i * 0.05);
-          const actualRadius = Math.max(5.0, orbit.radius);
-          const x = Math.cos(angle) * actualRadius;
-          const z = Math.sin(angle) * actualRadius;
-          const y = Math.sin(angle * 0.2) * orbit.inclination * 0.15;
-          trailPoints.push(new THREE.Vector3(x, y, z));
-        }
-        if (trailPoints.length < 2) return null;
-        const curve = new THREE.CatmullRomCurve3(trailPoints);
+      {trailCurves.map((trail) => {
+        if (!trail.curve) return null;
         return (
-          <mesh key={asteroid.id}>
-            <tubeGeometry args={[curve, 32, 0.06, 6, false]} />
+          <mesh key={trail.id}>
+            <tubeGeometry args={[trail.curve, 32, 0.06, 6, false]} />
             <meshBasicMaterial
-              color={torinoColor}
+              color={trail.color}
               transparent
               opacity={0.5}
               blending={THREE.AdditiveBlending}
@@ -1652,30 +1628,25 @@ function AsteroidTrails({ asteroids }: { asteroids: EnhancedAsteroid[] }) {
 }
 
 function TrajectoryLine({ asteroid }: { asteroid: EnhancedAsteroid }) {
-  const points = [];
-  const orbit = asteroid.orbit;
-  
-  for (let i = 0; i <= 64; i++) {
-    const angle = (i / 64) * Math.PI * 2;
-    const actualRadius = orbit.radius; // Use actual distance
-    const x = Math.cos(angle) * actualRadius;
-    const z = Math.sin(angle) * actualRadius;
-    const y = Math.sin(angle * 0.2) * orbit.inclination * 0.15;
-    points.push(new THREE.Vector3(x, y, z));
-  }
-  
+  const curve = useMemo(() => {
+    const points = [];
+    const orbit = asteroid.orbit;
+    for (let i = 0; i <= 64; i++) {
+      const angle = (i / 64) * Math.PI * 2;
+      const actualRadius = orbit.radius;
+      points.push(new THREE.Vector3(
+        Math.cos(angle) * actualRadius,
+        Math.sin(angle * 0.2) * orbit.inclination * 0.15,
+        Math.sin(angle) * actualRadius,
+      ));
+    }
+    return new THREE.CatmullRomCurve3(points);
+  }, [asteroid.orbit]);
+
   return (
     <mesh>
-      <tubeGeometry 
-        args={[
-          new THREE.CatmullRomCurve3(points),
-          64,
-          0.05,
-          8,
-          true
-        ]} 
-      />
-      <meshBasicMaterial 
+      <tubeGeometry args={[curve, 64, 0.05, 8, true]} />
+      <meshBasicMaterial
         color={getTorino3DColor(asteroid.torinoScale)}
         transparent
         opacity={0.4}

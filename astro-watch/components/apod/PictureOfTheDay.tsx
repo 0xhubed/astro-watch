@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getAPOD, APOD } from '@/lib/nasa-api';
+import { APOD } from '@/lib/nasa-api';
 import { Calendar, Download, Info, ChevronLeft, ChevronRight, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
@@ -21,7 +21,9 @@ export default function PictureOfTheDay() {
     setLoading(true);
     setError(null);
     try {
-      const data = await getAPOD(date);
+      const response = await fetch(`/api/apod?date=${date}`);
+      if (!response.ok) throw new Error(`API error: ${response.status}`);
+      const data = await response.json();
       setApod(data);
     } catch (err) {
       setError('Failed to load Picture of the Day');
@@ -69,14 +71,15 @@ export default function PictureOfTheDay() {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-4xl font-bold">NASA Picture of the Day</h1>
+          <div className="flex items-center justify-between mb-4 gap-3">
+            <h1 className="text-2xl md:text-4xl font-bold">NASA Picture of the Day</h1>
             <Link
               href="/"
-              className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors"
+              className="flex items-center gap-2 px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors shrink-0 text-sm"
             >
               <ArrowLeft className="w-4 h-4" />
-              Back to AstroWatch
+              <span className="hidden sm:inline">Back to AstroWatch</span>
+              <span className="sm:hidden">Back</span>
             </Link>
           </div>
           
@@ -122,6 +125,19 @@ export default function PictureOfTheDay() {
                 alt={apod.title}
                 className="w-full h-auto rounded-lg shadow-2xl"
               />
+            ) : apod.url.endsWith('.mp4') || apod.url.endsWith('.webm') ? (
+              <div className="relative aspect-video">
+                <video
+                  src={apod.url}
+                  controls
+                  autoPlay
+                  muted
+                  loop
+                  className="w-full h-full rounded-lg object-contain bg-black"
+                >
+                  Your browser does not support the video tag.
+                </video>
+              </div>
             ) : (
               <div className="relative aspect-video">
                 <iframe

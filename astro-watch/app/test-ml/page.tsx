@@ -53,6 +53,7 @@ export default function TestMLPage() {
         const mockAsteroid = {
           id: 'test',
           name: 'Test Asteroid',
+          absolute_magnitude_h: 22.0,
           estimated_diameter: {
             meters: {
               estimated_diameter_min: 100,
@@ -65,7 +66,8 @@ export default function TestMLPage() {
               kilometers_per_second: '15.5'
             },
             miss_distance: {
-              astronomical: '0.1'
+              astronomical: '0.1',
+              kilometers: '14959787'
             }
           }],
           is_potentially_hazardous_asteroid: true

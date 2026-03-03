@@ -12,6 +12,7 @@ export interface APOD {
 export interface Asteroid {
   id: string;
   name: string;
+  absolute_magnitude_h: number;
   estimated_diameter: {
     meters: {
       estimated_diameter_min: number;
@@ -25,6 +26,7 @@ export interface Asteroid {
     };
     miss_distance: {
       astronomical: string;
+      kilometers: string;
     };
   }>;
   is_potentially_hazardous_asteroid: boolean;
@@ -39,8 +41,8 @@ export interface Asteroid {
 
 export interface EnhancedAsteroid extends Asteroid {
   risk: number;
-  torinoScale: number;
-  hazardLevel: 'none' | 'normal' | 'attention' | 'threatening' | 'certain';
+  rarity: number;
+  hazardLevel: 'none' | 'normal' | 'noteworthy' | 'rare' | 'exceptional';
   confidence: number;
   size: number;
   velocity: number;
@@ -144,47 +146,32 @@ export async function enhanceAsteroidData(asteroid: Asteroid): Promise<EnhancedA
   const size = asteroid.estimated_diameter.meters.estimated_diameter_max;
   const velocity = parseFloat(asteroid.close_approach_data[0].relative_velocity.kilometers_per_second);
   const missDistance = parseFloat(asteroid.close_approach_data[0].miss_distance.astronomical);
-  
+  const missDistanceKm = parseFloat(asteroid.close_approach_data[0].miss_distance.kilometers || '0')
+    || missDistance * 149597870.7;
+
   // Calculate enhanced properties
   const impactEnergy = calculateImpactEnergy(size, velocity);
   const orbit = calculateOrbitParameters(asteroid);
   const position = calculatePosition(asteroid);
-  
+
   // Use ML model for risk assessment
   const { risk, confidence } = await calculateAdvancedRisk(asteroid);
-  
-  // Calculate Torino Scale value (enhanced for demonstration)
-  let torinoScale = 0;
-  let hazardLevel: 'none' | 'normal' | 'attention' | 'threatening' | 'certain' = 'none';
-  
-  // Add some variability for demonstration purposes
-  const randomBoost = Math.random() * 0.3; // Random boost to show variety
-  const enhancedRisk = Math.min(1, risk + randomBoost);
-  
-  if (enhancedRisk < 0.15) {
-    torinoScale = 0;
-    hazardLevel = 'none';
-  } else if (enhancedRisk < 0.35) {
-    torinoScale = 1;
-    hazardLevel = 'normal';
-  } else if (enhancedRisk < 0.55) {
-    torinoScale = asteroid.is_potentially_hazardous_asteroid ? 3 : 2;
-    hazardLevel = 'attention';
-  } else if (enhancedRisk < 0.75) {
-    torinoScale = asteroid.is_potentially_hazardous_asteroid ? 5 : 4;
-    hazardLevel = 'threatening';
-  } else if (enhancedRisk < 0.9) {
-    torinoScale = asteroid.is_potentially_hazardous_asteroid ? 6 : 5;
-    hazardLevel = 'threatening';
-  } else {
-    torinoScale = asteroid.is_potentially_hazardous_asteroid ? 7 : 6;
-    hazardLevel = 'threatening';
-  }
-  
+
+  // Calculate close-approach rarity (Farnocchia & Chodas 2021)
+  const { calculateRarity, diameterToH } = await import('./rarity');
+  const H = asteroid.absolute_magnitude_h ?? diameterToH(size / 1000);
+  const rarity = calculateRarity(H, missDistanceKm);
+
+  let hazardLevel: EnhancedAsteroid['hazardLevel'] = 'none';
+  if (rarity >= 6) hazardLevel = 'exceptional';
+  else if (rarity >= 4) hazardLevel = 'rare';
+  else if (rarity >= 2) hazardLevel = 'noteworthy';
+  else if (rarity >= 1) hazardLevel = 'normal';
+
   const enhancedAsteroid = {
     ...asteroid,
     risk,
-    torinoScale,
+    rarity,
     hazardLevel,
     confidence,
     size,
@@ -228,41 +215,46 @@ function calculateImpactEnergy(size: number, velocity: number): number {
 function calculateOrbitParameters(asteroid: Asteroid): any {
   // Calculate orbital parameters for visualization
   const missDistance = parseFloat(asteroid.close_approach_data[0].miss_distance.astronomical);
-  
-  // Use actual miss distance with our scale factor (64 units = 1 AU)
-  // This gives realistic distances from very close (0.001 AU = 0.064 units) to far (0.5 AU = 32 units)
   const scaleFactor = 64; // Our scale: 1 AU = 64 units
-  
-  // Use actual miss distance for accurate positioning
-  // Remove random variation to maintain correct relative distances
-  const adjustedDistance = missDistance;
-  
+
   // Get orbital data if available
   const orbitalData = asteroid.orbital_data;
-  const semiMajorAxis = orbitalData?.semi_major_axis ? parseFloat(orbitalData.semi_major_axis) : adjustedDistance;
   const actualInclination = orbitalData?.inclination ? parseFloat(orbitalData.inclination) : (Math.random() - 0.5) * 0.2;
   const actualEccentricity = orbitalData?.eccentricity ? parseFloat(orbitalData.eccentricity) : Math.random() * 0.3;
 
+  // Use the asteroid's actual semi-major axis for its orbital radius around the Sun.
+  // The miss distance is the closest approach to Earth, NOT the distance from the Sun.
+  // Most NEOs have semi-major axes of 0.9–3.5 AU, placing them near/between
+  // Earth (1 AU = 64 units) and Mars (1.52 AU = 97 units).
+  // Fallback: place near Earth's orbit offset by miss distance.
+  const semiMajorAxis = orbitalData?.semi_major_axis
+    ? parseFloat(orbitalData.semi_major_axis)
+    : 1.0 + missDistance; // fallback: just outside Earth's orbit
+
   return {
-    radius: adjustedDistance * scaleFactor, // Actual scaled distance with variation
+    radius: semiMajorAxis * scaleFactor,
     speed: 0.01 + Math.random() * 0.02,
     phase: Math.random() * Math.PI * 2,
     inclination: actualInclination,
     eccentricity: actualEccentricity,
     semi_major_axis: semiMajorAxis,
-    isInnerOrbit: adjustedDistance < 1.0 // Track if asteroid is inside Earth's orbit (< 1 AU)
+    isInnerOrbit: semiMajorAxis < 1.0
   };
 }
 
 function calculatePosition(asteroid: Asteroid): any {
-  // Calculate 3D position for visualization
+  // Calculate 3D position for visualization using semi-major axis (distance from Sun)
   const angle = Math.random() * Math.PI * 2;
-  const distance = parseFloat(asteroid.close_approach_data[0].miss_distance.astronomical);
-  
+  const orbitalData = asteroid.orbital_data;
+  const missDistance = parseFloat(asteroid.close_approach_data[0].miss_distance.astronomical);
+  const semiMajorAxis = orbitalData?.semi_major_axis
+    ? parseFloat(orbitalData.semi_major_axis)
+    : 1.0 + missDistance;
+
   return {
-    x: Math.cos(angle) * distance,
+    x: Math.cos(angle) * semiMajorAxis,
     y: (Math.random() - 0.5) * 0.1,
-    z: Math.sin(angle) * distance
+    z: Math.sin(angle) * semiMajorAxis
   };
 }
 
@@ -312,29 +304,40 @@ function calculateAdvancedRiskRuleBased(asteroid: Asteroid): { risk: number; con
 
 // Mock data generator for development fallback
 function generateMockAsteroids(): EnhancedAsteroid[] {
+  const { calculateRarity, diameterToH } = require('./rarity');
   const mockAsteroids: EnhancedAsteroid[] = [];
   const today = new Date();
-  
+
   for (let i = 0; i < 15; i++) {
     const approachDate = new Date(today);
     approachDate.setDate(today.getDate() + Math.floor(Math.random() * 7));
-    
+
     const size = 0.1 + Math.random() * 2; // 0.1 to 2.1 km
     const velocity = 5 + Math.random() * 30; // 5 to 35 km/s
     const missDistance = 0.01 + Math.random() * 0.5; // 0.01 to 0.51 AU
-    const isPHA = Math.random() < 0.2; // 20% chance of being PHA
-    
+    const missDistanceKm = missDistance * 149597870.7;
+    const isPHA = Math.random() < 0.2;
+    const H = diameterToH(size);
+    const rarity = calculateRarity(H, missDistanceKm);
+
+    let hazardLevel: EnhancedAsteroid['hazardLevel'] = 'none';
+    if (rarity >= 6) hazardLevel = 'exceptional';
+    else if (rarity >= 4) hazardLevel = 'rare';
+    else if (rarity >= 2) hazardLevel = 'noteworthy';
+    else if (rarity >= 1) hazardLevel = 'normal';
+
     mockAsteroids.push({
-      // Base Asteroid properties
       id: `mock-${i + 1}`,
       name: `Mock Asteroid ${i + 1}`,
+      absolute_magnitude_h: H,
       close_approach_data: [{
         close_approach_date: approachDate.toISOString().split('T')[0],
         relative_velocity: {
           kilometers_per_second: velocity.toString()
         },
         miss_distance: {
-          astronomical: missDistance.toString()
+          astronomical: missDistance.toString(),
+          kilometers: missDistanceKm.toString()
         }
       }],
       estimated_diameter: {
@@ -351,28 +354,27 @@ function generateMockAsteroids(): EnhancedAsteroid[] {
         ascending_node_longitude: (Math.random() * 360).toString(),
         perihelion_argument: (Math.random() * 360).toString()
       },
-      // Enhanced properties
       risk: Math.random(),
-      torinoScale: Math.floor(Math.random() * 5),
-      hazardLevel: isPHA ? 'threatening' : 'normal' as any,
+      rarity,
+      hazardLevel,
       confidence: 0.7 + Math.random() * 0.3,
       size,
       velocity,
       missDistance,
       impactEnergy: Math.pow(size, 3) * Math.pow(velocity, 2) * 0.5,
       orbit: {
-        radius: missDistance * 149597870.7,
+        radius: (1 + Math.random() * 2) * 64, // semi-major axis * scale factor
         speed: velocity,
         phase: Math.random() * Math.PI * 2,
         inclination: Math.random() * 30,
         eccentricity: 0.1 + Math.random() * 0.8,
         semi_major_axis: 1 + Math.random() * 2,
-        isInnerOrbit: missDistance < 0.1
+        isInnerOrbit: false
       },
       position: {
-        x: (Math.random() - 0.5) * 10,
-        y: (Math.random() - 0.5) * 2,
-        z: (Math.random() - 0.5) * 10
+        x: (Math.random() - 0.5) * 3,
+        y: (Math.random() - 0.5) * 0.5,
+        z: (Math.random() - 0.5) * 3
       },
       moonCollisionData: {
         probability: Math.random() * 0.1,
@@ -391,6 +393,6 @@ function generateMockAsteroids(): EnhancedAsteroid[] {
       }
     });
   }
-  
+
   return mockAsteroids;
 }

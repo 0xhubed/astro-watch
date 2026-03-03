@@ -8,7 +8,7 @@ import {
 } from 'recharts';
 import { motion } from 'framer-motion';
 import { EnhancedAsteroid } from '@/lib/nasa-api';
-import { RiskLegend, getTorinoInfo } from '@/components/ui/RiskLegend';
+import { RiskLegend, getRarityInfo } from '@/components/ui/RiskLegend';
 import { MLModelStats } from './MLModelStats';
 import { useState } from 'react';
 
@@ -32,11 +32,11 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
     
     return Object.entries(grouped).map(([date, asteroids]) => ({
       date,
-      maxTorino: Math.max(...asteroids.map(a => a.torinoScale)),
-      avgTorino: asteroids.reduce((sum, a) => sum + a.torinoScale, 0) / asteroids.length,
-      highRisk: asteroids.filter(a => a.torinoScale >= 5).length,
-      mediumRisk: asteroids.filter(a => a.torinoScale >= 2 && a.torinoScale < 5).length,
-      lowRisk: asteroids.filter(a => a.torinoScale < 2).length,
+      maxRarity: Math.max(...asteroids.map(a => a.rarity)),
+      avgRarity: asteroids.reduce((sum, a) => sum + a.rarity, 0) / asteroids.length,
+      highRarity: asteroids.filter(a => a.rarity >= 4).length,
+      mediumRarity: asteroids.filter(a => a.rarity >= 2 && a.rarity < 4).length,
+      lowRarity: asteroids.filter(a => a.rarity < 2).length,
       count: asteroids.length
     }));
   };
@@ -50,7 +50,7 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
         animate={{ opacity: 1, y: 0 }}
         className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-800 w-full max-w-full overflow-hidden"
       >
-        <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-white">Torino Scale Risk Over Time</h3>
+        <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-white">Close-Approach Rarity Over Time</h3>
         <ResponsiveContainer width="100%" height={250} className="md:h-[300px] max-w-full">
           <AreaChart data={data}>
             <defs>
@@ -62,32 +62,32 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
             <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
             <XAxis dataKey="date" stroke="#9CA3AF" />
             <YAxis stroke="#9CA3AF" />
-            <Tooltip 
+            <Tooltip
               contentStyle={{ backgroundColor: '#1F2937', border: 'none' }}
               labelStyle={{ color: '#F3F4F6' }}
             />
-            <Area 
-              type="monotone" 
-              dataKey="highRisk" 
+            <Area
+              type="monotone"
+              dataKey="highRarity"
               stackId="1"
-              stroke="#ef4444" 
-              fillOpacity={0.8} 
+              stroke="#ef4444"
+              fillOpacity={0.8}
               fill="#ef4444"
             />
-            <Area 
-              type="monotone" 
-              dataKey="mediumRisk" 
+            <Area
+              type="monotone"
+              dataKey="mediumRarity"
               stackId="1"
-              stroke="#f59e0b" 
-              fillOpacity={0.8} 
+              stroke="#f59e0b"
+              fillOpacity={0.8}
               fill="#f59e0b"
             />
-            <Area 
-              type="monotone" 
-              dataKey="lowRisk" 
+            <Area
+              type="monotone"
+              dataKey="lowRarity"
               stackId="1"
-              stroke="#10b981" 
-              fillOpacity={0.8} 
+              stroke="#10b981"
+              fillOpacity={0.8}
               fill="#10b981"
             />
           </AreaChart>
@@ -97,14 +97,14 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
   };
 
   const RiskDistribution = () => {
-    // Group by Torino Scale levels
-    const torinoGroups = [
-      { name: 'No Hazard (0)', value: asteroids.filter(a => a.torinoScale === 0).length, color: '#9ca3af' },
-      { name: 'Normal (1)', value: asteroids.filter(a => a.torinoScale === 1).length, color: '#10b981' },
-      { name: 'Attention (2-4)', value: asteroids.filter(a => a.torinoScale >= 2 && a.torinoScale <= 4).length, color: '#f59e0b' },
-      { name: 'Threatening (5-7)', value: asteroids.filter(a => a.torinoScale >= 5 && a.torinoScale <= 7).length, color: '#ef4444' },
-      { name: 'Certain (8-10)', value: asteroids.filter(a => a.torinoScale >= 8).length, color: '#991b1b' }
-    ].filter(group => group.value > 0); // Only show groups with asteroids
+    // Group by rarity levels
+    const rarityGroups = [
+      { name: 'Routine (R0)', value: asteroids.filter(a => a.rarity === 0).length, color: '#93c5fd' },
+      { name: 'Common (R1)', value: asteroids.filter(a => a.rarity === 1).length, color: '#10b981' },
+      { name: 'Noteworthy (R2-3)', value: asteroids.filter(a => a.rarity >= 2 && a.rarity <= 3).length, color: '#f59e0b' },
+      { name: 'Rare (R4-5)', value: asteroids.filter(a => a.rarity >= 4 && a.rarity <= 5).length, color: '#ef4444' },
+      { name: 'Exceptional (R6+)', value: asteroids.filter(a => a.rarity >= 6).length, color: '#991b1b' }
+    ].filter(group => group.value > 0);
 
     return (
       <motion.div
@@ -112,11 +112,11 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
         animate={{ opacity: 1, x: 0 }}
         className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-800 w-full max-w-full overflow-hidden"
       >
-        <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-white">Torino Scale Distribution</h3>
+        <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-white">Rarity Distribution</h3>
         <ResponsiveContainer width="100%" height={250} className="md:h-[300px] max-w-full">
           <PieChart>
             <Pie
-              data={torinoGroups}
+              data={rarityGroups}
               cx="50%"
               cy="50%"
               innerRadius={40}
@@ -124,7 +124,7 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
               paddingAngle={5}
               dataKey="value"
             >
-              {torinoGroups.map((entry, index) => (
+              {rarityGroups.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.color} />
               ))}
             </Pie>
@@ -137,19 +137,19 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
 
   const TopThreats = () => {
     const topAsteroids = [...asteroids]
-      .sort((a, b) => b.torinoScale - a.torinoScale)
+      .sort((a, b) => b.rarity - a.rarity)
       .slice(0, 5);
-    
+
     return (
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-800 w-full max-w-full overflow-hidden"
       >
-        <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-white">Top Threats by Torino Scale</h3>
+        <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-white">Rarest Close Approaches</h3>
         <div className="space-y-3">
           {topAsteroids.map((asteroid) => {
-            const torinoInfo = getTorinoInfo(asteroid.torinoScale);
+            const rarityInfo = getRarityInfo(asteroid.rarity);
             return (
               <div key={asteroid.id} className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg">
                 <div>
@@ -158,9 +158,9 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
                     {asteroid.size.toFixed(1)} m | {asteroid.velocity.toFixed(1)} km/s
                   </div>
                 </div>
-                <div className={`${torinoInfo.bgColor} px-3 py-1 rounded-full`}>
-                  <span className={`text-sm font-medium ${torinoInfo.color}`}>
-                    Torino {asteroid.torinoScale}
+                <div className={`${rarityInfo.bgColor} px-3 py-1 rounded-full`}>
+                  <span className={`text-sm font-medium ${rarityInfo.color}`}>
+                    R{asteroid.rarity}
                   </span>
                 </div>
               </div>
@@ -301,8 +301,8 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
       x: asteroid.size,
       y: asteroid.velocity,
       name: asteroid.name,
-      torino: asteroid.torinoScale,
-      color: getTorinoInfo(asteroid.torinoScale).color
+      rarity: asteroid.rarity,
+      color: getRarityInfo(asteroid.rarity).color
     }));
 
     return (
@@ -336,9 +336,9 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
             <Scatter data={scatterData} fill="#8884d8">
               {scatterData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={
-                  entry.torino >= 5 ? '#ef4444' :
-                  entry.torino >= 2 ? '#f59e0b' :
-                  entry.torino >= 1 ? '#10b981' : '#9ca3af'
+                  entry.rarity >= 4 ? '#ef4444' :
+                  entry.rarity >= 2 ? '#f59e0b' :
+                  entry.rarity >= 1 ? '#10b981' : '#93c5fd'
                 } />
               ))}
             </Scatter>
@@ -348,19 +348,16 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
     );
   };
 
-  const TorinoScaleCard = () => {
+  const RarityScaleCard = () => {
     const scaleInfo = [
-      { level: 0, color: '#9ca3af', label: 'No Hazard', description: 'Minimal threat' },
-      { level: 1, color: '#10b981', label: 'Normal', description: 'Routine monitoring' },
-      { level: 2, color: '#f59e0b', label: 'Attention', description: 'Merits attention' },
-      { level: 3, color: '#f59e0b', label: 'Attention', description: 'Close monitoring' },
-      { level: 4, color: '#f59e0b', label: 'Attention', description: 'Careful monitoring' },
-      { level: 5, color: '#ef4444', label: 'Threatening', description: 'Threatening event' },
-      { level: 6, color: '#ef4444', label: 'Threatening', description: 'Certain collision' },
-      { level: 7, color: '#ef4444', label: 'Threatening', description: 'Very high impact' },
-      { level: 8, color: '#991b1b', label: 'Certain', description: 'Certain collision' },
-      { level: 9, color: '#991b1b', label: 'Certain', description: 'Regional devastation' },
-      { level: 10, color: '#991b1b', label: 'Certain', description: 'Global catastrophe' }
+      { level: 0, color: '#93c5fd', label: 'Routine', description: 'Multiple per year' },
+      { level: 1, color: '#10b981', label: 'Common', description: '~Once per year' },
+      { level: 2, color: '#4ade80', label: 'Noteworthy', description: '~Once per decade' },
+      { level: 3, color: '#fef08a', label: 'Uncommon', description: '~Once per century' },
+      { level: 4, color: '#fed7aa', label: 'Rare', description: '~Once per millennium' },
+      { level: 5, color: '#fb923c', label: 'Very Rare', description: '~Once per 10,000 years' },
+      { level: 6, color: '#f87171', label: 'Exceptionally Rare', description: '~Once per 100,000 years' },
+      { level: 7, color: '#ef4444', label: 'Extraordinary', description: '< Once per million years' }
     ];
 
     return (
@@ -369,16 +366,16 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
         animate={{ opacity: 1, y: 0 }}
         className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-4 md:p-6 border border-gray-800 w-full max-w-full overflow-hidden"
       >
-        <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-white">Torino Impact Hazard Scale</h3>
+        <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-white">Close-Approach Rarity Scale</h3>
         <div className="space-y-2 overflow-y-auto max-h-[300px] custom-scrollbar">
           {scaleInfo.map((item) => (
             <div key={item.level} className="flex items-center gap-3 p-2 bg-gray-800/30 rounded-lg">
               <div className="flex items-center gap-2 min-w-[60px]">
-                <div 
-                  className="w-4 h-4 rounded-full" 
+                <div
+                  className="w-4 h-4 rounded-full"
                   style={{ backgroundColor: item.color }}
                 ></div>
-                <span className="text-white font-medium text-sm">{item.level}</span>
+                <span className="text-white font-medium text-sm">R{item.level}</span>
               </div>
               <div className="flex-1">
                 <div className="text-white text-sm font-medium">{item.label}</div>
@@ -390,8 +387,8 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
         <div className="mt-4 p-3 bg-blue-900/20 rounded-lg border border-blue-700/30">
           <div className="text-blue-300 text-sm font-medium mb-1">Note</div>
           <div className="text-blue-200 text-xs">
-            The Torino Scale rates impact hazard from 0 (no concern) to 10 (global catastrophe). 
-            Values shown are calculated for educational purposes.
+            Rarity is based on Farnocchia & Chodas (2021). It measures how many years
+            pass between close approaches of a given size at a given distance (log scale).
           </div>
         </div>
       </motion.div>
@@ -438,7 +435,7 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
             <div className="text-blue-300 text-sm font-medium mb-1">About the Data</div>
             <div className="text-blue-200 text-xs">
               This application uses NASA's Near Earth Object Web Service to track asteroids. 
-              Torino Scale calculations are enhanced for educational purposes and may differ from official assessments.
+              Rarity scores are calculated using the Farnocchia & Chodas (2021) method for educational purposes.
             </div>
           </div>
         </div>
@@ -471,7 +468,7 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
       {/* Bottom Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 w-full">
         <APIStatus />
-        <TorinoScaleCard />
+        <RarityScaleCard />
       </div>
       
       <style jsx>{`

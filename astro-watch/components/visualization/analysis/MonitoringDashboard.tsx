@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { EnhancedAsteroid } from '@/lib/nasa-api';
-import { getTorinoInfo } from '@/components/ui/RiskLegend';
+import { getRarityInfo } from '@/components/ui/RiskLegend';
 
 interface Props {
   asteroids: EnhancedAsteroid[];
@@ -57,19 +57,19 @@ export function MonitoringDashboard({ asteroids }: Props) {
       }
     });
 
-    // High-risk object alerts - use consistent timestamps
+    // Notable rarity object alerts - use consistent timestamps
     asteroids
-      .filter(a => a.torinoScale >= 3)
+      .filter(a => a.rarity >= 3)
       .slice(0, 3)
       .forEach((asteroid, index) => {
         const seed = parseInt(asteroid.id.slice(-3), 16) || 1000;
         const timeOffset = ((seed % 120) + 60) * 60 * 1000; // 1-3 hours ago
-        
+
         alerts.push({
           id: `risk-${asteroid.id}`,
           type: 'risk-update',
           severity: 'high',
-          message: `Torino Scale ${asteroid.torinoScale} object ${asteroid.name} under continuous monitoring`,
+          message: `Rarity R${asteroid.rarity} object ${asteroid.name} under continuous monitoring`,
           timestamp: new Date(baseTime.getTime() - timeOffset),
           asteroid
         });
@@ -96,13 +96,13 @@ export function MonitoringDashboard({ asteroids }: Props) {
     // Current tracking statistics - stable calculations
     const trackingStats = {
       totalTracked: asteroids.length,
-      activelyMonitored: asteroids.filter(a => a.torinoScale > 0).length,
+      activelyMonitored: asteroids.filter(a => a.rarity > 0).length,
       closeApproaches: asteroids.filter(a => {
         const approachDate = new Date(a.close_approach_data[0].close_approach_date);
         const daysUntil = Math.ceil((approachDate.getTime() - baseTime.getTime()) / (1000 * 60 * 60 * 24));
         return daysUntil <= 30 && daysUntil >= 0;
       }).length,
-      highRiskObjects: asteroids.filter(a => a.torinoScale >= 3).length,
+      highRiskObjects: asteroids.filter(a => a.rarity >= 3).length,
       newThisWeek: Math.min(asteroids.length, 5), // Simulated
       averageSize: asteroids.reduce((sum, a) => sum + a.size, 0) / asteroids.length
     };
@@ -210,7 +210,7 @@ export function MonitoringDashboard({ asteroids }: Props) {
         </div>
         <div className="bg-red-900/20 rounded-lg p-4 border border-red-700/30">
           <div className="text-2xl font-bold text-red-300">{monitoringData.trackingStats.highRiskObjects}</div>
-          <div className="text-sm text-red-200">High Risk (T≥3)</div>
+          <div className="text-sm text-red-200">Notable (R≥3)</div>
         </div>
         <div className="bg-purple-900/20 rounded-lg p-4 border border-purple-700/30">
           <div className="text-2xl font-bold text-purple-300">{monitoringData.trackingStats.newThisWeek}</div>
@@ -475,7 +475,7 @@ export function MonitoringDashboard({ asteroids }: Props) {
                       <div>Size: {selectedAlert.asteroid.size.toFixed(1)} m</div>
                       <div>Velocity: {selectedAlert.asteroid.velocity.toFixed(1)} km/s</div>
                       <div>Miss Distance: {selectedAlert.asteroid.missDistance.toFixed(3)} AU</div>
-                      <div>Torino Scale: {selectedAlert.asteroid.torinoScale}</div>
+                      <div>Rarity: R{selectedAlert.asteroid.rarity}</div>
                     </div>
                   </div>
                 )}

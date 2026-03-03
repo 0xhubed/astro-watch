@@ -3,7 +3,7 @@ import { Resend } from 'resend';
 export interface CriticalAsteroidSummary {
   id: string;
   name: string;
-  torinoScale: number;
+  rarity: number;
   risk: number;
   isPHA: boolean;
   size: number; // meters (max est diameter)
@@ -38,7 +38,7 @@ export async function sendCriticalAsteroidsEmail(params: {
     .map(a => `
       <tr>
         <td style="padding:8px 6px;border-bottom:1px solid #eee">${a.name}</td>
-        <td style="padding:8px 6px;border-bottom:1px solid #eee;text-align:center">${a.torinoScale}</td>
+        <td style="padding:8px 6px;border-bottom:1px solid #eee;text-align:center">R${a.rarity}</td>
         <td style="padding:8px 6px;border-bottom:1px solid #eee;text-align:center">${a.risk.toFixed(2)}</td>
         <td style="padding:8px 6px;border-bottom:1px solid #eee;text-align:center">${a.isPHA ? 'Yes' : 'No'}</td>
         <td style="padding:8px 6px;border-bottom:1px solid #eee">${a.size >= 1000 ? (a.size/1000).toFixed(2)+' km' : a.size.toFixed(0)+' m'}</td>
@@ -57,7 +57,7 @@ export async function sendCriticalAsteroidsEmail(params: {
         <thead>
           <tr>
             <th style="text-align:left;padding:8px 6px;border-bottom:2px solid #333">Name</th>
-            <th style="padding:8px 6px;border-bottom:2px solid #333">Torino</th>
+            <th style="padding:8px 6px;border-bottom:2px solid #333">Rarity</th>
             <th style="padding:8px 6px;border-bottom:2px solid #333">Risk</th>
             <th style="padding:8px 6px;border-bottom:2px solid #333">PHA</th>
             <th style="text-align:left;padding:8px 6px;border-bottom:2px solid #333">Size</th>

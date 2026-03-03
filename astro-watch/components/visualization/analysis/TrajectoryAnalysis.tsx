@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { EnhancedAsteroid } from '@/lib/nasa-api';
-import { getTorinoInfo } from '@/components/ui/RiskLegend';
+import { getRarityInfo } from '@/components/ui/RiskLegend';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   ScatterChart, Scatter, ReferenceLine, Cell
@@ -27,7 +27,7 @@ export function TrajectoryAnalysis({ asteroids }: Props) {
       velocity: asteroid.velocity,
       size: asteroid.size,
       name: asteroid.name,
-      torino: asteroid.torinoScale,
+      rarity: asteroid.rarity,
       energy: asteroid.impactEnergy / 1e12, // Convert to terajoules
       type: asteroid.orbit.radius > 64 ? 'Apollo' : 
             asteroid.orbit.radius < 64 ? 'Aten' : 'Amor'
@@ -39,7 +39,7 @@ export function TrajectoryAnalysis({ asteroids }: Props) {
         distance: asteroid.missDistance,
         name: asteroid.name,
         velocity: asteroid.velocity,
-        torino: asteroid.torinoScale
+        rarity: asteroid.rarity
       }))
       .sort((a, b) => a.date.getTime() - b.date.getTime())
       .slice(0, 20); // Show next 20 approaches
@@ -131,9 +131,9 @@ export function TrajectoryAnalysis({ asteroids }: Props) {
               <Cell 
                 key={`cell-${index}`} 
                 fill={
-                  entry.torino >= 5 ? '#ef4444' :
-                  entry.torino >= 2 ? '#f59e0b' :
-                  entry.torino >= 1 ? '#10b981' : '#6b7280'
+                  entry.rarity >= 4 ? '#ef4444' :
+                  entry.rarity >= 2 ? '#f59e0b' :
+                  entry.rarity >= 1 ? '#10b981' : '#93c5fd'
                 }
               />
             ))}
@@ -141,7 +141,7 @@ export function TrajectoryAnalysis({ asteroids }: Props) {
         </ScatterChart>
       </ResponsiveContainer>
       <div className="mt-4 text-white/60 text-sm">
-        <p>Each point represents an asteroid. Color indicates Torino Scale risk level.</p>
+        <p>Each point represents an asteroid. Color indicates close-approach rarity level.</p>
         <p className="text-yellow-300 mt-1">
           Objects closer than 0.05 AU and faster than 30 km/s pose the highest concern.
         </p>
@@ -159,7 +159,7 @@ export function TrajectoryAnalysis({ asteroids }: Props) {
       <h3 className="text-xl font-semibold mb-4 text-white">Upcoming Close Approaches</h3>
       <div className="max-h-80 overflow-y-auto custom-scrollbar">
         {orbitalAnalysis.approachTimeline.map((approach, index) => {
-          const torinoInfo = getTorinoInfo(approach.torino);
+          const rarityInfo = getRarityInfo(approach.rarity);
           return (
             <motion.div
               key={approach.name}
@@ -175,9 +175,9 @@ export function TrajectoryAnalysis({ asteroids }: Props) {
                   {approach.date.toLocaleDateString()} • {approach.distance.toFixed(3)} AU • {approach.velocity.toFixed(1)} km/s
                 </div>
               </div>
-              <div className={`px-3 py-1 rounded-full ${torinoInfo.bgColor}`}>
-                <span className={`text-xs font-medium ${torinoInfo.color}`}>
-                  T{approach.torino}
+              <div className={`px-3 py-1 rounded-full ${rarityInfo.bgColor}`}>
+                <span className={`text-xs font-medium ${rarityInfo.color}`}>
+                  R{approach.rarity}
                 </span>
               </div>
             </motion.div>
@@ -307,12 +307,13 @@ export function TrajectoryAnalysis({ asteroids }: Props) {
                 <h4 className="text-lg font-semibold mb-3 text-green-300">Orbital Data</h4>
                 <div className="space-y-3 text-sm">
                   <div className="bg-white/5 rounded-lg p-3">
-                    <div className="text-white/60 text-xs mb-1">Torino Scale</div>
-                    <div className="text-white font-mono text-lg">{selectedAsteroid.torinoScale}</div>
+                    <div className="text-white/60 text-xs mb-1">Rarity</div>
+                    <div className="text-white font-mono text-lg">R{selectedAsteroid.rarity}</div>
                     <div className="text-white/40 text-xs mt-1">
-                      {selectedAsteroid.torinoScale === 0 ? 'No hazard' : 
-                       selectedAsteroid.torinoScale <= 3 ? 'Normal monitoring' : 
-                       selectedAsteroid.torinoScale <= 7 ? 'Threatening' : 'Certain collision'}
+                      {selectedAsteroid.rarity === 0 ? 'Routine' :
+                       selectedAsteroid.rarity <= 1 ? 'Common' :
+                       selectedAsteroid.rarity <= 3 ? 'Noteworthy' :
+                       selectedAsteroid.rarity <= 5 ? 'Rare' : 'Exceptional'}
                     </div>
                   </div>
                   <div className="bg-white/5 rounded-lg p-3">

@@ -90,7 +90,7 @@ export default function Home() {
       <MLIndicator isMLReady={isMLReady} mlStats={mlStats} />
       
       {/* Header */}
-      <header className="fixed top-0 z-50 w-full bg-gray-900/80 backdrop-blur-md border-b border-gray-800">
+      <header className="fixed top-0 z-50 w-full bg-gray-900/80 backdrop-blur-md border-b border-gray-800 pointer-events-auto">
         <div className="w-full px-4 py-3 md:py-4">
           <div className="flex items-center justify-between gap-2">
             <motion.h1 
@@ -115,7 +115,7 @@ export default function Home() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
               transition={{ duration: 0.5 }}
-              className="h-[calc(100vh-5rem)]"
+              className="h-[calc(100dvh-4rem)]"
             >
               <EnhancedSolarSystem 
                 asteroids={filteredAsteroids} 
@@ -147,7 +147,7 @@ export default function Home() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.5 }}
-              className="h-[calc(100vh-5rem)]"
+              className="h-[calc(100dvh-4rem)]"
             >
               <AsteroidAnalysisHub asteroids={filteredAsteroids} />
             </motion.div>
@@ -155,21 +155,17 @@ export default function Home() {
         </AnimatePresence>
       </main>
       
-      {/* Statistics Footer */}
-      <footer className="fixed bottom-0 w-full bg-gray-900/80 backdrop-blur-md border-t border-gray-800">
+      {/* Statistics Footer — hidden on mobile to free up screen space */}
+      <footer className="hidden md:block fixed bottom-0 w-full bg-gray-900/80 backdrop-blur-md border-t border-gray-800">
         <div className="w-full px-4 py-1.5">
-          <div className="flex flex-col md:flex-row md:justify-between md:items-center text-xs md:text-sm text-gray-400">
-            <div className="text-center md:text-left">
-              <span className="hidden md:inline">Total Asteroids: {asteroids.length} | </span>
-              <span className="md:hidden">Total: {asteroids.length} | </span>
+          <div className="flex justify-between items-center text-sm text-gray-400">
+            <div>
+              Total Asteroids: {asteroids.length} |
               Filtered: {filteredAsteroids.length} |
-              <span className="hidden md:inline">Rare: </span>
-              <span className="md:hidden">Rare: </span>
-              {asteroids.filter(a => a.rarity >= 4).length}
+              Rare: {asteroids.filter(a => a.rarity >= 4).length}
             </div>
-            <div className="text-center md:text-right text-xs mt-1 md:mt-0">
-              <span className="hidden md:inline">Last Updated: </span>
-              {new Date().toLocaleTimeString()}
+            <div className="text-xs">
+              Last Updated: {new Date().toLocaleTimeString()}
             </div>
           </div>
         </div>

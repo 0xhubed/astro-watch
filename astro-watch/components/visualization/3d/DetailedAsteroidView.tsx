@@ -10,11 +10,12 @@ interface DetailedAsteroidViewProps {
   onClose: () => void;
 }
 
-function getTorinoInfo(scale: number) {
-  if (scale === 0) return { level: 'No Hazard', color: 'text-green-400', bgColor: 'bg-green-500/20' };
-  if (scale <= 3) return { level: 'Normal', color: 'text-yellow-400', bgColor: 'bg-yellow-500/20' };
-  if (scale <= 7) return { level: 'Threatening', color: 'text-orange-400', bgColor: 'bg-orange-500/20' };
-  return { level: 'Certain Collision', color: 'text-red-400', bgColor: 'bg-red-500/20' };
+function getRarityLevelInfo(rarity: number) {
+  if (rarity === 0) return { level: 'Routine', color: 'text-blue-400', bgColor: 'bg-blue-500/20' };
+  if (rarity <= 1) return { level: 'Common', color: 'text-green-400', bgColor: 'bg-green-500/20' };
+  if (rarity <= 3) return { level: 'Noteworthy', color: 'text-yellow-400', bgColor: 'bg-yellow-500/20' };
+  if (rarity <= 5) return { level: 'Rare', color: 'text-orange-400', bgColor: 'bg-orange-500/20' };
+  return { level: 'Exceptional', color: 'text-red-400', bgColor: 'bg-red-500/20' };
 }
 
 function InfoTooltip({ text, children, position = "auto" }: { text: string; children: React.ReactNode; position?: "left" | "right" | "auto" }) {
@@ -41,7 +42,7 @@ function InfoTooltip({ text, children, position = "auto" }: { text: string; chil
 export function DetailedAsteroidView({ asteroid, isOpen, onClose }: DetailedAsteroidViewProps) {
   if (!isOpen) return null;
 
-  const torinoInfo = getTorinoInfo(asteroid.torinoScale);
+  const rarityInfo = getRarityLevelInfo(asteroid.rarity);
   const closeApproach = asteroid.close_approach_data[0];
   
   return (
@@ -67,10 +68,10 @@ export function DetailedAsteroidView({ asteroid, isOpen, onClose }: DetailedAste
               <div className="flex-1">
                 <h1 className="text-2xl font-bold text-white mb-2">{asteroid.name}</h1>
                 <div className="flex items-center gap-3">
-                  <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${torinoInfo.bgColor}`}>
-                    <div className={`w-2 h-2 rounded-full bg-current animate-pulse ${torinoInfo.color}`}></div>
-                    <span className={torinoInfo.color}>
-                      Torino Scale {asteroid.torinoScale} - {torinoInfo.level}
+                  <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${rarityInfo.bgColor}`}>
+                    <div className={`w-2 h-2 rounded-full bg-current animate-pulse ${rarityInfo.color}`}></div>
+                    <span className={rarityInfo.color}>
+                      Rarity R{asteroid.rarity} - {rarityInfo.level}
                     </span>
                   </div>
                   {asteroid.is_potentially_hazardous_asteroid && (
@@ -345,14 +346,14 @@ export function DetailedAsteroidView({ asteroid, isOpen, onClose }: DetailedAste
                     <span className="text-white font-mono ml-2">{asteroid.id}</span>
                   </div>
                   <div>
-                    <span className="text-white/60">Hazard Classification:</span>
+                    <span className="text-white/60">Rarity Classification:</span>
                     <span className="text-white ml-2 capitalize">{asteroid.hazardLevel}</span>
                   </div>
                 </div>
                 <div className="mt-4 p-4 bg-blue-500/10 rounded-lg border border-blue-500/20">
                   <h4 className="text-blue-300 font-medium mb-2">Understanding the Data</h4>
                   <div className="space-y-2 text-blue-200 text-sm">
-                    <p><strong>Torino Scale:</strong> A 0-10 scale that combines impact probability and kinetic energy to assess asteroid threat level. Most asteroids are level 0 (no hazard).</p>
+                    <p><strong>Rarity Score:</strong> Based on Farnocchia & Chodas (2021), this 0-7 scale measures how many years between close approaches of a given size at a given distance. Higher = rarer.</p>
                     <p><strong>Potentially Hazardous:</strong> Asteroids larger than 140 meters that come within 0.05 AU (7.5 million km) of Earth's orbit.</p>
                     <p><strong>Data Source:</strong> NASA's Near Earth Object Web Service (NeoWs) with machine learning risk assessment enhancement.</p>
                   </div>

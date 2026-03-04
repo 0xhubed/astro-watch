@@ -410,9 +410,11 @@ function Moon({ earthPosition, hideLabels }: { earthPosition: [number, number, n
         <sphereGeometry args={[0.7, 64, 32]} />
         <meshStandardMaterial
           map={moonTexture}
-          roughness={0.9}
+          roughness={0.7}
           metalness={0.0}
-          envMapIntensity={0.1}
+          envMapIntensity={0.4}
+          emissive={0x333333}
+          emissiveIntensity={0.2}
         />
       </mesh>
 
@@ -810,9 +812,11 @@ function Earth() {
           normalMap={earthNormalMap}
           normalScale={EARTH_NORMAL_SCALE}
           roughnessMap={earthSpecularMap}
-          roughness={0.7}
+          roughness={0.5}
           metalness={0.02}
-          envMapIntensity={0.3}
+          envMapIntensity={0.5}
+          emissive={0x112244}
+          emissiveIntensity={0.15}
         />
       </mesh>
       
@@ -1798,7 +1802,7 @@ function SolarSystemScene({
       <EnhancedStarField />
 
       {/* Balanced lighting */}
-      <ambientLight intensity={0.3} color={0x404080} />
+      <ambientLight intensity={0.5} color={0x506090} />
       <directionalLight
         position={[-earthPos[0], -earthPos[1], -earthPos[2]]}
         intensity={3.0}

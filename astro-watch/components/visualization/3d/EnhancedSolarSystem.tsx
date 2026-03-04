@@ -1560,44 +1560,91 @@ function TrajectoryLine({ asteroid }: { asteroid: EnhancedAsteroid }) {
 }
 
 // Enhanced Camera Controls Component
-function CameraControls({ activePreset, onPresetChange, isTransitioning }: { 
-  activePreset: string; 
+function CameraControls({ activePreset, onPresetChange, isTransitioning }: {
+  activePreset: string;
   onPresetChange: (preset: string) => void;
   isTransitioning?: boolean;
 }) {
+  const [isCollapsed, setIsCollapsed] = useState(true);
+
   return (
-    <div className="absolute top-2 left-2 md:top-4 md:left-4 z-10 bg-black/60 backdrop-blur-sm rounded-lg p-2 md:p-3 border border-white/20 max-w-[160px] md:max-w-[180px] pointer-events-auto">
-      <h3 className="text-white text-xs font-semibold mb-2 flex items-center gap-2">
-        <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
-        Camera Views
-      </h3>
-      <div className="space-y-1">
-        {CAMERA_PRESETS.map((preset) => (
-          <button
-            key={preset.name}
-            onClick={() => onPresetChange(preset.name)}
-            disabled={isTransitioning}
-            className={`w-full text-left px-2 py-2 md:py-1.5 rounded text-xs transition-all duration-200 min-h-[36px] md:min-h-0 ${
-              activePreset === preset.name
-                ? 'bg-blue-500/70 text-white shadow-sm'
-                : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'
-            } ${isTransitioning ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-          >
-            <span className="flex items-center gap-1.5">
-              {activePreset === preset.name && (
-                <span className="w-1 h-1 rounded-full bg-white animate-pulse"></span>
-              )}
-              {preset.name}
-            </span>
-          </button>
-        ))}
-      </div>
-      {isTransitioning && (
-        <div className="mt-2 text-xs text-white/50 flex items-center gap-1.5">
-          <div className="w-2 h-2 border border-white/30 border-t-white/80 rounded-full animate-spin"></div>
-          <span className="text-[10px]">Transitioning...</span>
+    <div className="absolute top-2 left-2 md:top-4 md:left-4 z-10 pointer-events-auto">
+      {/* Mobile: collapsed toggle button */}
+      <button
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        className="md:hidden bg-black/60 backdrop-blur-sm rounded-lg p-2.5 border border-white/20 flex items-center gap-2"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-blue-400">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+        </svg>
+        <span className="text-white text-xs font-medium">{activePreset}</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`text-white/60 transition-transform ${isCollapsed ? '' : 'rotate-180'}`}>
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
+
+      {/* Mobile: expanded preset list */}
+      {!isCollapsed && (
+        <div className="md:hidden mt-1 bg-black/80 backdrop-blur-sm rounded-lg p-2 border border-white/20 max-w-[160px]">
+          <div className="space-y-1">
+            {CAMERA_PRESETS.map((preset) => (
+              <button
+                key={preset.name}
+                onClick={() => { onPresetChange(preset.name); setIsCollapsed(true); }}
+                disabled={isTransitioning}
+                className={`w-full text-left px-2 py-2 rounded text-xs transition-all duration-200 min-h-[36px] ${
+                  activePreset === preset.name
+                    ? 'bg-blue-500/70 text-white shadow-sm'
+                    : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'
+                } ${isTransitioning ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+              >
+                <span className="flex items-center gap-1.5">
+                  {activePreset === preset.name && (
+                    <span className="w-1 h-1 rounded-full bg-white animate-pulse"></span>
+                  )}
+                  {preset.name}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
+
+      {/* Desktop: always-visible panel */}
+      <div className="hidden md:block bg-black/60 backdrop-blur-sm rounded-lg p-3 border border-white/20 max-w-[180px]">
+        <h3 className="text-white text-xs font-semibold mb-2 flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+          Camera Views
+        </h3>
+        <div className="space-y-1">
+          {CAMERA_PRESETS.map((preset) => (
+            <button
+              key={preset.name}
+              onClick={() => onPresetChange(preset.name)}
+              disabled={isTransitioning}
+              className={`w-full text-left px-2 py-1.5 rounded text-xs transition-all duration-200 ${
+                activePreset === preset.name
+                  ? 'bg-blue-500/70 text-white shadow-sm'
+                  : 'bg-white/5 text-white/70 hover:bg-white/10 hover:text-white'
+              } ${isTransitioning ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+            >
+              <span className="flex items-center gap-1.5">
+                {activePreset === preset.name && (
+                  <span className="w-1 h-1 rounded-full bg-white animate-pulse"></span>
+                )}
+                {preset.name}
+              </span>
+            </button>
+          ))}
+        </div>
+        {isTransitioning && (
+          <div className="mt-2 text-xs text-white/50 flex items-center gap-1.5">
+            <div className="w-2 h-2 border border-white/30 border-t-white/80 rounded-full animate-spin"></div>
+            <span className="text-[10px]">Transitioning...</span>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -2158,14 +2205,14 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
       `}</style>
 
       
-      <div className="absolute bottom-4 right-4 z-10 text-xs text-white/40">
+      <div className="absolute bottom-2 md:bottom-4 right-4 z-10 text-xs text-white/40">
         Asteroids: {asteroids.length}
       </div>
       
       {/* Mobile Asteroid List Toggle */}
       <button
         onClick={() => setShowDetailedView(!showDetailedView)}
-        className="md:hidden fixed bottom-20 right-4 z-20 bg-purple-600 hover:bg-purple-700 text-white rounded-full p-3 shadow-lg"
+        className="md:hidden fixed bottom-[4.5rem] right-4 z-20 bg-purple-600 hover:bg-purple-700 text-white rounded-full p-3 shadow-lg"
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>

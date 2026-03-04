@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useAsteroidStore } from '@/lib/store';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { Image, Menu, X, Calendar, Shield, Eye, Orbit, AlertTriangle, BarChart3, Info, Home } from 'lucide-react';
+import { Image, Menu, X, Calendar, Shield, Orbit, AlertTriangle, BarChart3, Info, Home } from 'lucide-react';
 
 export function MobileControls() {
   const [isOpen, setIsOpen] = useState(false);
@@ -104,42 +104,6 @@ export function MobileControls() {
                         <span className="text-zinc-300 font-medium">{highRiskCount}</span>
                       </div>
                     )}
-                  </div>
-                </div>
-
-                {/* Quick Actions */}
-                <div className="mb-6">
-                  <h3 className="text-white font-semibold mb-3 flex items-center gap-2">
-                    <Eye className="w-4 h-4" />
-                    Quick Views
-                  </h3>
-                  <div className="space-y-2">
-                    {[
-                      { value: 'solar-system', label: '3D Solar System', icon: Orbit, desc: 'Interactive 3D view' },
-                      { value: 'dashboard', label: 'Analytics Dashboard', icon: BarChart3, desc: 'Charts and statistics' },
-                      { value: 'impact-globe', label: 'Analysis Hub', icon: Shield, desc: 'Detailed analysis tools' }
-                    ].map(({ value, label, icon: Icon, desc }) => (
-                      <button
-                        key={value}
-                        onClick={() => {
-                          setViewMode(value as any);
-                          setIsOpen(false);
-                        }}
-                        className={`w-full p-3 rounded-lg text-left transition-colors ${
-                          viewMode === value
-                            ? 'bg-white/10 text-white border border-white/15'
-                            : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <Icon className="w-5 h-5 flex-shrink-0" />
-                          <div>
-                            <div className="font-medium">{label}</div>
-                            <div className="text-xs opacity-75">{desc}</div>
-                          </div>
-                        </div>
-                      </button>
-                    ))}
                   </div>
                 </div>
 

@@ -11,14 +11,16 @@ import { EnhancedAsteroid } from '@/lib/nasa-api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useMLPredictions } from '@/hooks/useMLPredictions';
 import { MLIndicator } from '@/components/visualization/MLIndicator';
+import { Orbit, BarChart3, Shield } from 'lucide-react';
 
 export default function Home() {
-  const { 
-    asteroids, 
-    setAsteroids, 
-    timeRange, 
-    viewMode, 
-    getFilteredAsteroids 
+  const {
+    asteroids,
+    setAsteroids,
+    timeRange,
+    viewMode,
+    setViewMode,
+    getFilteredAsteroids
   } = useAsteroidStore();
   
   const [selectedAsteroid, setSelectedAsteroid] = useState<EnhancedAsteroid | null>(null);
@@ -105,8 +107,8 @@ export default function Home() {
         </div>
       </header>
       
-      {/* Main Content */}
-      <main className="pt-16 md:pt-20">
+      {/* Main Content - pb-16 on mobile for bottom tab bar clearance */}
+      <main className="pt-16 md:pt-20 pb-16 md:pb-0">
         <AnimatePresence mode="wait">
           {viewMode === 'solar-system' && (
             <motion.div
@@ -115,10 +117,10 @@ export default function Home() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
               transition={{ duration: 0.5 }}
-              className="h-[calc(100dvh-4rem)]"
+              className="h-[calc(100dvh-8rem)] md:h-[calc(100dvh-4rem)]"
             >
-              <EnhancedSolarSystem 
-                asteroids={filteredAsteroids} 
+              <EnhancedSolarSystem
+                asteroids={filteredAsteroids}
                 selectedAsteroid={selectedAsteroid}
                 onAsteroidSelect={setSelectedAsteroid}
                 hoveredAsteroid={hoveredAsteroid}
@@ -126,7 +128,7 @@ export default function Home() {
               />
             </motion.div>
           )}
-          
+
           {viewMode === 'dashboard' && (
             <motion.div
               key="dashboard"
@@ -139,7 +141,7 @@ export default function Home() {
               <RiskDashboard asteroids={filteredAsteroids} timeRange={timeRange} />
             </motion.div>
           )}
-          
+
           {viewMode === 'impact-globe' && (
             <motion.div
               key="analysis-hub"
@@ -147,14 +149,38 @@ export default function Home() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.5 }}
-              className="h-[calc(100dvh-4rem)]"
+              className="h-[calc(100dvh-8rem)] md:h-[calc(100dvh-4rem)]"
             >
               <AsteroidAnalysisHub asteroids={filteredAsteroids} />
             </motion.div>
           )}
         </AnimatePresence>
       </main>
-      
+
+      {/* Mobile Bottom Tab Bar */}
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-gray-900/95 backdrop-blur-md border-t border-gray-700">
+        <div className="flex items-stretch">
+          {[
+            { value: 'solar-system' as const, label: '3D View', icon: Orbit },
+            { value: 'dashboard' as const, label: 'Dashboard', icon: BarChart3 },
+            { value: 'impact-globe' as const, label: 'Analysis', icon: Shield },
+          ].map(({ value, label, icon: Icon }) => (
+            <button
+              key={value}
+              onClick={() => setViewMode(value)}
+              className={`flex-1 flex flex-col items-center justify-center gap-1 py-2.5 transition-colors ${
+                viewMode === value
+                  ? 'text-blue-400 bg-white/5'
+                  : 'text-gray-500 active:bg-white/5'
+              }`}
+            >
+              <Icon className="w-5 h-5" />
+              <span className="text-[10px] font-medium">{label}</span>
+            </button>
+          ))}
+        </div>
+      </nav>
+
       {/* Statistics Footer — hidden on mobile to free up screen space */}
       <footer className="hidden md:block fixed bottom-0 w-full bg-gray-900/80 backdrop-blur-md border-t border-gray-800">
         <div className="w-full px-4 py-1.5">

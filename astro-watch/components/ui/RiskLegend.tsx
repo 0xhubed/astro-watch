@@ -94,7 +94,7 @@ export function RiskLegend({ expanded = false, position = 'left', onToggle }: Pr
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`absolute bottom-20 ${positionClasses[position]} z-20 max-w-md`}
+      className={`absolute bottom-4 md:bottom-20 ${positionClasses[position]} z-20 max-w-[calc(100vw-2rem)] md:max-w-md`}
     >
       <div className="bg-black/60 backdrop-blur-md rounded-xl border border-white/10 shadow-2xl overflow-hidden">
         <button

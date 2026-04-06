@@ -32,8 +32,8 @@ export function LandingPage() {
     },
     {
       icon: <Sparkles className="w-6 h-6" />,
-      title: "ML Predictions",
-      description: "Experimental machine learning models that attempt to enhance trajectory predictions."
+      title: "AI Assistant",
+      description: "Ask questions about asteroids, control the 3D view, and get AI-powered risk analysis."
     },
     {
       icon: <BarChart3 className="w-6 h-6" />,
@@ -242,10 +242,9 @@ export function LandingPage() {
               browse and explore.
             </p>
             <p className="text-base md:text-lg px-4 md:px-0">
-              The app includes experimental, browser-based machine learning models that
-              attempt to supplement NASA's data with additional predictions. These are
-              purely exploratory and not suitable for scientific use — always defer to
-              official NASA sources.
+              An AI assistant can answer your questions about asteroids, explain risk
+              assessments, and control the 3D visualization. An autonomous monitoring
+              agent watches for notable approaches and publishes briefings.
             </p>
             <p className="text-base md:text-lg px-4 md:px-0">
               Whether you're a student, hobbyist, or just curious about space,

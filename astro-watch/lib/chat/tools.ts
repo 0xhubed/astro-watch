@@ -70,8 +70,8 @@ export function executeQueryAsteroids(
   const sortKey = params.sort_by === 'miss_distance' ? 'missDistance' : (params.sort_by || 'rarity');
   const sortOrder = params.sort_order === 'asc' ? 1 : -1;
   filtered.sort((a, b) => {
-    const aVal = (a as Record<string, unknown>)[sortKey] as number;
-    const bVal = (b as Record<string, unknown>)[sortKey] as number;
+    const aVal = (a as unknown as Record<string, unknown>)[sortKey] as number;
+    const bVal = (b as unknown as Record<string, unknown>)[sortKey] as number;
     return (aVal - bVal) * sortOrder;
   });
   const results = filtered.slice(0, params.limit || 5);

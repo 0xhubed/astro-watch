@@ -12,6 +12,7 @@ import { DetailedAsteroidView } from './DetailedAsteroidView';
 import { PostProcessingEffects } from './PostProcessing';
 import { ProceduralAsteroid } from './ProceduralAsteroid';
 import { SolarWind, SpaceDust } from './ParticleEffects';
+import { useCinematicCamera } from './CinematicCamera';
 
 interface Props {
   asteroids: EnhancedAsteroid[];
@@ -1415,10 +1416,12 @@ function TrajectoryLine({ asteroid }: { asteroid: EnhancedAsteroid }) {
 }
 
 // Enhanced Camera Controls Component
-function CameraControls({ activePreset, onPresetChange, isTransitioning }: {
+function CameraControls({ activePreset, onPresetChange, isTransitioning, onCinematicStart, hasSelectedAsteroid }: {
   activePreset: string;
   onPresetChange: (preset: string) => void;
   isTransitioning?: boolean;
+  onCinematicStart: () => void;
+  hasSelectedAsteroid: boolean;
 }) {
   const [isCollapsed, setIsCollapsed] = useState(true);
 
@@ -1462,6 +1465,13 @@ function CameraControls({ activePreset, onPresetChange, isTransitioning }: {
                 </span>
               </button>
             ))}
+            <button
+              onClick={() => { onCinematicStart(); setIsCollapsed(true); }}
+              disabled={!hasSelectedAsteroid}
+              className="w-full px-2 py-2 rounded text-xs bg-purple-600/30 border border-purple-500/30 text-purple-300 hover:bg-purple-600/50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors min-h-[36px]"
+            >
+              Cinematic View
+            </button>
           </div>
         </div>
       )}
@@ -1499,6 +1509,15 @@ function CameraControls({ activePreset, onPresetChange, isTransitioning }: {
             <span className="text-[10px]">Transitioning...</span>
           </div>
         )}
+        <div className="mt-2 pt-2 border-t border-white/10">
+          <button
+            onClick={onCinematicStart}
+            disabled={!hasSelectedAsteroid}
+            className="px-3 py-1.5 w-full bg-purple-600/30 border border-purple-500/30 rounded text-sm text-purple-300 hover:bg-purple-600/50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          >
+            Cinematic View
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -1594,7 +1613,8 @@ function AsteroidInfoPanel({ asteroid, onClose, onOpenDetailed }: {
 function SolarSystemScene({
   asteroids, selectedAsteroid, onAsteroidSelect,
   hoveredAsteroid, setHoveredAsteroid,
-  controlsRef, onOpenDetailed, showDetailedView
+  controlsRef, onOpenDetailed, showDetailedView,
+  cinematicMode, onCinematicComplete,
 }: {
   asteroids: EnhancedAsteroid[];
   selectedAsteroid?: EnhancedAsteroid | null;
@@ -1604,6 +1624,8 @@ function SolarSystemScene({
   controlsRef: React.RefObject<any>;
   onOpenDetailed: () => void;
   showDetailedView: boolean;
+  cinematicMode: boolean;
+  onCinematicComplete: () => void;
 }) {
   const timeRef = useRef(0);
   const earthPositionRef = useRef<[number, number, number]>([0, 0, 0]);
@@ -1613,6 +1635,27 @@ function SolarSystemScene({
   // Calculate initial Earth position
   const earthData = PLANET_DATA.find(p => p.name === 'Earth')!;
   const earthInitialAngle = (earthData.initialPhase || 0) * Math.PI * 2;
+
+  // Compute the selected asteroid's current world position for the cinematic camera
+  const selectedWorldPos = useMemo(() => {
+    if (!selectedAsteroid) return null;
+    const [ex, ey, ez] = earthPositionRef.current;
+    const orbit = selectedAsteroid.orbit;
+    const aAngle = orbit.phase;
+    const minDist = 5.0;
+    const aRadius = Math.max(minDist, orbit.radius);
+    const ax = Math.cos(aAngle) * aRadius;
+    const az = Math.sin(aAngle) * aRadius;
+    const ay = Math.sin(aAngle * 0.2) * orbit.inclination * 0.15;
+    return new THREE.Vector3(ex + ax, ey + ay, ez + az);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAsteroid, cinematicMode]);
+
+  useCinematicCamera({
+    target: selectedWorldPos,
+    enabled: cinematicMode,
+    onComplete: onCinematicComplete,
+  });
 
   // Drive animation from useFrame — no React state updates
   useFrame((_, delta) => {
@@ -1781,6 +1824,7 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [internalHoveredAsteroid, setInternalHoveredAsteroid] = useState<number | null>(null);
   const [showDetailedView, setShowDetailedView] = useState(false);
+  const [cinematicMode, setCinematicMode] = useState(false);
   const controlsRef = useRef<any>(null);
 
   // Static initial Earth position (for camera init only)
@@ -1942,15 +1986,19 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
             controlsRef={controlsRef}
             onOpenDetailed={() => setShowDetailedView(true)}
             showDetailedView={showDetailedView}
+            cinematicMode={cinematicMode}
+            onCinematicComplete={() => setCinematicMode(false)}
           />
           <PostProcessingEffects isMobile={isMobile} />
         </Suspense>
       </Canvas>
       
-      <CameraControls 
-        activePreset={activePreset} 
+      <CameraControls
+        activePreset={activePreset}
         onPresetChange={handlePresetChange}
         isTransitioning={isTransitioning}
+        onCinematicStart={() => setCinematicMode(true)}
+        hasSelectedAsteroid={!!selectedAsteroid}
       />
       
       {selectedAsteroid && (

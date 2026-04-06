@@ -8,14 +8,16 @@ interface AsteroidStore {
   timeRange: 'day' | 'week' | 'month';
   viewMode: 'solar-system' | 'dashboard' | 'impact-globe';
   showTrajectories: boolean;
-  
+  cinematicTarget: string | null;
+
   setAsteroids: (asteroids: EnhancedAsteroid[]) => void;
   selectAsteroid: (asteroid: EnhancedAsteroid | null) => void;
   setRiskFilter: (filter: 'all' | 'threatening' | 'attention' | 'normal') => void;
   setTimeRange: (range: 'day' | 'week' | 'month') => void;
   setViewMode: (mode: 'solar-system' | 'dashboard' | 'impact-globe') => void;
   toggleTrajectories: () => void;
-  
+  setCinematicTarget: (id: string | null) => void;
+
   getFilteredAsteroids: () => EnhancedAsteroid[];
 }
 
@@ -26,13 +28,15 @@ export const useAsteroidStore = create<AsteroidStore>((set, get) => ({
   timeRange: 'week',
   viewMode: 'solar-system',
   showTrajectories: false,
-  
+  cinematicTarget: null,
+
   setAsteroids: (asteroids) => set({ asteroids }),
   selectAsteroid: (asteroid) => set({ selectedAsteroid: asteroid }),
   setRiskFilter: (filter) => set({ riskFilter: filter }),
   setTimeRange: (range) => set({ timeRange: range }),
   setViewMode: (mode) => set({ viewMode: mode }),
   toggleTrajectories: () => set(state => ({ showTrajectories: !state.showTrajectories })),
+  setCinematicTarget: (id) => set({ cinematicTarget: id }),
   
   getFilteredAsteroids: () => {
     const { asteroids, riskFilter } = get();

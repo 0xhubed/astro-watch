@@ -13,6 +13,7 @@ import { PostProcessingEffects } from './PostProcessing';
 import { ProceduralAsteroid } from './ProceduralAsteroid';
 import { SolarWind, SpaceDust } from './ParticleEffects';
 import { useCinematicCamera } from './CinematicCamera';
+import { AgentAnnotations } from './AgentAnnotations';
 
 interface Props {
   asteroids: EnhancedAsteroid[];
@@ -1759,6 +1760,8 @@ function SolarSystemScene({
           hideLabels={showDetailedView}
         />
       </group>
+
+      <AgentAnnotations />
 
     </>
   );

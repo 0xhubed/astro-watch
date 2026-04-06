@@ -154,8 +154,7 @@ export async function enhanceAsteroidData(asteroid: Asteroid): Promise<EnhancedA
   const orbit = calculateOrbitParameters(asteroid);
   const position = calculatePosition(asteroid);
 
-  // Use ML model for risk assessment
-  const { risk, confidence } = await calculateAdvancedRisk(asteroid);
+  const { risk, confidence } = calculateRiskScore(asteroid);
 
   // Calculate close-approach rarity (Farnocchia & Chodas 2021)
   const { calculateRarity, diameterToH } = await import('./rarity');
@@ -258,14 +257,7 @@ function calculatePosition(asteroid: Asteroid): any {
   };
 }
 
-async function calculateAdvancedRisk(asteroid: Asteroid): Promise<{ risk: number; confidence: number }> {
-  // Always use rule-based calculation on server-side
-  // ML prediction will be done client-side
-  return calculateAdvancedRiskRuleBased(asteroid);
-}
-
-// Keep original rule-based calculation as fallback
-function calculateAdvancedRiskRuleBased(asteroid: Asteroid): { risk: number; confidence: number } {
+function calculateRiskScore(asteroid: Asteroid): { risk: number; confidence: number } {
   const size = asteroid.estimated_diameter.meters.estimated_diameter_max;
   const velocity = parseFloat(asteroid.close_approach_data[0].relative_velocity.kilometers_per_second);
   const missDistance = parseFloat(asteroid.close_approach_data[0].miss_distance.astronomical);

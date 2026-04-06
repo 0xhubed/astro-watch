@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { chatTools, executeQueryAsteroids, executeGetStatistics } from '@/lib/chat/tools';
+import { chatTools, executeQueryAsteroids, executeGetStatistics, executeGetAgentInsights } from '@/lib/chat/tools';
 import { buildSystemPrompt } from '@/lib/chat/system-prompt';
 import { fetchNEOFeed, EnhancedAsteroid } from '@/lib/nasa-api';
 
@@ -27,11 +27,11 @@ async function getAsteroids(): Promise<EnhancedAsteroid[]> {
   }
 }
 
-function executeTool(
+async function executeTool(
   toolName: string,
   args: Record<string, unknown>,
   asteroids: EnhancedAsteroid[]
-): { result: string; sceneCommand?: Record<string, unknown> } {
+): Promise<{ result: string; sceneCommand?: Record<string, unknown> }> {
   switch (toolName) {
     case 'query_asteroids':
       return {
@@ -51,6 +51,12 @@ function executeTool(
       return {
         result: JSON.stringify({ success: true, action: args.action }),
         sceneCommand: args,
+      };
+    case 'get_agent_insights':
+      return {
+        result: await executeGetAgentInsights(
+          args as Parameters<typeof executeGetAgentInsights>[0]
+        ),
       };
     default:
       return { result: JSON.stringify({ error: `Unknown tool: ${toolName}` }) };
@@ -180,7 +186,7 @@ export async function POST(request: NextRequest) {
               /* leave args as empty object */
             }
             send({ type: 'tool_call', name: tc.function.name, arguments: args });
-            const { result, sceneCommand } = executeTool(tc.function.name, args, asteroids);
+            const { result, sceneCommand } = await executeTool(tc.function.name, args, asteroids);
             if (sceneCommand) send({ type: 'scene_command', ...sceneCommand });
             allMessages.push({ role: 'tool', content: result, tool_call_id: tc.id });
           }

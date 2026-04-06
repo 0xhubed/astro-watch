@@ -1,4 +1,5 @@
 import { EnhancedAsteroid } from '@/lib/nasa-api';
+import { loadBriefing, loadMemory, loadAnnotationsPublic } from '@/lib/agent/memory';
 
 export const chatTools = [
   {
@@ -47,6 +48,20 @@ export const chatTools = [
           stat_type: { type: 'string', enum: ['risk_distribution', 'size_summary', 'velocity_summary', 'closest_approaches', 'hazardous_count'], description: 'Type of statistic to compute' },
         },
         required: ['stat_type'],
+      },
+    },
+  },
+  {
+    type: 'function' as const,
+    function: {
+      name: 'get_agent_insights',
+      description: 'Read findings from the autonomous monitoring agent. Returns the latest briefing, watchlist, and annotations.',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: { type: 'string', enum: ['latest_briefing', 'watchlist', 'annotations'], description: 'What agent data to retrieve' },
+        },
+        required: ['query'],
       },
     },
   },
@@ -114,5 +129,26 @@ export function executeGetStatistics(
     }
     default:
       return JSON.stringify({ error: 'Unknown stat_type' });
+  }
+}
+
+export async function executeGetAgentInsights(
+  params: { query: 'latest_briefing' | 'watchlist' | 'annotations' }
+): Promise<string> {
+  switch (params.query) {
+    case 'latest_briefing': {
+      const briefing = await loadBriefing();
+      return JSON.stringify(briefing);
+    }
+    case 'watchlist': {
+      const memory = await loadMemory();
+      return JSON.stringify(memory.watchlist);
+    }
+    case 'annotations': {
+      const annotations = await loadAnnotationsPublic();
+      return JSON.stringify(annotations);
+    }
+    default:
+      return JSON.stringify({ error: 'Unknown query type' });
   }
 }

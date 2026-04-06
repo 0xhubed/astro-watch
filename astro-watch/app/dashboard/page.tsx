@@ -10,6 +10,7 @@ import { AsteroidAnalysisHub } from '@/components/visualization/analysis/Asteroi
 import { EnhancedAsteroid } from '@/lib/nasa-api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Orbit, BarChart3, Shield } from 'lucide-react';
+import { ChatPanel } from '@/components/chat/ChatPanel';
 
 export default function Home() {
   const {
@@ -181,6 +182,9 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      {/* Chat Assistant */}
+      <ChatPanel />
     </div>
   );
 }

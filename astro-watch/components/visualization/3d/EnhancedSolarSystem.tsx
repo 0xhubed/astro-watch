@@ -10,6 +10,7 @@ import { useAsteroidStore } from '@/lib/store';
 import { RiskLegend, getRarityInfo, getRarityColor, getRarity3DColor } from '@/components/ui/RiskLegend';
 import { DetailedAsteroidView } from './DetailedAsteroidView';
 import { PostProcessingEffects } from './PostProcessing';
+import { ProceduralAsteroid } from './ProceduralAsteroid';
 
 interface Props {
   asteroids: EnhancedAsteroid[];
@@ -155,31 +156,6 @@ const FRESNEL_FRAGMENT_SHADER = `
 // Reusable constant objects to avoid per-render allocations
 const SUN_EMISSIVE_COLOR = new THREE.Color(1.0, 0.6, 0.1);
 const EARTH_NORMAL_SCALE = new THREE.Vector2(0.2, 0.2);
-
-// Shared glow sprite texture for asteroid auras
-let _glowTexture: THREE.CanvasTexture | null = null;
-
-function getGlowTexture(): THREE.CanvasTexture {
-  if (_glowTexture) return _glowTexture;
-
-  const size = 128;
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const ctx = canvas.getContext('2d')!;
-
-  const half = size / 2;
-  const grad = ctx.createRadialGradient(half, half, 0, half, half, half);
-  grad.addColorStop(0, 'rgba(255,255,255,0.6)');
-  grad.addColorStop(0.25, 'rgba(255,255,255,0.3)');
-  grad.addColorStop(0.5, 'rgba(255,255,255,0.1)');
-  grad.addColorStop(1, 'rgba(255,255,255,0)');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, size, size);
-
-  _glowTexture = new THREE.CanvasTexture(canvas);
-  return _glowTexture;
-}
 
 // Create procedural planet textures
 function createPlanetTexture(textureType: string, baseColor: string): THREE.Texture {
@@ -1201,154 +1177,6 @@ function EnhancedStarField() {
   );
 }
 
-// Individual asteroid component with realistic shapes and materials
-function AsteroidSphere({ asteroid, index, isSelected, isHovered, onClick, onDoubleClick, onPointerOver, onPointerOut }: {
-  asteroid: EnhancedAsteroid;
-  index: number;
-  isSelected: boolean;
-  isHovered: boolean;
-  onClick: () => void;
-  onDoubleClick?: () => void;
-  onPointerOver: () => void;
-  onPointerOut: () => void;
-}) {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const glowTexture = useMemo(() => getGlowTexture(), []);
-  const orbit = asteroid.orbit;
-  const angle = orbit.phase;
-
-  // Use actual asteroid distance from NASA API data
-  // orbit.radius already contains the scaled distance (missDistance * 64)
-  // Add minimum offset to ensure asteroids are always outside Earth's surface
-  const earthRadius = 3.0; // Current Earth radius in visualization units
-  const minDistance = earthRadius + 2.0; // Minimum distance from Earth center (Earth radius + 2 units buffer)
-  const actualRadius = Math.max(minDistance, orbit.radius); // Ensure asteroid is always outside Earth
-  
-  const x = Math.cos(angle) * actualRadius;
-  const z = Math.sin(angle) * actualRadius;
-  const y = Math.sin(angle * 0.2) * orbit.inclination * 0.15;
-  
-  // Scale asteroids based on size and distance for better visibility
-  const distanceFactor = Math.min(1.5, Math.max(0.5, 30 / actualRadius)); // Closer asteroids appear larger
-  const baseScale = Math.max(0.1, Math.log10(Math.max(1, asteroid.size)) * 0.2) * distanceFactor;
-  const scale = isSelected ? baseScale * 2.0 : isHovered ? baseScale * 1.5 : baseScale;
-  
-  const rarityColor = getRarity3DColor(asteroid.rarity);
-  const color = new THREE.Color(rarityColor);
-  
-  // Create a slightly darker, more muted version for realism
-  const baseColor = color.clone().multiplyScalar(0.7);
-  
-  // Add subtle color variation based on orbital position
-  // Asteroids inside Earth's orbit (closer to Sun) get warmer tint
-  // Asteroids outside Earth's orbit get cooler tint
-  if (orbit.isInnerOrbit) {
-    baseColor.lerp(new THREE.Color(0xffaa00), 0.1); // Slight orange tint
-  } else {
-    baseColor.lerp(new THREE.Color(0x0088ff), 0.05); // Slight blue tint
-  }
-  
-  if (isSelected) {
-    baseColor.lerp(new THREE.Color(0xffffff), 0.5);
-  } else if (isHovered) {
-    baseColor.lerp(new THREE.Color(0x00ffff), 0.3);
-  }
-  
-  // Determine asteroid shape based on size and ID (for consistency)
-  const shapeVariant = parseInt(asteroid.id, 10) % 4;
-  const sizeCategory = asteroid.size < 0.5 ? 'small' : asteroid.size < 2.0 ? 'medium' : 'large';
-  
-  // Subtle rotation animation
-  useFrame((state, delta) => {
-    if (meshRef.current) {
-      meshRef.current.rotation.x += delta * 0.1 * (1 + parseInt(asteroid.id, 10) % 3);
-      meshRef.current.rotation.y += delta * 0.05 * (1 + parseInt(asteroid.id, 10) % 2);
-    }
-  });
-  
-  // Different geometries for variety
-  const getGeometry = () => {
-    switch (shapeVariant) {
-      case 0: // Irregular sphere (most common)
-        return <sphereGeometry args={[1, 8, 6]} />;
-      case 1: // Elongated (potato-shaped)
-        return <sphereGeometry args={[1, 8, 6]} />;
-      case 2: // More angular
-        return <dodecahedronGeometry args={[1, 0]} />;
-      case 3: // Very irregular
-        return <icosahedronGeometry args={[1, 0]} />;
-      default:
-        return <sphereGeometry args={[1, 8, 6]} />;
-    }
-  };
-  
-  // Scale modifications for different shapes
-  const getScaleModifications = (): [number, number, number] => {
-    switch (shapeVariant) {
-      case 1: // Elongated
-        return [scale * 1.2, scale * 0.8, scale * 0.9];
-      case 2: // Slightly flattened
-        return [scale, scale * 0.7, scale];
-      case 3: // Irregular
-        return [scale * 1.1, scale * 0.9, scale * 1.05];
-      default:
-        return [scale, scale, scale];
-    }
-  };
-  
-  return (
-    <group position={[x, y, z]}>
-      <mesh
-        ref={meshRef}
-        scale={getScaleModifications()}
-        onClick={onClick}
-        onDoubleClick={onDoubleClick}
-        onPointerOver={onPointerOver}
-        onPointerOut={onPointerOut}
-        castShadow
-        receiveShadow
-      >
-        {getGeometry()}
-        <meshStandardMaterial
-          color={baseColor}
-          roughness={0.85}
-          metalness={0.15}
-          transparent={false}
-          emissive={color}
-          emissiveIntensity={isSelected ? 0.8 : isHovered ? 0.5 : 0.15 + asteroid.rarity * 0.08}
-        />
-      </mesh>
-
-      {/* Glow aura sprite */}
-      <sprite scale={[scale * 4, scale * 4, 1]}>
-        <spriteMaterial
-          map={glowTexture}
-          color={color}
-          transparent
-          opacity={isSelected ? 0.7 : isHovered ? 0.5 : 0.25 + asteroid.rarity * 0.06}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-        />
-      </sprite>
-
-      {/* 3D positioned tooltip */}
-      {isHovered && (
-        <Html position={[0, scale * 2, 0]} center style={{ zIndex: 10 }}>
-          <div className="bg-black/90 text-white px-3 py-2 rounded-lg shadow-xl backdrop-blur-sm border border-white/20 pointer-events-none whitespace-nowrap">
-            <div className="text-sm font-bold text-yellow-300">{asteroid.name}</div>
-            <div className="text-xs text-gray-300 mt-1">
-              Rarity: R{asteroid.rarity} | Size: {asteroid.size >= 1000 
-                ? `${(asteroid.size / 1000).toFixed(2)} km`
-                : `${asteroid.size.toFixed(1)} m`
-              }
-            </div>
-          </div>
-        </Html>
-      )}
-    </group>
-  );
-}
-
 // Static asteroid field - NO FLASHING
 function AsteroidField({ asteroids, onAsteroidSelect, selectedAsteroid, hoveredAsteroid, setHoveredAsteroid, onOpenDetailed, hideLabels }: { 
   asteroids: EnhancedAsteroid[]; 
@@ -1363,31 +1191,52 @@ function AsteroidField({ asteroids, onAsteroidSelect, selectedAsteroid, hoveredA
 
   return (
     <group>
-      {/* Individual asteroid spheres */}
-      {asteroids.map((asteroid, index) => (
-        <AsteroidSphere
-          key={asteroid.id}
-          asteroid={asteroid}
-          index={index}
-          isSelected={selectedAsteroid?.id === asteroid.id}
-          isHovered={hoveredAsteroid === index}
-          onClick={() => {
-            onAsteroidSelect?.(asteroid);
-          }}
-          onDoubleClick={() => {
-            onAsteroidSelect?.(asteroid);
-            onOpenDetailed?.();
-          }}
-          onPointerOver={() => {
-            setHoveredAsteroid?.(index);
-            document.body.style.cursor = 'pointer';
-          }}
-          onPointerOut={() => {
-            setHoveredAsteroid?.(null);
-            document.body.style.cursor = 'auto';
-          }}
-        />
-      ))}
+      {/* Individual procedural asteroids */}
+      {asteroids.map((asteroid, index) => {
+        const orbit = asteroid.orbit;
+        const angle = orbit.phase;
+        const earthRadius = 3.0;
+        const minDistance = earthRadius + 2.0;
+        const actualRadius = Math.max(minDistance, orbit.radius);
+        const x = Math.cos(angle) * actualRadius;
+        const z = Math.sin(angle) * actualRadius;
+        const y = Math.sin(angle * 0.2) * orbit.inclination * 0.15;
+        const distanceFactor = Math.min(1.5, Math.max(0.5, 30 / actualRadius));
+        const baseScale = Math.max(0.1, Math.log10(Math.max(1, asteroid.size)) * 0.2) * distanceFactor;
+        const isSelected = selectedAsteroid?.id === asteroid.id;
+        const isHovered = hoveredAsteroid === index;
+        const seed = parseInt(asteroid.id.replace(/\D/g, '').slice(-6)) || index;
+        const riskColor = getRarity3DColor(asteroid.rarity);
+        const emissiveIntensity = isSelected ? 0.8 : isHovered ? 0.5 : 0.15 + asteroid.rarity * 0.08;
+
+        return (
+          <ProceduralAsteroid
+            key={asteroid.id}
+            position={[x, y, z]}
+            scale={baseScale}
+            seed={seed}
+            riskColor={riskColor}
+            emissiveIntensity={emissiveIntensity}
+            isSelected={isSelected}
+            isHovered={isHovered}
+            onClick={() => {
+              onAsteroidSelect?.(asteroid);
+            }}
+            onDoubleClick={() => {
+              onAsteroidSelect?.(asteroid);
+              onOpenDetailed?.();
+            }}
+            onPointerOver={() => {
+              setHoveredAsteroid?.(index);
+              document.body.style.cursor = 'pointer';
+            }}
+            onPointerOut={() => {
+              setHoveredAsteroid?.(null);
+              document.body.style.cursor = 'auto';
+            }}
+          />
+        );
+      })}
       
 
       {/* Asteroid particle trails */}

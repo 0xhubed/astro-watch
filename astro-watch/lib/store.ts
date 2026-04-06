@@ -9,6 +9,8 @@ interface AsteroidStore {
   viewMode: 'solar-system' | 'dashboard' | 'impact-globe';
   showTrajectories: boolean;
   cinematicTarget: string | null;
+  chatOpen: boolean;
+  pendingSceneCommand: Record<string, unknown> | null;
 
   setAsteroids: (asteroids: EnhancedAsteroid[]) => void;
   selectAsteroid: (asteroid: EnhancedAsteroid | null) => void;
@@ -17,6 +19,8 @@ interface AsteroidStore {
   setViewMode: (mode: 'solar-system' | 'dashboard' | 'impact-globe') => void;
   toggleTrajectories: () => void;
   setCinematicTarget: (id: string | null) => void;
+  setChatOpen: (open: boolean) => void;
+  setPendingSceneCommand: (cmd: Record<string, unknown> | null) => void;
 
   getFilteredAsteroids: () => EnhancedAsteroid[];
 }
@@ -29,6 +33,8 @@ export const useAsteroidStore = create<AsteroidStore>((set, get) => ({
   viewMode: 'solar-system',
   showTrajectories: false,
   cinematicTarget: null,
+  chatOpen: false,
+  pendingSceneCommand: null,
 
   setAsteroids: (asteroids) => set({ asteroids }),
   selectAsteroid: (asteroid) => set({ selectedAsteroid: asteroid }),
@@ -37,6 +43,8 @@ export const useAsteroidStore = create<AsteroidStore>((set, get) => ({
   setViewMode: (mode) => set({ viewMode: mode }),
   toggleTrajectories: () => set(state => ({ showTrajectories: !state.showTrajectories })),
   setCinematicTarget: (id) => set({ cinematicTarget: id }),
+  setChatOpen: (open) => set({ chatOpen: open }),
+  setPendingSceneCommand: (cmd) => set({ pendingSceneCommand: cmd }),
   
   getFilteredAsteroids: () => {
     const { asteroids, riskFilter } = get();

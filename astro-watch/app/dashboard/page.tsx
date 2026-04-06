@@ -9,8 +9,6 @@ import { MobileControls } from '@/components/visualization/controls/MobileContro
 import { AsteroidAnalysisHub } from '@/components/visualization/analysis/AsteroidAnalysisHub';
 import { EnhancedAsteroid } from '@/lib/nasa-api';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useMLPredictions } from '@/hooks/useMLPredictions';
-import { MLIndicator } from '@/components/visualization/MLIndicator';
 import { Orbit, BarChart3, Shield } from 'lucide-react';
 
 export default function Home() {
@@ -44,16 +42,6 @@ export default function Home() {
     }
   }, [data?.asteroids, setAsteroids]);
   
-  // Use ML predictions to enhance asteroid data on client-side (non-blocking)
-  const { asteroids: mlEnhancedAsteroids, isMLReady, mlStats } = useMLPredictions(data?.asteroids || []);
-  
-  // Update asteroids with ML predictions when ready (without blocking initial render)
-  useEffect(() => {
-    if (mlEnhancedAsteroids.length > 0 && isMLReady) {
-      setAsteroids(mlEnhancedAsteroids);
-    }
-  }, [mlEnhancedAsteroids, isMLReady, setAsteroids]);
-
   const filteredAsteroids = getFilteredAsteroids();
 
   if (isLoading) {
@@ -88,9 +76,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-space-dark w-full overflow-x-hidden">
-      {/* ML Indicator */}
-      <MLIndicator isMLReady={isMLReady} mlStats={mlStats} />
-      
       {/* Header */}
       <header className="fixed top-0 z-50 w-full bg-gray-900/80 backdrop-blur-md border-b border-gray-800 pointer-events-auto">
         <div className="w-full px-4 py-3 md:py-4">

@@ -11,6 +11,7 @@ import { RiskLegend, getRarityInfo, getRarityColor, getRarity3DColor } from '@/c
 import { DetailedAsteroidView } from './DetailedAsteroidView';
 import { PostProcessingEffects } from './PostProcessing';
 import { ProceduralAsteroid } from './ProceduralAsteroid';
+import { SolarWind, SpaceDust } from './ParticleEffects';
 
 interface Props {
   asteroids: EnhancedAsteroid[];
@@ -1695,6 +1696,8 @@ function SolarSystemScene({
 
       <PlanetaryTrajectories />
       <Sun />
+      <SolarWind count={1500} />
+      <SpaceDust count={400} />
 
       {PLANET_DATA.filter(p => p.name !== 'Earth').map((planetData) => (
         <AnimatedPlanet key={planetData.name} planetData={planetData} earthInitialAngle={earthInitialAngle} timeRef={timeRef} hideLabels={showDetailedView} />

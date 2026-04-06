@@ -9,7 +9,6 @@ import {
 import { motion } from 'framer-motion';
 import { EnhancedAsteroid } from '@/lib/nasa-api';
 import { RiskLegend, getRarityInfo } from '@/components/ui/RiskLegend';
-import { MLModelStats } from './MLModelStats';
 import { useState } from 'react';
 
 interface Props {
@@ -445,8 +444,6 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
   
   return (
     <div className="space-y-4 md:space-y-6 w-full max-w-full overflow-x-hidden">
-      {/* ML Model Performance Section */}
-      <MLModelStats />
       {/* Primary Analytics Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 w-full">
         <TimeSeriesRisk />

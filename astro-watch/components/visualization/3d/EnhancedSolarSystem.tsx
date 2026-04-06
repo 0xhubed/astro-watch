@@ -9,6 +9,7 @@ import { EnhancedAsteroid } from '@/lib/nasa-api';
 import { useAsteroidStore } from '@/lib/store';
 import { RiskLegend, getRarityInfo, getRarityColor, getRarity3DColor } from '@/components/ui/RiskLegend';
 import { DetailedAsteroidView } from './DetailedAsteroidView';
+import { PostProcessingEffects } from './PostProcessing';
 
 interface Props {
   asteroids: EnhancedAsteroid[];
@@ -1864,7 +1865,6 @@ function SolarSystemScene({
         />
       </group>
 
-      {/* Environment and post-processing disabled — incompatible with three 0.178 */}
     </>
   );
 }
@@ -1924,6 +1924,7 @@ function AnimatedPlanet({ planetData, earthInitialAngle, timeRef, hideLabels }: 
 }
 
 export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSelect, hoveredAsteroid, setHoveredAsteroid }: Props) {
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const [activePreset, setActivePreset] = useState('NEO Overview');
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [internalHoveredAsteroid, setInternalHoveredAsteroid] = useState<number | null>(null);
@@ -2060,8 +2061,7 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
           antialias: true,
           alpha: false,
           powerPreference: 'high-performance',
-          toneMapping: THREE.ACESFilmicToneMapping,
-          toneMappingExposure: 1.0,
+          toneMapping: THREE.NoToneMapping,
         }}
         raycaster={{ 
           params: { 
@@ -2091,6 +2091,7 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
             onOpenDetailed={() => setShowDetailedView(true)}
             showDetailedView={showDetailedView}
           />
+          <PostProcessingEffects isMobile={isMobile} />
         </Suspense>
       </Canvas>
       

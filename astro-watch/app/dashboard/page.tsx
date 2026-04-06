@@ -11,6 +11,7 @@ import { EnhancedAsteroid } from '@/lib/nasa-api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Orbit, BarChart3, Shield } from 'lucide-react';
 import { ChatPanel } from '@/components/chat/ChatPanel';
+import { AgentStatusIndicator } from '@/components/dashboard/AgentStatusIndicator';
 
 export default function Home() {
   const {
@@ -93,6 +94,8 @@ export default function Home() {
         </div>
       </header>
       
+      <AgentStatusIndicator />
+
       {/* Main Content - pb-16 on mobile for bottom tab bar clearance */}
       <main className="pt-16 md:pt-20 pb-16 md:pb-0">
         <AnimatePresence mode="wait">

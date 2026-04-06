@@ -1,0 +1,124 @@
+<h2>Visual Upgrade Design</h2>
+<p class="subtitle">From solid Three.js to cinematic portfolio piece</p>
+
+<div class="section">
+  <h3>Layer 1: Post-Processing Pipeline</h3>
+  <p class="subtitle">Using the postprocessing library you already have installed but aren't using</p>
+  <div class="mockup">
+    <div class="mockup-header">Effect Stack (applied in order)</div>
+    <div class="mockup-body" style="padding: 1.5rem;">
+      <div style="display: grid; gap: 0.75rem;">
+        <div style="display: flex; align-items: center; gap: 1rem; background: rgba(255,255,255,0.03); padding: 0.75rem 1rem; border-radius: 6px; border-left: 3px solid #f0883e;">
+          <strong style="color: #f0883e; min-width: 120px;">Bloom</strong>
+          <span style="color: #8b949e;">Sun corona bleeds light realistically. High-risk asteroids glow warm. Stars twinkle with soft halos.</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 1rem; background: rgba(255,255,255,0.03); padding: 0.75rem 1rem; border-radius: 6px; border-left: 3px solid #58a6ff;">
+          <strong style="color: #58a6ff; min-width: 120px;">Tone Mapping</strong>
+          <span style="color: #8b949e;">ACES Filmic tone mapping for cinematic HDR look. Bright sun doesn't wash out dark space.</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 1rem; background: rgba(255,255,255,0.03); padding: 0.75rem 1rem; border-radius: 6px; border-left: 3px solid #d2a8ff;">
+          <strong style="color: #d2a8ff; min-width: 120px;">Vignette</strong>
+          <span style="color: #8b949e;">Subtle darkening at edges. Draws focus to the center of the scene. Cinematic framing.</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 1rem; background: rgba(255,255,255,0.03); padding: 0.75rem 1rem; border-radius: 6px; border-left: 3px solid #3fb950;">
+          <strong style="color: #3fb950; min-width: 120px;">Chromatic Aberration</strong>
+          <span style="color: #8b949e;">Very subtle (0.002). Adds photographic realism at edges. Disabled on mobile.</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 1rem; background: rgba(255,255,255,0.03); padding: 0.75rem 1rem; border-radius: 6px; border-left: 3px solid #f778ba;">
+          <strong style="color: #f778ba; min-width: 120px;">God Rays</strong>
+          <span style="color: #8b949e;">Volumetric light from the Sun. Visible when Sun is partially occluded by Earth/Moon.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Layer 2: Asteroid Visual Overhaul</h3>
+  <p class="subtitle">From colored spheres to recognizable space rocks</p>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+    <div class="mockup">
+      <div class="mockup-header">Current: Colored Spheres</div>
+      <div class="mockup-body" style="display: flex; align-items: center; justify-content: center; min-height: 120px;">
+        <div style="display: flex; gap: 2rem; align-items: center;">
+          <div style="width: 20px; height: 20px; border-radius: 50%; background: #ef4444;"></div>
+          <div style="width: 14px; height: 14px; border-radius: 50%; background: #f59e0b;"></div>
+          <div style="width: 10px; height: 10px; border-radius: 50%; background: #22c55e;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="mockup">
+      <div class="mockup-header">Upgraded: Procedural Asteroids</div>
+      <div class="mockup-body" style="display: flex; align-items: center; justify-content: center; min-height: 120px;">
+        <div style="display: flex; gap: 1.5rem; align-items: center;">
+          <div style="width: 28px; height: 22px; background: #8b7355; border-radius: 40% 50% 35% 55%; transform: rotate(-15deg); box-shadow: inset -4px -3px 6px rgba(0,0,0,0.5), inset 2px 2px 4px rgba(200,180,150,0.3);"></div>
+          <div style="width: 18px; height: 16px; background: #6b6b6b; border-radius: 45% 55% 40% 50%; transform: rotate(20deg); box-shadow: inset -3px -2px 5px rgba(0,0,0,0.5), inset 1px 1px 3px rgba(180,180,180,0.3);"></div>
+          <div style="width: 12px; height: 10px; background: #9b8b7b; border-radius: 50% 40% 55% 45%; transform: rotate(-8deg); box-shadow: inset -2px -2px 4px rgba(0,0,0,0.5), inset 1px 1px 2px rgba(200,190,170,0.3);"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="margin-top: 1rem; color: #8b949e; font-size: 0.9rem;">
+    <strong>Approach:</strong> Procedurally deformed IcosahedronGeometry with Simplex noise displacement. 3 LOD levels (high detail when selected, medium nearby, low distant). Custom PBR shader with roughness variation for rocky surface. Risk level shown via emissive glow ring, not sphere color.
+  </div>
+</div>
+
+<div class="section">
+  <h3>Layer 3: Particle Effects</h3>
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 1rem;">
+      <h4 style="color: #f0883e; margin: 0 0 0.5rem;">Solar Wind</h4>
+      <p style="color: #8b949e; margin: 0; font-size: 0.85rem;">Instanced particle stream from Sun. Thousands of points flowing outward with velocity falloff. Subtle, always-on ambient effect.</p>
+    </div>
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 1rem;">
+      <h4 style="color: #58a6ff; margin: 0 0 0.5rem;">Asteroid Trails</h4>
+      <p style="color: #8b949e; margin: 0; font-size: 0.85rem;">Fading trail behind each asteroid showing recent trajectory. Length proportional to velocity. High-risk asteroids get brighter trails.</p>
+    </div>
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 1rem;">
+      <h4 style="color: #3fb950; margin: 0 0 0.5rem;">Dust &amp; Debris</h4>
+      <p style="color: #8b949e; margin: 0; font-size: 0.85rem;">Sparse micro-particles around asteroid belt region. Adds depth and scale to the scene. GPU instanced for performance.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Layer 4: Cinematic Camera</h3>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 1rem;">
+      <h4 style="color: #d2a8ff; margin: 0 0 0.5rem;">Close Approach Mode</h4>
+      <p style="color: #8b949e; margin: 0; font-size: 0.85rem;">When an asteroid is selected, camera smoothly transitions to a dramatic tracking shot &mdash; following the asteroid as it sweeps past Earth. Depth of field blur on background. Triggered by user or by AI chat command.</p>
+    </div>
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 1rem;">
+      <h4 style="color: #f778ba; margin: 0 0 0.5rem;">AI Director Mode</h4>
+      <p style="color: #8b949e; margin: 0; font-size: 0.85rem;">The chat AI can choreograph camera movements: "Show me this asteroid's approach" triggers a scripted flyby sequence. Camera paths are defined as tool outputs from Qwen.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Layer 5: AI Scene Annotations</h3>
+  <p class="subtitle">The standout feature &mdash; AI-generated HUD overlays in 3D space</p>
+  <div class="mockup">
+    <div class="mockup-header">AI Analysis Overlay (concept)</div>
+    <div class="mockup-body" style="padding: 2rem; position: relative; min-height: 200px; background: radial-gradient(ellipse at 40% 50%, #0a1628 0%, #050a12 100%);">
+      <!-- Simulated Earth -->
+      <div style="position: absolute; left: 35%; top: 30%; width: 80px; height: 80px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #1a4a7a, #0a2a4a, #051525); box-shadow: 0 0 20px rgba(100,180,255,0.15), inset -10px -5px 15px rgba(0,0,0,0.6);"></div>
+      <!-- Asteroid dot -->
+      <div style="position: absolute; left: 62%; top: 38%; width: 8px; height: 6px; background: #8b7355; border-radius: 40% 50% 35% 55%; box-shadow: 0 0 8px rgba(239,68,68,0.6);"></div>
+      <!-- AI Annotation box -->
+      <div style="position: absolute; left: 66%; top: 22%; background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.4); border-radius: 6px; padding: 8px 12px; max-width: 200px; font-size: 0.75rem;">
+        <div style="color: #ef4444; font-weight: 600; margin-bottom: 4px;">2024 BX1 &mdash; HIGH RISK</div>
+        <div style="color: #8b949e; line-height: 1.4;">Unusually fast approach (24.3 km/s). Miss distance revised closer by 12% since yesterday. Agent flagged for monitoring.</div>
+        <!-- connector line -->
+        <div style="position: absolute; left: -20px; top: 50%; width: 20px; height: 1px; background: rgba(239,68,68,0.4);"></div>
+      </div>
+      <!-- Agent badge -->
+      <div style="position: absolute; right: 12px; bottom: 12px; background: rgba(210,168,255,0.1); border: 1px solid rgba(210,168,255,0.3); border-radius: 4px; padding: 4px 8px; font-size: 0.7rem; color: #d2a8ff;">
+        Annotations by Claude Agent &bull; Updated 2h ago
+      </div>
+    </div>
+  </div>
+  <div style="margin-top: 1rem; color: #8b949e; font-size: 0.9rem;">
+    <strong>How it works:</strong> The autonomous Claude agent generates structured annotation data (position, label, severity, explanation) stored in Vercel KV. The 3D scene renders these as HTML overlays anchored to world-space positions using Three.js CSS2DRenderer. Annotations update when the agent runs, not on every frame &mdash; zero performance cost.
+  </div>
+</div>

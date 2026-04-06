@@ -1,0 +1,86 @@
+<h2>Three Architecture Approaches</h2>
+<p class="subtitle">How to integrate agentic AI + cinematic visuals into AstroWatch</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Unified Agent Gateway</h3>
+      <p><strong>Single API layer routes to both models.</strong> One <code>/api/agent</code> endpoint acts as the brain. It decides whether to call Qwen (chat) or Claude (analysis/visuals) based on intent classification. The autonomous agent is a Vercel cron that calls the same gateway.</p>
+      <br/>
+      <div class="pros-cons">
+        <div class="pros">
+          <h4>Pros</h4>
+          <ul>
+            <li>Simple client code &mdash; one endpoint for everything</li>
+            <li>Easy to swap models later</li>
+            <li>Centralized cost tracking</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h4>Cons</h4>
+          <ul>
+            <li>Single point of failure</li>
+            <li>Intent classification adds latency + complexity</li>
+            <li>Harder to optimize each path independently</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Dual-Model Split Architecture (Recommended)</h3>
+      <p><strong>Separate API routes for chat vs. autonomous agent.</strong> <code>/api/chat</code> handles conversational interactions via Qwen with tool-calling (scene control, data queries). <code>/api/agent</code> is the autonomous Claude-powered analyst that runs on schedule, publishes threat assessments, and generates scene annotations. They share a common data layer but are independently deployable.</p>
+      <br/>
+      <div class="pros-cons">
+        <div class="pros">
+          <h4>Pros</h4>
+          <ul>
+            <li>Each path optimized for its model &amp; use case</li>
+            <li>Chat stays fast (no routing overhead)</li>
+            <li>Autonomous agent can evolve independently</li>
+            <li>Clear separation of concerns &mdash; great CV talking point</li>
+            <li>If one model is down, the other still works</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h4>Cons</h4>
+          <ul>
+            <li>Two integration paths to maintain</li>
+            <li>Need shared context layer for cross-model awareness</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Agent SDK Orchestrator</h3>
+      <p><strong>Use Anthropic's Agent SDK as the orchestration layer.</strong> Claude is the "brain" that delegates to Qwen for chat tasks and handles analysis itself. The SDK manages tool definitions, conversation state, and multi-step reasoning natively. The autonomous agent uses the same SDK with different tool sets.</p>
+      <br/>
+      <div class="pros-cons">
+        <div class="pros">
+          <h4>Pros</h4>
+          <ul>
+            <li>Most sophisticated architecture &mdash; strongest CV signal</li>
+            <li>Native tool-calling and multi-step reasoning</li>
+            <li>Built-in conversation memory management</li>
+          </ul>
+        </div>
+        <div class="cons">
+          <h4>Cons</h4>
+          <ul>
+            <li>All requests go through Claude API first (higher cost)</li>
+            <li>Adds dependency on Anthropic SDK for everything</li>
+            <li>Defeats the purpose of using Ollama for cheap chat</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

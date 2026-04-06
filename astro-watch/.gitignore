@@ -55,15 +55,10 @@ nasa-api-key.txt
 next-env.d.ts
 
 # Machine Learning models
-/public/models/*.json
-/public/models/*.bin
 *.model
 *.weights
 
 # Large assets
-/public/textures/*.jpg
-/public/textures/*.png
-/public/textures/*.hdr
 *.large
 
 # Data files

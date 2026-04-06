@@ -1,0 +1,111 @@
+<h2>Autonomous Agent Design</h2>
+<p class="subtitle">Claude-powered analyst that monitors, reasons, and publishes</p>
+
+<div class="section">
+  <h3>Agent Loop</h3>
+  <div class="mockup">
+    <div class="mockup-header">Execution cycle (every 4 hours via Vercel Cron)</div>
+    <div class="mockup-body" style="padding: 1.5rem; font-family: monospace; font-size: 0.8rem; color: #8b949e; line-height: 2;">
+      <div><span style="color: #d2a8ff;">1. FETCH</span> &mdash; Pull latest NASA NEO data + run rule-based enrichment</div>
+      <div><span style="color: #d2a8ff;">2. RECALL</span> &mdash; Load agent memory from Vercel KV (past observations, tracked objects, trend history)</div>
+      <div><span style="color: #d2a8ff;">3. ANALYZE</span> &mdash; Send data + memory to Claude with analysis prompt:</div>
+      <div style="padding-left: 2rem; color: #58a6ff; font-size: 0.75rem;">
+        "Compare current NEO data against your previous observations.<br/>
+        &nbsp;Identify: new objects, orbital revisions, anomalous velocities/sizes,<br/>
+        &nbsp;objects crossing alert thresholds, emerging trends."
+      </div>
+      <div><span style="color: #d2a8ff;">4. DECIDE</span> &mdash; Claude determines actions via tool calls:</div>
+      <div style="padding-left: 2rem; color: #8b949e;">
+        <div>&bull; Flag objects for monitoring</div>
+        <div>&bull; Generate scene annotations</div>
+        <div>&bull; Publish threat assessment (if warranted)</div>
+        <div>&bull; Send email alert (if critical)</div>
+        <div>&bull; Update daily briefing</div>
+      </div>
+      <div><span style="color: #d2a8ff;">5. PERSIST</span> &mdash; Save updated memory to KV (what it observed, what it decided, why)</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Agent Tools (Claude)</h3>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 1rem;">
+      <h4 style="color: #d2a8ff; margin: 0 0 0.5rem; font-family: monospace; font-size: 0.85rem;">save_observation</h4>
+      <p style="color: #8b949e; margin: 0; font-size: 0.85rem;">Record what the agent noticed. Params: object_id, observation_type (new_object, revision, anomaly, trend), details, severity. Written to KV with timestamp.</p>
+    </div>
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 1rem;">
+      <h4 style="color: #f0883e; margin: 0 0 0.5rem; font-family: monospace; font-size: 0.85rem;">annotate_scene</h4>
+      <p style="color: #8b949e; margin: 0; font-size: 0.85rem;">Write a 3D annotation for the dashboard. Params: object_id, label, severity, explanation, priority. Stored in KV, rendered by CSS2DRenderer in the scene.</p>
+    </div>
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 1rem;">
+      <h4 style="color: #ef4444; margin: 0 0 0.5rem; font-family: monospace; font-size: 0.85rem;">publish_threat</h4>
+      <p style="color: #8b949e; margin: 0; font-size: 0.85rem;">Create a public threat assessment page. Params: object_id, title, analysis (markdown), risk_level, comparison_objects[]. Writes to a dynamic route <code>/threats/[id]</code>.</p>
+    </div>
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 1rem;">
+      <h4 style="color: #3fb950; margin: 0 0 0.5rem; font-family: monospace; font-size: 0.85rem;">update_briefing</h4>
+      <p style="color: #8b949e; margin: 0; font-size: 0.85rem;">Generate or update the daily briefing. Params: summary, highlights[], watchlist[], stats. Served at <code>/briefings</code> and shown as dashboard widget.</p>
+    </div>
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 1rem;">
+      <h4 style="color: #58a6ff; margin: 0 0 0.5rem; font-family: monospace; font-size: 0.85rem;">send_alert</h4>
+      <p style="color: #8b949e; margin: 0; font-size: 0.85rem;">Email notification for critical events. Params: subject, body (markdown), urgency. Uses existing Resend integration. Agent decides when to alert &mdash; no fixed thresholds.</p>
+    </div>
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 1rem;">
+      <h4 style="color: #f778ba; margin: 0 0 0.5rem; font-family: monospace; font-size: 0.85rem;">compare_historical</h4>
+      <p style="color: #8b949e; margin: 0; font-size: 0.85rem;">Look up past observations for an object or class. Params: object_id or query (e.g. "fast approaches in last 30 days"). Reads from KV memory. Gives the agent temporal context.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Agent Memory (Vercel KV)</h3>
+  <div class="mockup">
+    <div class="mockup-header">KV key structure</div>
+    <div class="mockup-body" style="padding: 1.25rem; font-family: monospace; font-size: 0.8rem; color: #8b949e; line-height: 1.8;">
+      <div><span style="color: #58a6ff;">agent:observations:{date}</span> &mdash; array of observations from that run</div>
+      <div><span style="color: #58a6ff;">agent:watchlist</span> &mdash; objects the agent is actively tracking (with reasons)</div>
+      <div><span style="color: #58a6ff;">agent:annotations</span> &mdash; current scene annotations (read by dashboard)</div>
+      <div><span style="color: #58a6ff;">agent:briefing:latest</span> &mdash; most recent daily briefing</div>
+      <div><span style="color: #58a6ff;">agent:briefing:{date}</span> &mdash; archived briefings</div>
+      <div><span style="color: #58a6ff;">agent:threats:{object_id}</span> &mdash; published threat assessments</div>
+      <div><span style="color: #58a6ff;">agent:memory:summary</span> &mdash; rolling context window (last 30 days condensed)</div>
+      <div style="margin-top: 0.75rem; color: #484f58; font-size: 0.75rem;">TTL: observations expire after 90 days. Briefings after 30 days. Annotations after 48 hours (agent refreshes each run).</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Published Pages</h3>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+    <div class="mockup">
+      <div class="mockup-header">/briefings &mdash; Daily Briefing</div>
+      <div class="mockup-body" style="padding: 1.25rem; font-size: 0.8rem;">
+        <div style="color: #c9d1d9; font-weight: 600; margin-bottom: 8px;">April 6, 2026 &mdash; NEO Daily Briefing</div>
+        <div style="color: #8b949e; line-height: 1.5; margin-bottom: 12px;">
+          12 near-Earth objects tracked today. One notable approach: <strong style="color: #ef4444;">2024 BX1</strong> continues to close, now at 0.012 AU with a 12% downward revision in miss distance over 48 hours.
+        </div>
+        <div style="border-top: 1px solid rgba(255,255,255,0.08); padding-top: 8px;">
+          <div style="color: #484f58; font-size: 0.7rem;">Watchlist: 3 objects &bull; Annotations: 2 active &bull; Threat assessments: 0 new</div>
+        </div>
+      </div>
+    </div>
+    <div class="mockup">
+      <div class="mockup-header">/threats/2024-BX1 &mdash; Threat Assessment</div>
+      <div class="mockup-body" style="padding: 1.25rem; font-size: 0.8rem;">
+        <div style="display: inline-block; background: rgba(239,68,68,0.15); color: #ef4444; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 600; margin-bottom: 8px;">HIGH RISK</div>
+        <div style="color: #c9d1d9; font-weight: 600; margin-bottom: 8px;">Threat Assessment: 2024 BX1</div>
+        <div style="color: #8b949e; line-height: 1.5; margin-bottom: 8px;">
+          180m S-type asteroid. Approach velocity 24.3 km/s exceeds 95th percentile of historical approaches. Three consecutive miss-distance revisions trending closer...
+        </div>
+        <div style="color: #484f58; font-size: 0.7rem;">Generated by Claude Agent &bull; Last updated 2h ago &bull; Compared against 847 historical approaches</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Replaces Current Monitoring</h3>
+  <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 1rem; font-size: 0.85rem; color: #8b949e; line-height: 1.6;">
+    The current <code>/api/monitoring</code> cron is threshold-based: it checks if <code>rarity > threshold</code> and sends an email. The new agent <strong>replaces</strong> this entirely. Instead of fixed rules, Claude reasons about whether something is notable, compares against its memory of past observations, and decides what actions to take. The email alert becomes one of several possible outputs, not the only one.
+  </div>
+</div>

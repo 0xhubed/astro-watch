@@ -1,0 +1,107 @@
+<h2>TF.js Removal &amp; Delivery Phases</h2>
+<p class="subtitle">Each phase is independently demoable</p>
+
+<div class="section">
+  <h3>TensorFlow.js Removal</h3>
+  <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 1.25rem; font-size: 0.85rem; color: #8b949e; line-height: 1.6;">
+    <div style="margin-bottom: 0.75rem;"><strong style="color: #c9d1d9;">Remove:</strong></div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 1rem; font-family: monospace; font-size: 0.8rem;">
+      <div><span style="color: #ef4444;">&#x2717;</span> lib/ml/ (entire directory)</div>
+      <div><span style="color: #ef4444;">&#x2717;</span> lib/advanced-ml.ts</div>
+      <div><span style="color: #ef4444;">&#x2717;</span> hooks/useMLPredictions.ts</div>
+      <div><span style="color: #ef4444;">&#x2717;</span> public/models/ (TF.js weights)</div>
+      <div><span style="color: #ef4444;">&#x2717;</span> public/workers/ (ML web workers)</div>
+      <div><span style="color: #ef4444;">&#x2717;</span> app/test-ml/ (test page)</div>
+      <div><span style="color: #ef4444;">&#x2717;</span> scripts/train-model.js</div>
+      <div><span style="color: #ef4444;">&#x2717;</span> tsconfig.build.json (ML build config)</div>
+    </div>
+    <div style="margin-bottom: 0.75rem;"><strong style="color: #c9d1d9;">Uninstall packages:</strong></div>
+    <div style="font-family: monospace; font-size: 0.8rem; margin-bottom: 1rem;">
+      <span style="color: #ef4444;">&#x2717;</span> @tensorflow/tfjs, @tensorflow/tfjs-node, ml-matrix, simple-statistics
+    </div>
+    <div><strong style="color: #c9d1d9;">Keep:</strong></div>
+    <div style="margin-top: 0.5rem;">
+      <span style="color: #3fb950;">&#x2713;</span> Rule-based risk scoring in <code>lib/nasa-api.ts</code> (deterministic core, still used by both AI paths)
+    </div>
+    <div>
+      <span style="color: #3fb950;">&#x2713;</span> Remove ML references from components (MLIndicator, MLModelStats) &mdash; replace with Agent status indicator
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Delivery Phases</h3>
+  <div style="display: grid; gap: 1rem;">
+
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 1.25rem; border-left: 3px solid #3fb950;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+        <h4 style="color: #3fb950; margin: 0;">Phase 1: Clean Foundation</h4>
+        <span style="color: #484f58; font-size: 0.75rem;">Demoable: cleaner, faster app</span>
+      </div>
+      <div style="color: #8b949e; font-size: 0.85rem; line-height: 1.6;">
+        <div>&bull; Remove TensorFlow.js and all ML code</div>
+        <div>&bull; Clean up ML-referencing components</div>
+        <div>&bull; Remove unused dependencies, reduce bundle size</div>
+        <div>&bull; Verify existing functionality works without ML layer</div>
+      </div>
+    </div>
+
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 1.25rem; border-left: 3px solid #58a6ff;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+        <h4 style="color: #58a6ff; margin: 0;">Phase 2: Cinematic Visuals</h4>
+        <span style="color: #484f58; font-size: 0.75rem;">Demoable: stunning 3D scene</span>
+      </div>
+      <div style="color: #8b949e; font-size: 0.85rem; line-height: 1.6;">
+        <div>&bull; Post-processing pipeline (bloom, tone mapping, vignette, god rays)</div>
+        <div>&bull; Procedural asteroid geometry with LOD</div>
+        <div>&bull; Particle effects (solar wind, trails, debris)</div>
+        <div>&bull; Cinematic camera system (close approach tracking, depth of field)</div>
+        <div>&bull; Performance profiling &amp; mobile fallbacks</div>
+      </div>
+    </div>
+
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 1.25rem; border-left: 3px solid #f0883e;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+        <h4 style="color: #f0883e; margin: 0;">Phase 3: Chat Assistant</h4>
+        <span style="color: #484f58; font-size: 0.75rem;">Demoable: AI-powered interactive exploration</span>
+      </div>
+      <div style="color: #8b949e; font-size: 0.85rem; line-height: 1.6;">
+        <div>&bull; Ollama Cloud API integration (<code>/api/chat</code> route)</div>
+        <div>&bull; Chat UI panel (slide-out, streaming responses)</div>
+        <div>&bull; Tool definitions (query, scene control, statistics, explain)</div>
+        <div>&bull; Scene command protocol (SSE events &rarr; Zustand dispatch)</div>
+        <div>&bull; System prompt with asteroid context injection</div>
+      </div>
+    </div>
+
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 1.25rem; border-left: 3px solid #d2a8ff;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+        <h4 style="color: #d2a8ff; margin: 0;">Phase 4: Autonomous Agent</h4>
+        <span style="color: #484f58; font-size: 0.75rem;">Demoable: AI that monitors &amp; publishes autonomously</span>
+      </div>
+      <div style="color: #8b949e; font-size: 0.85rem; line-height: 1.6;">
+        <div>&bull; Anthropic Agent SDK integration (<code>/api/agent</code> route)</div>
+        <div>&bull; Vercel KV setup for agent memory</div>
+        <div>&bull; Agent tools (observe, annotate, publish, brief, alert, compare)</div>
+        <div>&bull; Replace current <code>/api/monitoring</code> cron with agent</div>
+        <div>&bull; <code>/briefings</code> and <code>/threats/[id]</code> pages</div>
+      </div>
+    </div>
+
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 1.25rem; border-left: 3px solid #f778ba;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+        <h4 style="color: #f778ba; margin: 0;">Phase 5: AI Scene Annotations + Integration</h4>
+        <span style="color: #484f58; font-size: 0.75rem;">Demoable: full vision &mdash; AI annotates 3D world</span>
+      </div>
+      <div style="color: #8b949e; font-size: 0.85rem; line-height: 1.6;">
+        <div>&bull; CSS2DRenderer overlay system for 3D annotations</div>
+        <div>&bull; Agent annotations rendered in scene</div>
+        <div>&bull; Chat <code>get_agent_insights</code> tool bridges both AI systems</div>
+        <div>&bull; AI Director camera mode (chat controls cinematic shots)</div>
+        <div>&bull; Agent status indicator in dashboard (replaces ML indicator)</div>
+        <div>&bull; Polish, testing, mobile responsiveness</div>
+      </div>
+    </div>
+
+  </div>
+</div>

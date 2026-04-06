@@ -1,0 +1,83 @@
+<h2>System Architecture Overview</h2>
+<p class="subtitle">Dual-model split with shared data layer</p>
+
+<div class="mockup">
+  <div class="mockup-header">Architecture Diagram</div>
+  <div class="mockup-body" style="padding: 2rem; font-family: monospace; font-size: 13px; line-height: 1.6; background: #0d1117; color: #c9d1d9;">
+    <pre style="margin:0; white-space: pre; overflow-x: auto;">
+                          +------------------+
+                          |    AstroWatch    |
+                          |   Next.js App    |
+                          +--------+---------+
+                                   |
+                    +--------------+--------------+
+                    |                             |
+            +-------+-------+           +---------+---------+
+            |  Chat Panel   |           |   3D Scene +      |
+            |  (React UI)   |           |   AI Overlays     |
+            +-------+-------+           +---------+---------+
+                    |                             |
+                    | streaming                   | annotations
+                    |                             |
+         +----------+----------+                  |
+         |  /api/chat          |                  |
+         |  Qwen 3.5 397B     |                  |
+         |  (Ollama Cloud)     |                  |
+         |                     |                  |
+         |  Tools:             |                  |
+         |  - query_asteroids  |                  |
+         |  - control_scene    +------------------+
+         |  - get_statistics   |
+         |  - explain_concept  |
+         +---------------------+
+
+         +---------------------+
+         |  /api/agent         |
+         |  Claude API         |
+         |  (Anthropic)        |
+         |                     |          +-------------------+
+         |  Capabilities:      |          |  Published Output |
+         |  - analyze_anomaly  +----------+                   |
+         |  - generate_report  |          |  - /threats/[id]  |
+         |  - annotate_scene   |          |  - /briefings     |
+         |  - publish_threat   |          |  - email alerts   |
+         +----------+----------+          +-------------------+
+                    |
+                    | scheduled (Vercel cron)
+                    |
+         +----------+----------+
+         |  Shared Data Layer  |
+         |                     |
+         |  - NASA NEO API     |
+         |  - Rule-based risk  |
+         |  - Asteroid cache   |
+         |  - Agent memory     |
+         |    (KV store)       |
+         +---------------------+
+    </pre>
+  </div>
+</div>
+
+<div style="margin-top: 1.5rem;">
+  <h3>Key Design Decisions</h3>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem;">
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 1rem;">
+      <h4 style="color: #58a6ff; margin: 0 0 0.5rem;">Chat Path (Qwen)</h4>
+      <ul style="margin: 0; padding-left: 1.2rem; color: #8b949e;">
+        <li>Streaming responses for snappy UX</li>
+        <li>Tool-calling for scene control</li>
+        <li>Stateless per request (context in messages)</li>
+        <li>High volume, low cost per call</li>
+      </ul>
+    </div>
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 1rem;">
+      <h4 style="color: #d2a8ff; margin: 0 0 0.5rem;">Agent Path (Claude)</h4>
+      <ul style="margin: 0; padding-left: 1.2rem; color: #8b949e;">
+        <li>Deep multi-step reasoning</li>
+        <li>Persistent memory (Vercel KV)</li>
+        <li>Publishes threat pages &amp; briefings</li>
+        <li>Low volume, high value per call</li>
+      </ul>
+    </div>
+  </div>
+</div>

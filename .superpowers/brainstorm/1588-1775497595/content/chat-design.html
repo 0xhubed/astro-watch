@@ -1,0 +1,108 @@
+<h2>Chat Assistant Design</h2>
+<p class="subtitle">Qwen 3.5 397B via Ollama Cloud &mdash; conversational AI with scene control</p>
+
+<div class="section">
+  <h3>UI: Slide-Out Chat Panel</h3>
+  <div class="split">
+    <div class="mockup">
+      <div class="mockup-header">Collapsed (default)</div>
+      <div class="mockup-body" style="position: relative; min-height: 280px; background: radial-gradient(ellipse at 50% 50%, #0a1628 0%, #050a12 100%);">
+        <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #2a3a5a; font-size: 0.8rem;">[ 3D Scene fills full width ]</div>
+        <!-- FAB button -->
+        <div style="position: absolute; bottom: 16px; right: 16px; width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, #5e17eb, #7c3aed); display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(94,23,235,0.4); cursor: pointer;">
+          <span style="font-size: 1.2rem;">&#x2728;</span>
+        </div>
+      </div>
+    </div>
+    <div class="mockup">
+      <div class="mockup-header">Expanded</div>
+      <div class="mockup-body" style="position: relative; min-height: 280px; background: radial-gradient(ellipse at 30% 50%, #0a1628 0%, #050a12 100%); display: flex;">
+        <div style="flex: 1; display: flex; align-items: center; justify-content: center; color: #2a3a5a; font-size: 0.8rem;">[ 3D Scene ]</div>
+        <!-- Chat panel -->
+        <div style="width: 45%; background: rgba(13,17,23,0.95); border-left: 1px solid rgba(255,255,255,0.08); display: flex; flex-direction: column; backdrop-filter: blur(20px);">
+          <div style="padding: 12px 16px; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: #c9d1d9; font-weight: 600; font-size: 0.85rem;">AstroWatch AI</span>
+            <span style="color: #484f58; font-size: 0.75rem; cursor: pointer;">&#x2715;</span>
+          </div>
+          <div style="flex: 1; padding: 12px 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
+            <!-- User message -->
+            <div style="align-self: flex-end; background: rgba(94,23,235,0.2); border: 1px solid rgba(94,23,235,0.3); border-radius: 12px 12px 4px 12px; padding: 8px 12px; max-width: 85%; font-size: 0.8rem; color: #c9d1d9;">
+              Which asteroid this week is most dangerous?
+            </div>
+            <!-- AI message -->
+            <div style="align-self: flex-start; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px 12px 12px 4px; padding: 8px 12px; max-width: 85%; font-size: 0.8rem; color: #8b949e; line-height: 1.5;">
+              <strong style="color: #c9d1d9;">2024 BX1</strong> stands out this week. It's a 180m object passing at 0.012 AU (4.7 lunar distances) at 24.3 km/s.
+              <br/><br/>
+              <span style="color: #58a6ff;">Let me focus the view on it.</span>
+              <div style="margin-top: 8px; padding: 6px 8px; background: rgba(88,166,255,0.08); border: 1px solid rgba(88,166,255,0.2); border-radius: 4px; font-size: 0.7rem; color: #58a6ff; font-family: monospace;">
+                &#x2192; control_scene: focus("2024-BX1")
+              </div>
+            </div>
+            <!-- Agent insight badge -->
+            <div style="align-self: flex-start; background: rgba(210,168,255,0.06); border: 1px solid rgba(210,168,255,0.2); border-radius: 8px; padding: 6px 10px; font-size: 0.7rem; color: #d2a8ff;">
+              &#x1F916; Agent note: miss distance revised 12% closer since yesterday
+            </div>
+          </div>
+          <!-- Input -->
+          <div style="padding: 12px 16px; border-top: 1px solid rgba(255,255,255,0.08);">
+            <div style="display: flex; gap: 8px;">
+              <div style="flex: 1; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 8px 12px; font-size: 0.8rem; color: #484f58;">Ask about asteroids...</div>
+              <div style="width: 36px; height: 36px; background: #5e17eb; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem;">&#x2191;</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Tool Definitions for Qwen</h3>
+  <p class="subtitle">Function calling gives the AI control over the app</p>
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 1rem;">
+      <h4 style="color: #58a6ff; margin: 0 0 0.5rem; font-family: monospace; font-size: 0.85rem;">query_asteroids</h4>
+      <p style="color: #8b949e; margin: 0; font-size: 0.85rem;">Search and filter asteroid data. Params: risk level, size range, date range, sort by. Returns structured asteroid data the AI weaves into natural language.</p>
+    </div>
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 1rem;">
+      <h4 style="color: #3fb950; margin: 0 0 0.5rem; font-family: monospace; font-size: 0.85rem;">control_scene</h4>
+      <p style="color: #8b949e; margin: 0; font-size: 0.85rem;">Manipulate the 3D view. Actions: focus(asteroidId), set_filter(risk), set_view(mode), orbit_camera(target, angle), toggle_trajectories. Dispatches to Zustand store.</p>
+    </div>
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 1rem;">
+      <h4 style="color: #f0883e; margin: 0 0 0.5rem; font-family: monospace; font-size: 0.85rem;">get_statistics</h4>
+      <p style="color: #8b949e; margin: 0; font-size: 0.85rem;">Compute analytics on demand. Functions: risk_distribution, velocity_histogram, size_comparison, weekly_trend. Returns data the AI can summarize or trigger a chart.</p>
+    </div>
+    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 1rem;">
+      <h4 style="color: #d2a8ff; margin: 0 0 0.5rem; font-family: monospace; font-size: 0.85rem;">get_agent_insights</h4>
+      <p style="color: #8b949e; margin: 0; font-size: 0.85rem;">Read findings from the autonomous Claude agent. Fetches latest briefings, anomaly alerts, trend observations from Vercel KV. Bridges the two AI systems.</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>API Route: /api/chat</h3>
+  <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; padding: 1.25rem; font-size: 0.85rem; color: #8b949e; line-height: 1.6;">
+    <div><strong style="color: #c9d1d9;">Protocol:</strong> Server-Sent Events (streaming)</div>
+    <div><strong style="color: #c9d1d9;">Flow:</strong> Client sends messages[] &rarr; Route calls Ollama Cloud API with tools &rarr; Streams text tokens + tool call results back &rarr; Client renders incrementally + executes scene commands</div>
+    <div><strong style="color: #c9d1d9;">System prompt:</strong> Includes current asteroid summary, available scene state, latest agent briefing digest. Refreshed per request.</div>
+    <div><strong style="color: #c9d1d9;">Context window:</strong> Last 20 messages. No server-side persistence &mdash; conversation lives in client state (Zustand).</div>
+    <div><strong style="color: #c9d1d9;">Tool execution:</strong> Tools run server-side in the API route (data access), results streamed back. Scene control commands sent as special SSE events the client intercepts.</div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Scene Control Flow</h3>
+  <div class="mockup">
+    <div class="mockup-header">How "zoom in on the closest asteroid" works</div>
+    <div class="mockup-body" style="padding: 1.5rem; font-family: monospace; font-size: 0.8rem; color: #8b949e; line-height: 1.8;">
+      <div><span style="color: #58a6ff;">1.</span> User types "zoom in on the closest asteroid"</div>
+      <div><span style="color: #58a6ff;">2.</span> /api/chat sends to Qwen with tool definitions</div>
+      <div><span style="color: #58a6ff;">3.</span> Qwen calls <span style="color: #3fb950;">query_asteroids</span>({sort: "miss_distance", limit: 1})</div>
+      <div><span style="color: #58a6ff;">4.</span> Route executes, returns asteroid data to Qwen</div>
+      <div><span style="color: #58a6ff;">5.</span> Qwen calls <span style="color: #3fb950;">control_scene</span>({action: "focus", id: "2024-BX1"})</div>
+      <div><span style="color: #58a6ff;">6.</span> Route emits SSE: <span style="color: #f0883e;">{"type":"scene_command","action":"focus","id":"2024-BX1"}</span></div>
+      <div><span style="color: #58a6ff;">7.</span> Client intercepts, dispatches to Zustand store &rarr; camera transition begins</div>
+      <div><span style="color: #58a6ff;">8.</span> Qwen streams: <span style="color: #c9d1d9;">"Focusing on 2024 BX1 &mdash; it's passing at just 0.012 AU..."</span></div>
+    </div>
+  </div>
+</div>

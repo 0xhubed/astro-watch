@@ -5,6 +5,12 @@
   "functions": {
     "app/api/asteroids/route.ts": {
       "maxDuration": 30
+    },
+    "app/api/monitoring/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/chat/route.ts": {
+      "maxDuration": 30
     }
   },
   "headers": [
@@ -53,7 +59,7 @@
   "crons": [
     {
       "path": "/api/monitoring",
-      "schedule": "0 0 * * *"
+      "schedule": "0 */4 * * *"
     }
   ]
 }

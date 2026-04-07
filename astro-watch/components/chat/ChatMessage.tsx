@@ -8,6 +8,37 @@ interface ChatMessageProps {
   toolCall?: { name: string; arguments: Record<string, unknown> };
 }
 
+function formatInline(text: string) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={i} className="font-semibold text-gray-100">{part.slice(2, -2)}</strong>;
+    }
+    return part;
+  });
+}
+
+function formatContent(text: string) {
+  if (!text) return null;
+
+  const paragraphs = text.split('\n\n');
+
+  return paragraphs.map((para, i) => {
+    if (para.includes('\n- ') || para.startsWith('- ')) {
+      const items = para.split('\n').filter(l => l.startsWith('- '));
+      return (
+        <ul key={i} className="list-disc list-inside space-y-0.5 my-1">
+          {items.map((item, j) => (
+            <li key={j}>{formatInline(item.slice(2))}</li>
+          ))}
+        </ul>
+      );
+    }
+
+    return <p key={i} className={i > 0 ? 'mt-2' : ''}>{formatInline(para)}</p>;
+  });
+}
+
 export function ChatMessage({ role, content, toolCall }: ChatMessageProps) {
   const isUser = role === 'user';
 
@@ -24,7 +55,7 @@ export function ChatMessage({ role, content, toolCall }: ChatMessageProps) {
             : 'bg-white/[0.04] border border-white/[0.08] text-gray-300 rounded-bl-sm'
         }`}
       >
-        {content}
+        {formatContent(content)}
         {toolCall && (
           <div className="mt-2 px-2 py-1 bg-blue-500/[0.08] border border-blue-500/20 rounded text-xs font-mono text-blue-400">
             → {toolCall.name}({Object.keys(toolCall.arguments).length > 0

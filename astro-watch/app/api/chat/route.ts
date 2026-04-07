@@ -6,11 +6,11 @@ import { fetchNEOFeed, EnhancedAsteroid } from '@/lib/nasa-api';
 export const runtime = 'nodejs';
 export const maxDuration = 30;
 
-interface OllamaMessage {
+interface ChatMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
   content: string;
-  tool_calls?: Array<{ function: { name: string; arguments: Record<string, unknown> } }>;
-  name?: string; // tool name for role: 'tool'
+  tool_calls?: Array<{ id: string; type: 'function'; function: { name: string; arguments: string } }>;
+  tool_call_id?: string;
 }
 
 async function getAsteroids(): Promise<EnhancedAsteroid[]> {
@@ -64,10 +64,10 @@ async function executeTool(
 }
 
 export async function POST(request: NextRequest) {
-  const { messages } = (await request.json()) as { messages: Array<{ role: string; content: string }> };
+  const { messages } = (await request.json()) as { messages: ChatMessage[] };
 
   const apiKey = process.env.OLLAMA_CLOUD_API_KEY;
-  const baseUrl = process.env.OLLAMA_CLOUD_BASE_URL || 'https://ollama.com';
+  const baseUrl = process.env.OLLAMA_CLOUD_BASE_URL || 'https://ollama.com/v1';
   const model = process.env.OLLAMA_CLOUD_MODEL || 'qwen3.5:397b-cloud';
 
   if (!apiKey) {
@@ -79,9 +79,9 @@ export async function POST(request: NextRequest) {
   const asteroids = await getAsteroids();
   const systemPrompt = buildSystemPrompt(asteroids);
 
-  const allMessages: OllamaMessage[] = [
+  const allMessages: ChatMessage[] = [
     { role: 'system', content: systemPrompt },
-    ...messages.slice(-20).map(m => ({ role: m.role as OllamaMessage['role'], content: m.content })),
+    ...messages.slice(-20),
   ];
 
   const encoder = new TextEncoder();
@@ -96,8 +96,8 @@ export async function POST(request: NextRequest) {
         while (loopCount < 5) {
           loopCount++;
 
-          // Call Ollama Cloud API (native format)
-          const response = await fetch(`${baseUrl}/api/chat`, {
+          // OpenAI-compatible endpoint on Ollama Cloud
+          const response = await fetch(`${baseUrl}/chat/completions`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -117,74 +117,88 @@ export async function POST(request: NextRequest) {
             break;
           }
 
-          // Ollama streams newline-delimited JSON (not SSE)
           const reader = response.body!.getReader();
           const decoder = new TextDecoder();
           let buffer = '';
           let assistantContent = '';
-          let toolCalls: Array<{ function: { name: string; arguments: Record<string, unknown> } }> = [];
+          let toolCalls: Array<{
+            id: string;
+            type: 'function';
+            function: { name: string; arguments: string };
+          }> = [];
+          let currentToolCall: {
+            id: string;
+            type: 'function';
+            function: { name: string; arguments: string };
+          } | null = null;
 
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
             buffer += decoder.decode(value, { stream: true });
-
-            // Process complete JSON lines
             const lines = buffer.split('\n');
             buffer = lines.pop() || '';
 
             for (const line of lines) {
-              if (!line.trim()) continue;
+              if (!line.startsWith('data: ')) continue;
+              const data = line.slice(6).trim();
+              if (data === '[DONE]') continue;
               try {
-                const chunk = JSON.parse(line);
-
-                // Stream text content
-                if (chunk.message?.content) {
-                  assistantContent += chunk.message.content;
-                  send({ type: 'text', content: chunk.message.content });
+                const parsed = JSON.parse(data);
+                const delta = parsed.choices?.[0]?.delta;
+                if (!delta) continue;
+                if (delta.content) {
+                  assistantContent += delta.content;
+                  send({ type: 'text', content: delta.content });
                 }
-
-                // Collect tool calls (arrive in the final chunk or accumulated)
-                if (chunk.message?.tool_calls) {
-                  toolCalls = chunk.message.tool_calls;
+                if (delta.tool_calls) {
+                  for (const tc of delta.tool_calls) {
+                    if (tc.id) {
+                      if (currentToolCall) toolCalls.push(currentToolCall);
+                      currentToolCall = {
+                        id: tc.id,
+                        type: 'function',
+                        function: { name: tc.function?.name || '', arguments: '' },
+                      };
+                    }
+                    if (tc.function?.name && currentToolCall) {
+                      currentToolCall.function.name = tc.function.name;
+                    }
+                    if (tc.function?.arguments && currentToolCall) {
+                      currentToolCall.function.arguments += tc.function.arguments;
+                    }
+                  }
                 }
               } catch {
-                /* skip malformed lines */
+                /* skip malformed SSE frames */
               }
             }
           }
 
-          // If no tool calls, we're done
+          if (currentToolCall) toolCalls.push(currentToolCall);
           if (toolCalls.length === 0) break;
 
-          // Add assistant message with tool calls to conversation
           allMessages.push({
             role: 'assistant',
             content: assistantContent || '',
             tool_calls: toolCalls,
           });
 
-          // Execute each tool call
           for (const tc of toolCalls) {
-            const toolName = tc.function.name;
-            // Ollama returns arguments as an object (not a JSON string)
-            const args = tc.function.arguments;
-
-            send({ type: 'tool_call', name: toolName, arguments: args });
-
-            const { result, sceneCommand } = await executeTool(toolName, args, asteroids);
+            let args: Record<string, unknown> = {};
+            try {
+              args = JSON.parse(tc.function.arguments);
+            } catch {
+              /* leave args as empty object */
+            }
+            send({ type: 'tool_call', name: tc.function.name, arguments: args });
+            const { result, sceneCommand } = await executeTool(tc.function.name, args, asteroids);
             if (sceneCommand) send({ type: 'scene_command', ...sceneCommand });
-
-            // Ollama expects tool results with 'name' field (not tool_call_id)
-            allMessages.push({
-              role: 'tool',
-              content: result,
-              name: toolName,
-            });
+            allMessages.push({ role: 'tool', content: result, tool_call_id: tc.id });
           }
 
-          // Reset for next iteration
           toolCalls = [];
+          currentToolCall = null;
           assistantContent = '';
         }
 

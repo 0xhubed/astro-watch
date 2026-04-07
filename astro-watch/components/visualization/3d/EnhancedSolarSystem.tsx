@@ -466,7 +466,7 @@ function PlanetaryTrajectories() {
   );
 }
 
-function Earth() {
+function Earth({ hideLabels }: { hideLabels?: boolean }) {
   const meshRef = useRef<THREE.Mesh>(null);
   
   // Earth texture state that can be updated
@@ -842,6 +842,15 @@ function Earth() {
           fragmentShader={FRESNEL_FRAGMENT_SHADER}
         />
       </mesh>
+
+      {/* Earth label */}
+      {!hideLabels && (
+        <Html position={[0, 4.5, 0]} center style={{ zIndex: 10 }}>
+          <div className="bg-black/90 text-white px-3 py-1 rounded-lg text-sm font-medium pointer-events-none border border-white/20">
+            Earth
+          </div>
+        </Html>
+      )}
     </group>
   );
 }
@@ -899,7 +908,7 @@ function Sun() {
         <meshStandardMaterial
           color={SUN_EMISSIVE_COLOR}
           emissive={SUN_EMISSIVE_COLOR}
-          emissiveIntensity={2.0}
+          emissiveIntensity={3.0}
           roughness={1}
           metalness={0}
           toneMapped={false}
@@ -1048,7 +1057,7 @@ function EnhancedStarField() {
       
       if (temp > 0.9) { // Blue giants (rare)
         colors[i * 3] = 0.7 * brightness; colors[i * 3 + 1] = 0.9 * brightness; colors[i * 3 + 2] = 1.0 * brightness;
-        sizes[i] = 1.5 + Math.random() * 2;
+        sizes[i] = 2.5 + Math.random() * 3;
       } else if (temp > 0.7) { // White stars
         colors[i * 3] = 1.0 * brightness; colors[i * 3 + 1] = 1.0 * brightness; colors[i * 3 + 2] = 0.95 * brightness;
         sizes[i] = 0.8 + Math.random() * 1.2;
@@ -1205,7 +1214,7 @@ function AsteroidField({ asteroids, onAsteroidSelect, selectedAsteroid, hoveredA
         const z = Math.sin(angle) * actualRadius;
         const y = Math.sin(angle * 0.2) * orbit.inclination * 0.15;
         const distanceFactor = Math.min(1.5, Math.max(0.5, 30 / actualRadius));
-        const baseScale = Math.max(0.1, Math.log10(Math.max(1, asteroid.size)) * 0.2) * distanceFactor;
+        const baseScale = Math.max(0.15, Math.log10(Math.max(1, asteroid.size)) * 0.35) * distanceFactor;
         const isSelected = selectedAsteroid?.id === asteroid.id;
         const isHovered = hoveredAsteroid === index;
         const seed = parseInt(asteroid.id.replace(/\D/g, '').slice(-6)) || index;
@@ -1748,7 +1757,7 @@ function SolarSystemScene({
       ))}
 
       <group ref={earthGroupRef} position={earthPos}>
-        <Earth />
+        <Earth hideLabels={showDetailedView} />
         <Moon earthPosition={[0, 0, 0]} hideLabels={showDetailedView} />
         <AsteroidField
           asteroids={asteroids}

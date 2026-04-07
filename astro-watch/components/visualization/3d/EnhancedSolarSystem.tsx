@@ -3,7 +3,8 @@
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Html } from '@react-three/drei';
 import { Suspense, useRef, useState, useMemo, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ImpactSimulation } from '@/components/simulation/ImpactSimulation';
 import * as THREE from 'three';
 import { EnhancedAsteroid } from '@/lib/nasa-api';
 import { useAsteroidStore } from '@/lib/store';
@@ -1535,10 +1536,11 @@ function CameraControls({ activePreset, onPresetChange, isTransitioning, onCinem
 }
 
 // Enhanced Asteroid Info Panel
-function AsteroidInfoPanel({ asteroid, onClose, onOpenDetailed }: { 
-  asteroid: EnhancedAsteroid; 
+function AsteroidInfoPanel({ asteroid, onClose, onOpenDetailed, onSimulateImpact }: {
+  asteroid: EnhancedAsteroid;
   onClose: () => void;
   onOpenDetailed: () => void;
+  onSimulateImpact: () => void;
 }) {
   const rarityInfo = getRarityInfo(asteroid.rarity);
   const riskBgColor = rarityInfo.bgColor;
@@ -1619,6 +1621,12 @@ function AsteroidInfoPanel({ asteroid, onClose, onOpenDetailed }: {
           className="w-full mt-4 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 hover:border-blue-500/50 text-blue-300 hover:text-blue-200 py-2 px-4 rounded-lg transition-all duration-200 text-sm font-medium"
         >
           View Detailed Information
+        </button>
+        <button
+          onClick={onSimulateImpact}
+          className="w-full mt-2 bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 hover:border-red-500/50 text-red-300 hover:text-red-200 py-2 px-4 rounded-lg transition-all duration-200 text-sm font-medium"
+        >
+          Simulate Impact
         </button>
       </div>
     </motion.div>
@@ -1842,6 +1850,7 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [internalHoveredAsteroid, setInternalHoveredAsteroid] = useState<number | null>(null);
   const [showDetailedView, setShowDetailedView] = useState(false);
+  const [showImpactSim, setShowImpactSim] = useState(false);
   const [cinematicMode, setCinematicMode] = useState(false);
   const controlsRef = useRef<any>(null);
 
@@ -2022,13 +2031,14 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
       />
       
       {selectedAsteroid && (
-        <AsteroidInfoPanel 
-          asteroid={selectedAsteroid} 
+        <AsteroidInfoPanel
+          asteroid={selectedAsteroid}
           onClose={() => onAsteroidSelect?.(null)}
           onOpenDetailed={() => setShowDetailedView(true)}
+          onSimulateImpact={() => setShowImpactSim(true)}
         />
       )}
-      
+
       {selectedAsteroid && (
         <DetailedAsteroidView
           asteroid={selectedAsteroid}
@@ -2036,6 +2046,15 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
           onClose={() => setShowDetailedView(false)}
         />
       )}
+
+      <AnimatePresence>
+        {showImpactSim && selectedAsteroid && (
+          <ImpactSimulation
+            asteroid={selectedAsteroid}
+            onClose={() => setShowImpactSim(false)}
+          />
+        )}
+      </AnimatePresence>
       
       {/* Asteroid List Panel */}
       <motion.div

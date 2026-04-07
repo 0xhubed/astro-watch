@@ -62,7 +62,7 @@ export function SolarWind({ count = 2000 }: { count?: number }) {
         color="#FFD700"
         size={0.3}
         transparent
-        opacity={0.15}
+        opacity={0.25}
         blending={THREE.AdditiveBlending}
         depthWrite={false}
         sizeAttenuation
@@ -103,7 +103,7 @@ export function SpaceDust({ count = 500 }: { count?: number }) {
         color="#aaaacc"
         size={0.4}
         transparent
-        opacity={0.08}
+        opacity={0.12}
         blending={THREE.AdditiveBlending}
         depthWrite={false}
         sizeAttenuation

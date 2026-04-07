@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
 
   const apiKey = process.env.OLLAMA_CLOUD_API_KEY;
   const baseUrl = process.env.OLLAMA_CLOUD_BASE_URL || 'https://ollama.com/v1';
-  const model = process.env.OLLAMA_CLOUD_MODEL || 'qwen3.5:397b-cloud';
+  const model = process.env.OLLAMA_CLOUD_MODEL || 'gemma4:31b-cloud';
 
   if (!apiKey) {
     return new Response(JSON.stringify({ error: 'OLLAMA_CLOUD_API_KEY not configured' }), {

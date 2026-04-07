@@ -30,7 +30,7 @@ export interface AgentRunResult {
 // Constants
 // ---------------------------------------------------------------------------
 
-const MODEL = 'claude-sonnet-4-20250514';
+const MODEL = 'claude-sonnet-4-6';
 const MAX_TOKENS = 4096;
 /** Guard against runaway tool-calling loops. */
 const MAX_ITERATIONS = 10;

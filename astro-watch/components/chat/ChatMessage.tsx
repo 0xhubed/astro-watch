@@ -57,11 +57,8 @@ export function ChatMessage({ role, content, toolCall }: ChatMessageProps) {
       >
         {formatContent(content)}
         {toolCall && (
-          <div className="mt-2 px-2 py-1 bg-blue-500/[0.08] border border-blue-500/20 rounded text-xs font-mono text-blue-400">
-            → {toolCall.name}({Object.keys(toolCall.arguments).length > 0
-              ? JSON.stringify(toolCall.arguments).slice(0, 60)
-              : ''
-            })
+          <div className="mt-1.5 text-[10px] text-gray-500 italic">
+            Used {toolCall.name}
           </div>
         )}
       </div>

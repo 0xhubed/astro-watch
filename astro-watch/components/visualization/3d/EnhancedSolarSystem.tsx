@@ -1993,7 +1993,8 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
             cinematicMode={cinematicMode}
             onCinematicComplete={() => setCinematicMode(false)}
           />
-          <PostProcessingEffects isMobile={isMobile} />
+          {/* PostProcessing disabled — incompatible with Three.js 0.178, causes flickering */}
+          {/* <PostProcessingEffects isMobile={isMobile} /> */}
         </Suspense>
       </Canvas>
       

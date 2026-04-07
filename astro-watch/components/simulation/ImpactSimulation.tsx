@@ -226,7 +226,7 @@ export function ImpactSimulation({ asteroid, onClose }: Props) {
           </button>
 
           {/* Title overlay */}
-          <div className="absolute top-4 left-4 z-10">
+          <div className="absolute top-4 left-4 z-30 bg-black/70 rounded-lg px-3 py-2 backdrop-blur-sm">
             <div className="text-white/90 text-sm font-bold">Impact Simulation</div>
             <div className="text-white/50 text-xs mt-0.5 flex items-center gap-1">
               <MapPin size={11} />

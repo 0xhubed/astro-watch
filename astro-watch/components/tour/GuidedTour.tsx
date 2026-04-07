@@ -83,14 +83,16 @@ export function GuidedTour() {
 
   return (
     <>
-      {/* Replay button — always visible */}
-      <button
-        onClick={replayTour}
-        title="Replay tour"
-        className="fixed top-20 left-4 z-30 p-2 rounded-full bg-gray-800/80 border border-gray-700 text-gray-400 hover:text-white hover:bg-gray-700/80 transition-colors backdrop-blur-sm"
-      >
-        <HelpCircle className="w-5 h-5" />
-      </button>
+      {/* Replay button — bottom-left, out of the way */}
+      {!tourActive && (
+        <button
+          onClick={replayTour}
+          title="Replay tour"
+          className="fixed bottom-20 md:bottom-12 left-4 z-30 p-2 rounded-full bg-gray-800/80 border border-gray-700 text-gray-400 hover:text-white hover:bg-gray-700/80 transition-colors backdrop-blur-sm"
+        >
+          <HelpCircle className="w-4 h-4" />
+        </button>
+      )}
 
       {/* First-visit prompt */}
       <AnimatePresence>

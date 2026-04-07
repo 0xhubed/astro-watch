@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Orbit, BarChart3, Shield } from 'lucide-react';
 import { ChatPanel } from '@/components/chat/ChatPanel';
 import { AgentStatusIndicator } from '@/components/dashboard/AgentStatusIndicator';
+import { GuidedTour } from '@/components/tour/GuidedTour';
 
 export default function Home() {
   const {
@@ -188,6 +189,9 @@ export default function Home() {
 
       {/* Chat Assistant */}
       <ChatPanel />
+
+      {/* Guided Tour */}
+      <GuidedTour />
     </div>
   );
 }

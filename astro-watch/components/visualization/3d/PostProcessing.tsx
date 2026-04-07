@@ -1,8 +1,8 @@
 'use client';
 
 import { type JSX } from 'react';
-import { EffectComposer, Bloom, Vignette, ChromaticAberration, ToneMapping } from '@react-three/postprocessing';
-import { BlendFunction, ToneMappingMode } from 'postprocessing';
+import { EffectComposer, Bloom, Vignette, ChromaticAberration } from '@react-three/postprocessing';
+import { BlendFunction } from 'postprocessing';
 import { Vector2 } from 'three';
 
 interface PostProcessingProps {
@@ -18,9 +18,7 @@ export function PostProcessingEffects({
   enableChromaticAberration = true,
   isMobile = false,
 }: PostProcessingProps) {
-  const effects: JSX.Element[] = [
-    <ToneMapping key="tone-mapping" mode={ToneMappingMode.ACES_FILMIC} />,
-  ];
+  const effects: JSX.Element[] = [];
 
   if (enableBloom) {
     effects.unshift(

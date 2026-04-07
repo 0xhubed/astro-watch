@@ -1960,7 +1960,8 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
           antialias: true,
           alpha: false,
           powerPreference: 'high-performance',
-          toneMapping: THREE.NoToneMapping,
+          toneMapping: THREE.ACESFilmicToneMapping,
+          toneMappingExposure: 1.0,
         }}
         raycaster={{ 
           params: { 

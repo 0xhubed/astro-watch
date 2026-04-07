@@ -93,6 +93,13 @@ body {
                        100px 150px, 300px 100px;
 }
 
+/* Hide all R3F Html label overlays when a full-screen modal is open.
+   R3F Html renders into a div with position:absolute inside the canvas container.
+   This targets those containers via the canvas parent having z-0 class. */
+body.modal-open canvas + div {
+  display: none !important;
+}
+
 @keyframes orbit {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }

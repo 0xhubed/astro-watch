@@ -10,6 +10,14 @@ import { computeImpact, formatEnergy, formatDistance, ImpactResult } from '@/lib
 // Dynamic import to prevent SSR issues with WebGL
 const Globe = dynamic(() => import('react-globe.gl'), { ssr: false });
 
+// Toggle body class to hide R3F Html labels while this modal is open
+function useBodyModalClass() {
+  useEffect(() => {
+    document.body.classList.add('modal-open');
+    return () => { document.body.classList.remove('modal-open'); };
+  }, []);
+}
+
 interface Props {
   asteroid: EnhancedAsteroid;
   onClose: () => void;
@@ -61,6 +69,7 @@ function StatRow({ label, value, highlight }: { label: string; value: string; hi
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export function ImpactSimulation({ asteroid, onClose }: Props) {
+  useBodyModalClass();
   // Pick a random default location
   const [impactLocation, setImpactLocation] = useState(() => {
     const idx = Math.floor(Math.random() * IMPACT_LOCATIONS.length);

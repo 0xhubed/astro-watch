@@ -49,6 +49,7 @@ export function GuidedTour() {
     setStep(0);
     setTourActive(true);
     setModalOpen(true);
+    document.body.classList.add('modal-open');
   }
 
   function replayTour() {
@@ -56,6 +57,7 @@ export function GuidedTour() {
     setStep(0);
     setTourActive(true);
     setModalOpen(true);
+    document.body.classList.add('modal-open');
   }
 
   function nextStep() {
@@ -74,6 +76,7 @@ export function GuidedTour() {
     localStorage.setItem(DISMISSED_KEY, '1');
     setTourActive(false);
     setModalOpen(false);
+    document.body.classList.remove('modal-open');
   }
 
   const isLast = step === STEPS.length - 1;

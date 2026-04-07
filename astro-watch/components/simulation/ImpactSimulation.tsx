@@ -212,7 +212,7 @@ export function ImpactSimulation({ asteroid, onClose }: Props) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col md:flex-row overflow-hidden"
+        className="fixed inset-0 z-[100] bg-black/95 flex flex-col md:flex-row overflow-hidden"
       >
         {/* ── Globe (left 60%) ───────────────────────────────────────────── */}
         <div className="relative w-full md:w-[60%] h-[45vh] md:h-full bg-black flex items-center justify-center">

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ChevronRight, ChevronLeft, HelpCircle } from 'lucide-react';
+import { useAsteroidStore } from '@/lib/store';
 
 const DISMISSED_KEY = 'astrowatch-tour-dismissed';
 
@@ -28,6 +29,7 @@ export function GuidedTour() {
   const [showPrompt, setShowPrompt] = useState(false);
   const [tourActive, setTourActive] = useState(false);
   const [step, setStep] = useState(0);
+  const setModalOpen = useAsteroidStore(s => s.setModalOpen);
 
   useEffect(() => {
     const dismissed = localStorage.getItem(DISMISSED_KEY);
@@ -46,12 +48,14 @@ export function GuidedTour() {
     setShowPrompt(false);
     setStep(0);
     setTourActive(true);
+    setModalOpen(true);
   }
 
   function replayTour() {
     setShowPrompt(false);
     setStep(0);
     setTourActive(true);
+    setModalOpen(true);
   }
 
   function nextStep() {
@@ -69,6 +73,7 @@ export function GuidedTour() {
   function endTour() {
     localStorage.setItem(DISMISSED_KEY, '1');
     setTourActive(false);
+    setModalOpen(false);
   }
 
   const isLast = step === STEPS.length - 1;

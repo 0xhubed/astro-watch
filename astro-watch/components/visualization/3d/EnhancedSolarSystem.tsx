@@ -1655,6 +1655,7 @@ function SolarSystemScene({
   const earthPositionRef = useRef<[number, number, number]>([0, 0, 0]);
   const earthGroupRef = useRef<THREE.Group>(null);
   const [, forceUpdate] = useState(0);
+  const modalOpen = useAsteroidStore(s => s.modalOpen);
 
   // Calculate initial Earth position
   const earthData = PLANET_DATA.find(p => p.name === 'Earth')!;
@@ -1767,12 +1768,12 @@ function SolarSystemScene({
       <SpaceDust count={400} />
 
       {PLANET_DATA.filter(p => p.name !== 'Earth').map((planetData) => (
-        <AnimatedPlanet key={planetData.name} planetData={planetData} earthInitialAngle={earthInitialAngle} timeRef={timeRef} hideLabels={showDetailedView} />
+        <AnimatedPlanet key={planetData.name} planetData={planetData} earthInitialAngle={earthInitialAngle} timeRef={timeRef} hideLabels={showDetailedView || modalOpen} />
       ))}
 
       <group ref={earthGroupRef} position={earthPos}>
-        <Earth hideLabels={showDetailedView} />
-        <Moon earthPosition={[0, 0, 0]} hideLabels={showDetailedView} />
+        <Earth hideLabels={showDetailedView || modalOpen} />
+        <Moon earthPosition={[0, 0, 0]} hideLabels={showDetailedView || modalOpen} />
         <AsteroidField
           asteroids={asteroids}
           onAsteroidSelect={onAsteroidSelect}
@@ -1780,7 +1781,7 @@ function SolarSystemScene({
           hoveredAsteroid={hoveredAsteroid}
           setHoveredAsteroid={setHoveredAsteroid}
           onOpenDetailed={onOpenDetailed}
-          hideLabels={showDetailedView}
+          hideLabels={showDetailedView || modalOpen}
         />
       </group>
 
@@ -1851,6 +1852,7 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
   const [internalHoveredAsteroid, setInternalHoveredAsteroid] = useState<number | null>(null);
   const [showDetailedView, setShowDetailedView] = useState(false);
   const [showImpactSim, setShowImpactSim] = useState(false);
+  const setModalOpen = useAsteroidStore(s => s.setModalOpen);
   const [cinematicMode, setCinematicMode] = useState(false);
   const controlsRef = useRef<any>(null);
 
@@ -2035,7 +2037,7 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
           asteroid={selectedAsteroid}
           onClose={() => onAsteroidSelect?.(null)}
           onOpenDetailed={() => setShowDetailedView(true)}
-          onSimulateImpact={() => setShowImpactSim(true)}
+          onSimulateImpact={() => { setShowImpactSim(true); setModalOpen(true); }}
         />
       )}
 
@@ -2051,7 +2053,7 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
         {showImpactSim && selectedAsteroid && (
           <ImpactSimulation
             asteroid={selectedAsteroid}
-            onClose={() => setShowImpactSim(false)}
+            onClose={() => { setShowImpactSim(false); setModalOpen(false); }}
           />
         )}
       </AnimatePresence>

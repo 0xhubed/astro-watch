@@ -9,6 +9,7 @@ import {
 import { motion } from 'framer-motion';
 import { EnhancedAsteroid } from '@/lib/nasa-api';
 import { RiskLegend, getRarityInfo } from '@/components/ui/RiskLegend';
+import { ApproachTimeline } from './ApproachTimeline';
 import { useState } from 'react';
 
 interface Props {
@@ -467,7 +468,10 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
         <APIStatus />
         <RarityScaleCard />
       </div>
-      
+
+      {/* Approach Timelines */}
+      <ApproachTimeline asteroids={asteroids} />
+
       <style jsx>{`
         .custom-scrollbar::-webkit-scrollbar {
           width: 4px;

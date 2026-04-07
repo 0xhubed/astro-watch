@@ -14,6 +14,7 @@ import { ProceduralAsteroid } from './ProceduralAsteroid';
 import { SolarWind, SpaceDust } from './ParticleEffects';
 import { useCinematicCamera } from './CinematicCamera';
 import { AgentAnnotations } from './AgentAnnotations';
+import { ApproachTimeline } from '@/components/visualization/charts/ApproachTimeline';
 
 interface Props {
   asteroids: EnhancedAsteroid[];
@@ -1607,7 +1608,12 @@ function AsteroidInfoPanel({ asteroid, onClose, onOpenDetailed }: {
             {asteroid.close_approach_data[0]?.close_approach_date || 'Date unknown'}
           </div>
         </div>
-        
+
+        <div className="pt-2 border-t border-white/10">
+          <div className="text-white/60 text-xs uppercase tracking-wide mb-1">Approach Timeline</div>
+          <ApproachTimeline asteroids={[asteroid]} compact />
+        </div>
+
         <button
           onClick={onOpenDetailed}
           className="w-full mt-4 bg-blue-600/20 hover:bg-blue-600/30 border border-blue-500/30 hover:border-blue-500/50 text-blue-300 hover:text-blue-200 py-2 px-4 rounded-lg transition-all duration-200 text-sm font-medium"

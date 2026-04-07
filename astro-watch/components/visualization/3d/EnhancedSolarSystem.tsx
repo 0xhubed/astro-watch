@@ -402,7 +402,7 @@ function Moon({ earthPosition, hideLabels }: { earthPosition: [number, number, n
 
       {/* Moon label */}
       {!hideLabels && (
-        <Html position={[0, 2.5, 0]} center style={{ zIndex: 10 }}>
+        <Html position={[0, 2.5, 0]} center style={{ zIndex: 1 }}>
           <div className="bg-black/90 text-white px-3 py-1 rounded-lg text-sm font-medium pointer-events-none border border-white/20">
             Moon
           </div>
@@ -847,7 +847,7 @@ function Earth({ hideLabels }: { hideLabels?: boolean }) {
 
       {/* Earth label */}
       {!hideLabels && (
-        <Html position={[0, 4.5, 0]} center style={{ zIndex: 10 }}>
+        <Html position={[0, 4.5, 0]} center style={{ zIndex: 1 }}>
           <div className="bg-black/90 text-white px-3 py-1 rounded-lg text-sm font-medium pointer-events-none border border-white/20">
             Earth
           </div>
@@ -1284,7 +1284,7 @@ function AsteroidLabel({ asteroid }: { asteroid: EnhancedAsteroid }) {
   const y = Math.sin(angle * 0.2) * orbit.inclination * 0.15;
   
   return (
-    <Html position={[x, y + 2, z]} center style={{ zIndex: 10 }}>
+    <Html position={[x, y + 2, z]} center style={{ zIndex: 1 }}>
       <div className="bg-black/80 text-white px-2 py-1 rounded text-xs pointer-events-none whitespace-nowrap">
         {asteroid.name}
       </div>
@@ -1834,7 +1834,7 @@ function AnimatedPlanet({ planetData, earthInitialAngle, timeRef, hideLabels }: 
         </>
       )}
       {!hideLabels && (
-        <Html position={[0, planetData.size + 3, 0]} center style={{ zIndex: 10 }}>
+        <Html position={[0, planetData.size + 3, 0]} center style={{ zIndex: 1 }}>
           <div className="bg-black/90 text-white px-3 py-1 rounded-lg text-sm font-medium pointer-events-none border border-white/20">
             {planetData.name}
           </div>
@@ -1975,7 +1975,7 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
   }, [selectedAsteroid, isTransitioning, earthPosition]);
 
   return (
-    <div className="w-full h-full bg-gradient-to-b from-space-dark via-blue-900/20 to-space-dark relative overflow-hidden">
+    <div className="w-full h-full bg-gradient-to-b from-space-dark via-blue-900/20 to-space-dark relative overflow-hidden z-0">
       <Canvas
         camera={{ position: [earthPosition[0] + 0, earthPosition[1] + 100, earthPosition[2] + 150], fov: 60 }}
         dpr={[1, 2]}

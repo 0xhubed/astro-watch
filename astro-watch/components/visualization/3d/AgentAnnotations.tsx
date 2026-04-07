@@ -50,7 +50,7 @@ export function AgentAnnotations() {
 
         return (
           <group key={ann.objectId} position={[asteroid.position.x, asteroid.position.y + 3, asteroid.position.z]}>
-            <Html center style={{ pointerEvents: 'auto', zIndex: 20 }}>
+            <Html center style={{ pointerEvents: 'auto', zIndex: 1 }}>
               <div
                 style={{
                   background: `${color}12`,

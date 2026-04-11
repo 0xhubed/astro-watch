@@ -85,13 +85,19 @@ const BASE_URL = 'https://api.nasa.gov/neo/rest/v1';
 export async function getAPOD(date?: string): Promise<APOD> {
   const apiKey = NASA_API_KEY || 'DEMO_KEY';
 
-  const fetchAPOD = async (d?: string) => {
+  const fetchAPOD = async (d?: string, retries = 1): Promise<APOD> => {
     let url = `https://api.nasa.gov/planetary/apod?api_key=${apiKey}`;
     if (d) url += `&date=${d}`;
     const response = await fetch(url, {
-      next: { revalidate: 86400 } // Cache for 24 hours
+      next: { revalidate: 86400 }, // Cache for 24 hours
+      signal: AbortSignal.timeout(10000), // 10s timeout
     });
     if (!response.ok) {
+      // Retry once on transient 5xx errors
+      if (response.status >= 500 && retries > 0) {
+        await new Promise(r => setTimeout(r, 1000));
+        return fetchAPOD(d, retries - 1);
+      }
       throw new Error(`NASA APOD API error: ${response.status}`);
     }
     return response.json();

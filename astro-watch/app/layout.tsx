@@ -39,7 +39,7 @@ export default function RootLayout({
               {children}
             </main>
             <footer className="text-center py-4 text-sm text-gray-500">
-              © 2026 Daniel Huber
+              © 2026 AstroWatch · <a href="mailto:danielhuber.dev@proton.me" className="text-blue-400 hover:text-blue-300 transition-colors">danielhuber.dev@proton.me</a>
             </footer>
           </div>
         </QueryClientProvider>

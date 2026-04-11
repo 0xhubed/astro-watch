@@ -72,7 +72,7 @@ npm run deploy       # Run deploy script
 - `POST /api/chat` - SSE streaming chat with Ollama Cloud tool-calling
 - `GET /api/agent-data` - Returns agent annotations and briefing for client
 - `GET /api/monitoring?dryRun=[0|1]` - Triggers autonomous Claude agent (4h cron)
-- `GET /api/apod?date=YYYY-MM-DD` - Astronomy Picture of the Day (24h cache)
+- `GET /api/apod?date=YYYY-MM-DD` - Astronomy Picture of the Day (CDN cached: 1h s-maxage, 24h stale-while-revalidate)
 
 ### Server vs Client Split
 
@@ -89,12 +89,14 @@ Copy `.env.example` to `.env.local`. Required: `NASA_API_KEY`, `OLLAMA_CLOUD_API
 
 ## Gotchas
 
-- `/api/chat` has `maxDuration: 30` and `/api/monitoring` has `maxDuration: 60` — Hobby plan limit is 60s for streaming; Pro allows up to 300s
+- `/api/chat` has `maxDuration: 60` and `/api/monitoring` has `maxDuration: 60` — Vercel Pro plan (up to 300s for streaming)
 - `@react-three/postprocessing` EffectComposer causes flickering with Three.js 0.178 — disabled, do not re-enable without testing
 - R3F `Html` component renders in a DOM portal that ignores z-index — use `body.modal-open` CSS class to hide labels when modals are open
 - Stale `.next` Turbopack cache can cause runtime errors — fix with `rm -rf .next`
 - Ollama Cloud API is OpenAI-compatible: base URL `https://ollama.com/v1`, endpoint `/chat/completions`, Bearer auth
 - The Ollama Cloud setup matches the pattern in `~/Documents/projects/modelrisk/configs/models.yaml`
+- NASA APOD API returns transient 503s — `getAPOD()` retries once with 1s delay; `/api/apod` route returns 503 with `Retry-After` header
+- `/api/chat` caches asteroids in-memory (5min TTL) to avoid re-fetching NASA NEO feed on every message — critical for staying within function timeout
 
 ## Notes
 
@@ -102,3 +104,4 @@ Copy `.env.example` to `.env.local`. Required: `NASA_API_KEY`, `OLLAMA_CLOUD_API
 - `reactStrictMode: false` is intentional for Three.js compatibility
 - Images allowed from `nasa.gov`, `apod.nasa.gov`, `unpkg.com`
 - Feature branches follow `ticket/<Feature>` or `claude/<description>` naming
+- Contact email: `danielhuber.dev@proton.me` — used in landing page, layout footer, and README instead of personal name

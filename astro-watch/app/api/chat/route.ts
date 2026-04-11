@@ -6,7 +6,7 @@ import { rateLimit } from '@/lib/rate-limit';
 import { filterMessage } from '@/lib/content-filter';
 
 export const runtime = 'nodejs';
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 interface ChatMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
@@ -15,17 +15,26 @@ interface ChatMessage {
   tool_call_id?: string;
 }
 
+// Cache asteroids in-memory for 5 minutes to avoid re-fetching on every chat message
+let cachedAsteroids: { data: EnhancedAsteroid[]; ts: number } | null = null;
+const ASTEROID_CACHE_TTL = 5 * 60 * 1000;
+
 async function getAsteroids(): Promise<EnhancedAsteroid[]> {
+  if (cachedAsteroids && Date.now() - cachedAsteroids.ts < ASTEROID_CACHE_TTL) {
+    return cachedAsteroids.data;
+  }
   try {
     const today = new Date();
     const endDate = new Date(today);
     endDate.setDate(today.getDate() + 7);
     const start = today.toISOString().split('T')[0];
     const end = endDate.toISOString().split('T')[0];
-    return await fetchNEOFeed(start, end);
+    const data = await fetchNEOFeed(start, end);
+    cachedAsteroids = { data, ts: Date.now() };
+    return data;
   } catch (e) {
     console.error('Failed to fetch asteroids for chat:', e);
-    return [];
+    return cachedAsteroids?.data ?? [];
   }
 }
 
@@ -184,7 +193,7 @@ export async function POST(request: NextRequest) {
 
       try {
         let loopCount = 0;
-        while (loopCount < 5) {
+        while (loopCount < 3) {
           loopCount++;
 
           // OpenAI-compatible endpoint on Ollama Cloud
@@ -200,6 +209,7 @@ export async function POST(request: NextRequest) {
               tools: chatTools,
               stream: true,
             }),
+            signal: AbortSignal.timeout(25000), // 25s timeout per LLM call
           });
 
           if (!response.ok) {

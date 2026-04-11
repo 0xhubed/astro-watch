@@ -1,317 +1,188 @@
-# 🌌 AstroWatch - Near Earth Object Visualization Playground
+# AstroWatch - Near-Earth Asteroid Visualization & AI Platform
 
 ### https://www.astro-watch.com/
-An experimental 3D visualization and machine learning playground for exploring near-Earth asteroids. Built with Next.js, Three.js, and TensorFlow.js, AstroWatch serves as a reference implementation for combining NASA asteroid data with interactive 3D visualizations and client-side ML predictions.
-> **⚠️ Disclaimer**: This is an experimental playground and reference implementation, not a production-ready risk assessment tool. All risk predictions are experimental and should not be used for actual asteroid threat evaluation. For authoritative asteroid data and risk assessments, please refer to official sources like NASA/JPL and ESA.
 
-## ✨ Features
+An interactive 3D visualization and agentic AI platform for exploring near-Earth asteroids. Built with Next.js, Three.js, and a dual-model AI system combining Ollama Cloud chat with an autonomous Claude agent.
 
-### 🚀 **3D Visualizations**
-- **Interactive Solar System**: Real-time 3D visualization of Earth and asteroid orbits
-- **Enhanced Earth Model**: Detailed planet with atmospheric effects and rotation
-- **Asteroid Field Rendering**: GPU-accelerated instanced rendering for thousands of asteroids
-- **Orbital Mechanics**: Accurate trajectory calculations and orbital animations
+> **Disclaimer**: This is an experimental project, not a production-ready risk assessment tool. All risk assessments are for educational and exploratory purposes. For authoritative asteroid data, refer to official sources like NASA/JPL and ESA.
 
-### 📊 **Data Analytics & Dashboards**
-- **Risk Assessment Dashboard**: Charts showing asteroid risk levels over time
-- **Timeline Visualization**: Interactive timeline of asteroid close approaches
-- **Risk Distribution Analysis**: Pie charts and radar plots for risk factor breakdown
-- **Impact Visualization**: Geographic visualization of potential impact zones
+## Features
 
-### 🤖 **Experimental ML Risk Assessment**
-- **TensorFlow.js ML Models**: Client-side neural networks for experimental risk prediction
-- **Multi-Factor Analysis**: 6-dimensional feature vectors analyzing size, velocity, distance, orbital characteristics, kinetic energy, and proximity factors
-- **Browser-Based Training**: Automatic model training when pre-trained models are unavailable
-- **Intelligent Fallback**: Rule-based calculations when ML models can't load
-- **Batch Processing**: Predictions for multiple asteroids with performance monitoring
-- **Visual ML Status**: Indicator showing whether ML model or fallback system is active
+### 3D Visualization
+- **Interactive Solar System** — Real-time 3D scene with Earth, Moon, Sun, and asteroid orbits
+- **Procedural Asteroids** — GPU-instanced rendering with unique geometry per asteroid
+- **Cinematic Camera** — Auto-orbit, follow-asteroid, and manual camera modes
+- **Particle Effects** — Atmospheric and orbital trail effects
 
-### 🌍 **Interactive Globe**
-- **3D Earth Globe**: Realistic Earth visualization with impact point mapping
-- **Real-time Impact Points**: Dynamic visualization of potential impact locations
-- **Geographic Risk Distribution**: Country and region-based risk analysis
-- **Atmospheric Effects**: Realistic atmospheric rendering and lighting
+### AI Assistant
+- **Chat Interface** — Ask questions about asteroids, get risk explanations, control the 3D scene
+- **Tool-Calling** — AI can select asteroids, change camera views, query data, and run impact simulations
+- **Streaming Responses** — SSE-based real-time chat via Ollama Cloud (Gemma 4 1B Cloud)
 
-### ⚡ **Performance Features**
-- **Periodic Updates**: Data refreshes every 15 minutes with smooth animations
-- **Efficient Rendering**: Optimized for smooth performance
-- **Responsive Design**: Works on desktop and mobile devices
-- **Progressive Loading**: Smart loading strategies for optimal user experience
+### Autonomous Agent
+- **Claude Advisor Strategy** — Haiku executor with Opus advisor for high-stakes decisions
+- **4-Hour Monitoring Cycle** — Vercel Cron triggers autonomous analysis of new asteroid data
+- **Published Briefings** — Agent writes threat assessments at `/briefings` and `/threats/[id]`
+- **Persistent Memory** — Vercel KV (Upstash Redis) stores agent context across runs
+- **Email Alerts** — Resend-powered notifications for critical asteroid approaches
 
-## 🛠 Tech Stack
+### Analytics & Dashboards
+- **Risk Dashboard** — Charts for risk distribution, approach frequency, and size analysis
+- **Approach Timeline** — Interactive timeline of upcoming close approaches
+- **Trajectory Analysis** — Hyperbolic flyby distance curves
+- **Monitoring Dashboard** — Agent status, annotation history, and briefing feed
 
-### **Frontend Framework**
-- **Next.js 15** - React framework with App Router
-- **TypeScript** - Full type safety and developer experience
-- **Tailwind CSS** - Utility-first styling with custom space theme
+### Impact Simulation
+- **Globe Visualization** — Globe.gl-based 3D Earth with selectable impact points
+- **Physics Engine** — Collins et al. 2005 crater scaling and blast wave calculations
+- **What-If Scenarios** — Simulate impacts for any asteroid at any location
 
-### **3D Graphics & Visualization**
-- **Three.js** - 3D graphics and WebGL rendering
-- **React Three Fiber** - React renderer for Three.js
-- **React Three Drei** - Useful helpers and abstractions for 3D scenes
-- **React Globe.gl** - Interactive 3D globe visualization
+### Daily Discovery
+- **NASA APOD** — Astronomy Picture of the Day with date navigation at `/apod`
 
-### **Data Visualization**
-- **Recharts** - Composable charting library for React
-- **D3.js** - Data-driven document manipulation
-- **Framer Motion** - Smooth animations and transitions
+## Tech Stack
 
-### **State Management & Data**
-- **Zustand** - Lightweight state management
-- **TanStack Query** - Server state management with caching
-- **NASA NEO API** - Real asteroid data from NASA's Near Earth Object Web Service
+### Framework & UI
+- **Next.js 15** (App Router) with **React 19** and **TypeScript**
+- **Tailwind CSS 4** with custom space theme and risk color palette
+- **Framer Motion** for animations
 
-### **Machine Learning & AI**
-- **TensorFlow.js** - Client-side neural networks and model training
-- **Browser ML Training** - In-browser model training with synthetic data generation
-- **Feature Engineering** - Advanced asteroid characteristic extraction and normalization
-- **Simple Statistics** - Statistical analysis and risk calculations
-- **ML Matrix** - Matrix operations for advanced mathematical calculations
+### 3D Graphics
+- **Three.js 0.178** via **React Three Fiber** + **Drei**
+- **Globe.gl** for impact visualizations
 
-### **Development Tools**
-- **ESLint** - Code linting and formatting
-- **TypeScript Definitions** - Type definitions for all major libraries
-- **Vercel** - Deployment and hosting platform
+### Data & State
+- **Zustand** for client state
+- **TanStack Query** for server state (5min cache / 15min refetch)
+- **Recharts** for chart components
 
-## 🚀 Getting Started
+### AI
+- **Ollama Cloud** (gemma4:31b-cloud) — OpenAI-compatible chat API with tool-calling
+- **Anthropic SDK** (Claude) — Advisor Strategy autonomous agent
+- **Vercel KV** — Agent memory persistence
+
+### Infrastructure
+- **Vercel** — Hosting, serverless functions, cron jobs
+- **Resend** — Email alerts for critical asteroids
+- **NASA NEO API** + **NASA APOD API** — Data sources
+
+## Getting Started
 
 ### Prerequisites
-
-- **Node.js 18.x or higher**
-- **npm, yarn, or pnpm**
-- **NASA API Key** (free from [NASA API Portal](https://api.nasa.gov/))
+- Node.js 18+
+- NASA API Key (free from [api.nasa.gov](https://api.nasa.gov/))
 
 ### Installation
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/your-username/astro-watch.git
-   cd astro-watch
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   # or
-   yarn install
-   # or
-   pnpm install
-   ```
-
-3. **Set up environment variables**
-   ```bash
-   cp .env.example .env.local
-   ```
-   
-   Add your NASA API key to `.env.local`:
-   ```env
-   NASA_API_KEY=your_nasa_api_key_here
-   NEXT_PUBLIC_NASA_API_BASE=https://api.nasa.gov/neo/rest/v1
-   NEXT_PUBLIC_ENABLE_PERFORMANCE_MONITORING=true
-   ```
-
-4. **Run the development server**
-   ```bash
-   npm run dev
-   # or
-   yarn dev
-   # or
-   pnpm dev
-   ```
-
-5. **Open your browser**
-   Navigate to [http://localhost:3000](http://localhost:3000) to see the application.
-
-## 📖 Usage
-
-### **As a Reference Implementation**
-This project demonstrates:
-- **NASA API Integration**: How to fetch and process NEO data
-- **3D Visualization**: Three.js integration with React for space visualizations
-- **Client-side ML**: TensorFlow.js for browser-based model training and inference
-- **Performance Optimization**: Efficient rendering of large datasets
-- **Modern Web Stack**: Next.js, TypeScript, and modern React patterns
-
-### **Navigation**
-- **3D View**: Interactive solar system with asteroid orbits
-- **Dashboard**: Charts and analytics for experimental risk assessment
-- **Map View**: Global impact visualization (experimental)
-
-### **Controls**
-- **Time Range**: Switch between day, week, and month views
-- **Risk Filter**: Filter asteroids by experimental risk level (high, medium, low)
-- **Visual Options**: Toggle trajectories and particle effects
-- **Interactive Camera**: Zoom, pan, and rotate in 3D views
-
-### **Data Sources**
-- **NASA NEO API**: Near-Earth object data (updated periodically)
-- **Orbital Mechanics**: Physics-based trajectory calculations
-- **Risk Assessment**: Experimental ML-based and rule-based risk scoring
-
-## 🏗 Project Structure
-
-```
-astro-watch/
-├── app/                          # Next.js App Router
-│   ├── api/
-│   │   ├── asteroids/           # NASA API integration
-│   │   └── predictions/         # ML predictions endpoint
-│   ├── asteroids/[id]/          # Individual asteroid pages
-│   ├── layout.tsx               # Root layout with providers
-│   └── page.tsx                 # Main application page
-├── components/
-│   ├── visualization/
-│   │   ├── 3d/                  # Three.js components
-│   │   │   ├── EnhancedSolarSystem.tsx
-│   │   │   └── InteractiveGlobe.tsx
-│   │   ├── charts/              # Data visualization
-│   │   │   └── RiskDashboard.tsx
-│   │   ├── controls/            # UI controls
-│   │   │   └── Controls.tsx
-│   │   ├── effects/             # Visual effects
-│   │   └── maps/                # Geographic visualizations
-│   ├── dashboard/               # Dashboard components
-│   └── ui/                      # Reusable UI components
-├── lib/
-│   ├── nasa-api.ts             # NASA API client
-│   ├── ml/                      # Machine Learning modules
-│   │   ├── risk-predictor.ts    # Main ML prediction engine
-│   │   ├── feature-engineering.ts # Feature extraction & normalization
-│   │   ├── browser-trainer.ts   # In-browser model training
-│   │   ├── data-generator.ts    # Synthetic training data
-│   │   └── model-trainer.ts     # Advanced training pipelines
-│   ├── advanced-ml.ts           # Legacy ML utilities
-│   └── store.ts                 # Zustand state management
-├── hooks/                       # Custom React hooks
-│   └── useMLPredictions.ts      # Client-side ML enhancement hook
-├── types/                       # TypeScript type definitions
-├── public/
-│   ├── models/                  # 3D models and assets
-│   ├── textures/                # Earth and space textures
-│   └── workers/                 # Web workers for calculations
-└── shaders/                     # GLSL shaders for effects
-```
-
-## 🌟 Key Features in Detail
-
-### **Asteroid Data Visualization**
-- Data from NASA's Near Earth Object Web Service
-- Periodic updates (15-minute intervals)
-- Support for historical and future asteroid approaches
-
-### **Experimental ML Risk Analysis**
-- **Dual-Mode Processing**: Server-side rule-based calculations + client-side ML enhancement
-- **6-Factor Assessment**: Size (log-normalized), velocity, miss distance, PHA status, kinetic energy, and proximity flags
-- **Neural Network Architecture**: Dense layers with dropout regularization for experimental predictions
-- **Automatic Training**: Browser-based model training with 5000+ synthetic samples when pre-trained models unavailable
-- **Performance Monitoring**: ML processing metrics and model performance tracking
-- **Intelligent Fallback**: Seamless transition between ML and rule-based systems
-
-### **Interactive 3D Visualizations**
-- GPU-accelerated rendering for smooth performance
-- Realistic physics-based orbital mechanics
-- Dynamic lighting and atmospheric effects
-
-### **Responsive Data Dashboards**
-- Real-time charts and graphs
-- Interactive timeline visualization
-- Risk distribution analysis
-
-## 🚀 Deployment
-
-### **Quick Deploy to Vercel**
 ```bash
-# Install Vercel CLI
-npm i -g vercel
-
-# Run deployment preparation script
-npm run deploy
-
-# Deploy to production
-vercel --prod
+git clone https://github.com/0xhubed/astro-watch.git
+cd astro-watch/astro-watch
+npm install
 ```
 
-### **Environment Variables Required**
-```env
-# NASA / App
-NASA_API_KEY=your_nasa_api_key_here
-NEXT_PUBLIC_NASA_API_BASE=https://api.nasa.gov/neo/rest/v1
-NEXT_PUBLIC_ENABLE_PERFORMANCE_MONITORING=true
+### Environment Variables
 
-# Monitoring & Alerts (optional)
+```bash
+cp .env.example .env.local
+```
+
+Required:
+```env
+NASA_API_KEY=your_nasa_api_key
+OLLAMA_CLOUD_API_KEY=your_ollama_cloud_api_key
+OLLAMA_CLOUD_BASE_URL=https://ollama.com/v1
+```
+
+Optional (agent + alerts):
+```env
+ANTHROPIC_API_KEY=your_anthropic_api_key
+KV_REST_API_URL=your_vercel_kv_url
+KV_REST_API_TOKEN=your_vercel_kv_token
 RESEND_API_KEY=your_resend_api_key
-NOTIFICATION_EMAIL=recipient@example.com
-# Optional thresholds (defaults shown)
-ALERT_TORINO_MIN=6
-ALERT_RISK_MIN=0.75
-ALERT_ONLY_PHA=true
-# Optional custom From address
+ALERT_TO_EMAIL=recipient@example.com
 ALERT_FROM_EMAIL=alerts@your-domain.com
 ```
 
-## 🔔 Monitoring & Alerts
+### Run
 
-AstroWatch can automatically check for critical asteroids and send an email summary.
+```bash
+npm run dev
+```
 
-- Endpoint: `GET /api/monitoring`
-- Criteria (defaults, configurable via env):
-  - Torino Scale `>= ALERT_TORINO_MIN` (default 6), or
-  - Risk `>= ALERT_RISK_MIN` (default 0.75) and (optionally) PHA only (`ALERT_ONLY_PHA=true`)
-- Email: sent via Resend to `NOTIFICATION_EMAIL` when matches are found
+Open [http://localhost:3000](http://localhost:3000).
 
-### Setup
-- Add to `.env.local`:
-  - `RESEND_API_KEY=...`
-  - `NOTIFICATION_EMAIL=...`
-  - Optionally override `ALERT_TORINO_MIN`, `ALERT_RISK_MIN`, `ALERT_ONLY_PHA`, `ALERT_FROM_EMAIL`
+## Project Structure
 
-### Testing Locally
-- Run the dev server, then visit `http://localhost:3000/api/monitoring?dryRun=1` to preview matches without sending
-- To force a test alert, temporarily reduce thresholds (e.g., `ALERT_TORINO_MIN=1`)
-- You can disable sending globally by setting `ALERTS_ENABLED=false`
+```
+astro-watch/
+├── app/
+│   ├── api/
+│   │   ├── agent-data/        # Agent annotations & briefings endpoint
+│   │   ├── apod/              # Astronomy Picture of the Day proxy
+│   │   ├── asteroids/         # NASA NEO API integration
+│   │   ├── chat/              # SSE streaming chat with tool-calling
+│   │   └── monitoring/        # Autonomous Claude agent (4h cron)
+│   ├── apod/                  # APOD page
+│   ├── briefings/             # Agent-published briefings
+│   ├── dashboard/             # Main dashboard
+│   └── threats/[id]/          # Individual threat assessments
+├── components/
+│   ├── apod/                  # Picture of the Day UI
+│   ├── chat/                  # Chat panel and message components
+│   ├── simulation/            # Impact simulation modal with globe
+│   ├── tour/                  # Guided onboarding tour
+│   └── visualization/
+│       ├── 3d/                # Three.js solar system, procedural asteroids, camera
+│       ├── analysis/          # Trajectory analysis, monitoring dashboard
+│       ├── charts/            # Risk dashboard, approach timeline
+│       ├── controls/          # Desktop and mobile controls
+│       └── maps/              # Impact heatmap and risk map
+├── lib/
+│   ├── agent/                 # Agent memory (KV), tools, core loop
+│   ├── chat/                  # Chat tools, system prompt builder
+│   ├── nasa-api.ts            # NASA API client and data enrichment
+│   ├── impact-physics.ts      # Collins et al. 2005 crater scaling
+│   ├── approach-curve.ts      # Hyperbolic flyby computation
+│   ├── store.ts               # Zustand store
+│   └── ...                    # Rarity scoring, rate limiting, content filtering
+└── public/textures/           # Earth, Moon, Sun textures
+```
 
-### Scheduled Runs (Vercel)
-- `vercel.json` includes a daily cron:
-  - Path: `/api/monitoring`
-  - Schedule: `0 0 * * *` (00:00 UTC)
+## API Routes
 
-### **Deployment Features**
-- ⚡ **Zero-config deployment** with Vercel
-- 🔄 **Automatic builds** on git push
-- 🌐 **Global CDN** distribution
-- 📊 **Built-in analytics** and monitoring
-- 🔧 **Custom build optimizations** for ML models
+| Route | Method | Description |
+|-------|--------|-------------|
+| `/api/asteroids?range=[day\|week\|month]` | GET | Enriched asteroid data (7-day NASA API limit) |
+| `/api/chat` | POST | SSE streaming chat with Ollama Cloud tool-calling |
+| `/api/agent-data` | GET | Agent annotations and latest briefing |
+| `/api/monitoring?dryRun=[0\|1]` | GET | Trigger autonomous Claude agent |
+| `/api/apod?date=YYYY-MM-DD` | GET | Astronomy Picture of the Day (CDN cached) |
 
-## 🤝 Contributing
+## Deployment
 
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
+Deployed on Vercel with a 4-hourly cron for the autonomous agent:
 
-### **Development Setup**
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/amazing-feature`
-3. Commit your changes: `git commit -m 'Add amazing feature'`
-4. Push to the branch: `git push origin feature/amazing-feature`
-5. Open a Pull Request
+```bash
+npm run deploy
+```
 
-## 📄 License
+The `vercel.json` configures function timeouts, CORS headers, and the `/api/monitoring` cron schedule (`0 */4 * * *`).
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+## Contact
 
-## 🙏 Acknowledgments
+Questions, feedback, or contributions: [danielhuber.dev@proton.me](mailto:danielhuber.dev@proton.me)
 
-- **NASA** for providing the Near Earth Object Web Service
-- **Three.js** community for excellent 3D graphics capabilities
-- **Next.js** team for the amazing React framework
-- **Vercel** for hosting and deployment platform
+## Acknowledgments
 
-## 📞 Support
+- **NASA** for the Near Earth Object Web Service and APOD API
+- **Three.js** and **React Three Fiber** communities
+- **Anthropic** and **Ollama** for AI model access
+- **Vercel** for hosting and infrastructure
 
-- **Issues**: [GitHub Issues](https://github.com/your-username/astro-watch/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/your-username/astro-watch/discussions)
-- **Documentation**: [Project Wiki](https://github.com/your-username/astro-watch/wiki)
+## License
+
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
 
 ---
 
-**Built with ❤️ for space enthusiasts, developers, and data visualization explorers**
-
-🌌 *An experimental platform for learning about near-Earth objects through interactive 3D visualization and machine learning techniques.*
+*An interactive platform for exploring near-Earth asteroids through 3D visualization and agentic AI.*

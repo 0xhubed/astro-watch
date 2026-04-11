@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { ArrowRight, Shield, Activity, Sparkles, Telescope, BarChart3, Satellite, Orbit } from 'lucide-react';
+import { ArrowRight, Activity, Sparkles, Telescope, BarChart3, Orbit, Bot, Globe } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 export function LandingPage() {
@@ -22,33 +22,33 @@ export function LandingPage() {
   const features = [
     {
       icon: <Orbit className="w-6 h-6" />,
-      title: "Live 3D Visualization",
-      description: "Browse asteroid orbits in an interactive 3D scene. Zoom, rotate, and look around."
-    },
-    {
-      icon: <Satellite className="w-6 h-6" />,
-      title: "Track & Follow",
-      description: "Select any asteroid to see its trajectory, speed, and closest approach to Earth."
+      title: "Live 3D Solar System",
+      description: "Explore asteroid orbits around Earth in an interactive 3D scene with cinematic camera, trajectory trails, and particle effects."
     },
     {
       icon: <Sparkles className="w-6 h-6" />,
-      title: "AI Assistant",
-      description: "Ask questions about asteroids, control the 3D view, and get AI-powered risk analysis."
+      title: "AI Chat Assistant",
+      description: "Ask questions, control the 3D scene, query asteroid data, and run impact simulations — all through natural conversation."
+    },
+    {
+      icon: <Globe className="w-6 h-6" />,
+      title: "Impact Simulation",
+      description: "Pick any asteroid and drop it anywhere on a 3D globe. See crater size, blast radius, and fireball physics in real time."
+    },
+    {
+      icon: <Bot className="w-6 h-6" />,
+      title: "Autonomous Agent",
+      description: "A Claude-powered agent runs every 4 hours to analyze new data, publish threat briefings, and flag notable approaches."
     },
     {
       icon: <BarChart3 className="w-6 h-6" />,
-      title: "Analytics Dashboard",
-      description: "Charts, graphs, and statistics to explore patterns in orbital data and close-approach frequency."
-    },
-    {
-      icon: <Shield className="w-6 h-6" />,
-      title: "Risk Assessment",
-      description: "Close-approach rarity ratings to help contextualize how unusual each flyby is."
+      title: "Analytics & Trajectories",
+      description: "Risk dashboards, approach timelines, orbital classification, and velocity scatter plots to explore patterns in the data."
     },
     {
       icon: <Telescope className="w-6 h-6" />,
       title: "Daily Discovery",
-      description: "NASA's Astronomy Picture of the Day alongside real asteroid data."
+      description: "NASA's Astronomy Picture of the Day with date navigation and HD downloads."
     }
   ];
 
@@ -142,8 +142,8 @@ export function LandingPage() {
           transition={{ delay: 0.4 }}
           className="text-base sm:text-lg md:text-xl text-gray-400 mb-6 md:mb-8 max-w-2xl mx-auto px-4"
         >
-          A small interactive tool for browsing NASA's asteroid data.
-          View orbital paths, explore close approaches, and see what's passing near Earth.
+          Visualize asteroid orbits in 3D, chat with an AI assistant,
+          simulate impacts, and follow autonomous threat briefings — all powered by live NASA data.
         </motion.p>
 
         <motion.div
@@ -237,19 +237,25 @@ export function LandingPage() {
           </h2>
           <div className="space-y-6 text-gray-400">
             <p className="text-base md:text-lg px-4 md:px-0">
-              AstroWatch turns NASA's asteroid data into interactive visualizations.
-              It's a personal project aimed at making near-Earth object data easier to
-              browse and explore.
+              AstroWatch combines NASA near-Earth object data with 3D visualization
+              and agentic AI. Explore asteroid orbits, simulate impacts on a 3D globe,
+              and read AI-generated threat briefings — all in one place.
             </p>
             <p className="text-base md:text-lg px-4 md:px-0">
-              An AI assistant can answer your questions about asteroids, explain risk
-              assessments, and control the 3D visualization. An autonomous monitoring
-              agent watches for notable approaches and publishes briefings.
+              A chat assistant lets you ask questions, control the 3D scene, and query
+              live data through natural conversation. Behind the scenes, an autonomous
+              Claude agent monitors new approaches every 4 hours and publishes briefings
+              when something notable comes up.
             </p>
             <p className="text-base md:text-lg px-4 md:px-0">
               Whether you're a student, hobbyist, or just curious about space,
-              AstroWatch is a way to poke around asteroid data without needing
-              any specialized knowledge.
+              AstroWatch makes asteroid data accessible without any specialized knowledge.
+            </p>
+            <p className="text-base md:text-lg px-4 md:px-0">
+              Questions or feedback? Reach out at{' '}
+              <a href="mailto:danielhuber.dev@proton.me" className="text-blue-400 hover:text-blue-300 transition-colors">
+                danielhuber.dev@proton.me
+              </a>
             </p>
           </div>
 
@@ -298,7 +304,7 @@ export function LandingPage() {
           <span className="text-lg font-semibold text-white">AstroWatch</span>
 
           <p className="text-gray-400 text-sm">
-            © 2026 Daniel Huber. Data provided by NASA NEO API.
+            © 2026 AstroWatch. Data provided by NASA NEO API. Contact: <a href="mailto:danielhuber.dev@proton.me" className="text-blue-400 hover:text-blue-300 transition-colors">danielhuber.dev@proton.me</a>
           </p>
         </div>
       </footer>

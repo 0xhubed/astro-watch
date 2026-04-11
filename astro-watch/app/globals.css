@@ -35,6 +35,11 @@
   }
 }
 
+html,
+body {
+  overflow-x: hidden;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
@@ -47,11 +52,6 @@ body {
 @media (max-width: 768px) {
   html {
     font-size: 14px;
-    overflow-x: hidden;
-  }
-
-  body {
-    overflow-x: hidden;
   }
 
   /* Mobile-optimized scrollbar */

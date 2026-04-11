@@ -126,7 +126,7 @@ export default function Home() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
               transition={{ duration: 0.5 }}
-              className="w-full px-4 py-4 md:py-8"
+              className="w-full px-4 py-4 md:py-8 h-[calc(100dvh-8rem)] md:h-auto overflow-y-auto md:overflow-visible"
             >
               <RiskDashboard asteroids={filteredAsteroids} timeRange={timeRange} />
             </motion.div>

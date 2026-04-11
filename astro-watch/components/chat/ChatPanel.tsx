@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, X, Send } from 'lucide-react';
+import { track } from '@vercel/analytics';
 import { ChatMessage } from './ChatMessage';
 import { useAsteroidStore } from '@/lib/store';
 
@@ -66,6 +67,7 @@ export function ChatPanel() {
 
     try {
       const apiMessages = newMessages.map(m => ({ role: m.role, content: m.content }));
+      track('chat_message');
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

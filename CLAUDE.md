@@ -92,6 +92,11 @@ Copy `.env.example` to `.env.local`. Required: `NASA_API_KEY`, `OLLAMA_CLOUD_API
 - `/api/chat` has `maxDuration: 60` and `/api/monitoring` has `maxDuration: 60` — Vercel Pro plan (up to 300s for streaming)
 - `@react-three/postprocessing` EffectComposer causes flickering with Three.js 0.178 — disabled, do not re-enable without testing
 - R3F `Html` component renders in a DOM portal that ignores z-index — use `body.modal-open` CSS class to hide labels when modals are open
+- R3F `Html` portals also escape parent `overflow-hidden` — `overflow-x: hidden` on `html`/`body` is needed on mobile only (applying to `html` on desktop causes a visible rendering artifact)
+- Mobile has fixed FABs in all corners (chat FAB bottom-right, asteroid list toggle bottom-left-14, tour "?" bottom-left-4) — check ALL corners before placing new fixed buttons
+- `hideLabels` prop on 3D components (planets, Earth, Moon, AsteroidField) must include `!!selectedAsteroid` — labels render on top of the inline AsteroidInfoPanel otherwise
+- Dashboard view (`viewMode === 'dashboard'`) needs constrained height + `overflow-y-auto` on mobile; the 3D and Analysis views use `h-[calc(100dvh-8rem)]` — dashboard must match this pattern
+- Vercel Analytics custom events via `track()` from `@vercel/analytics` are used to track chat usage (`chat_message` event in `ChatPanel.tsx`)
 - Stale `.next` Turbopack cache can cause runtime errors — fix with `rm -rf .next`
 - Ollama Cloud API is OpenAI-compatible: base URL `https://ollama.com/v1`, endpoint `/chat/completions`, Bearer auth
 - The Ollama Cloud setup matches the pattern in `~/Documents/projects/modelrisk/configs/models.yaml`

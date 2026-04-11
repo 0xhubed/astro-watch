@@ -1771,12 +1771,12 @@ function SolarSystemScene({
       <SpaceDust count={400} />
 
       {PLANET_DATA.filter(p => p.name !== 'Earth').map((planetData) => (
-        <AnimatedPlanet key={planetData.name} planetData={planetData} earthInitialAngle={earthInitialAngle} timeRef={timeRef} hideLabels={showDetailedView || modalOpen} />
+        <AnimatedPlanet key={planetData.name} planetData={planetData} earthInitialAngle={earthInitialAngle} timeRef={timeRef} hideLabels={!!selectedAsteroid || showDetailedView || modalOpen} />
       ))}
 
       <group ref={earthGroupRef} position={earthPos}>
-        <Earth hideLabels={showDetailedView || modalOpen} />
-        <Moon earthPosition={[0, 0, 0]} hideLabels={showDetailedView || modalOpen} />
+        <Earth hideLabels={!!selectedAsteroid || showDetailedView || modalOpen} />
+        <Moon earthPosition={[0, 0, 0]} hideLabels={!!selectedAsteroid || showDetailedView || modalOpen} />
         <AsteroidField
           asteroids={asteroids}
           onAsteroidSelect={onAsteroidSelect}
@@ -1784,7 +1784,7 @@ function SolarSystemScene({
           hoveredAsteroid={hoveredAsteroid}
           setHoveredAsteroid={setHoveredAsteroid}
           onOpenDetailed={onOpenDetailed}
-          hideLabels={showDetailedView || modalOpen}
+          hideLabels={!!selectedAsteroid || showDetailedView || modalOpen}
         />
       </group>
 
@@ -2161,7 +2161,7 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
       {/* Mobile Asteroid List Toggle */}
       <button
         onClick={() => setShowDetailedView(!showDetailedView)}
-        className="md:hidden fixed bottom-[4.5rem] left-4 z-20 bg-purple-600 hover:bg-purple-700 text-white rounded-full p-3 shadow-lg"
+        className="md:hidden fixed bottom-20 left-14 z-20 bg-purple-600 hover:bg-purple-700 text-white rounded-full p-3 shadow-lg"
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>

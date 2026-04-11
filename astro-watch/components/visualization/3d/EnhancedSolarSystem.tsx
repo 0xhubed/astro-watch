@@ -1403,9 +1403,11 @@ function TrajectoryLine({ asteroid }: { asteroid: EnhancedAsteroid }) {
   const curve = useMemo(() => {
     const points = [];
     const orbit = asteroid.orbit;
+    const earthRadius = 3.0;
+    const minDistance = earthRadius + 2.0;
+    const actualRadius = Math.max(minDistance, orbit.radius);
     for (let i = 0; i <= 64; i++) {
       const angle = (i / 64) * Math.PI * 2;
-      const actualRadius = orbit.radius;
       points.push(new THREE.Vector3(
         Math.cos(angle) * actualRadius,
         Math.sin(angle * 0.2) * orbit.inclination * 0.15,
@@ -1417,11 +1419,12 @@ function TrajectoryLine({ asteroid }: { asteroid: EnhancedAsteroid }) {
 
   return (
     <mesh>
-      <tubeGeometry args={[curve, 64, 0.05, 8, true]} />
+      <tubeGeometry args={[curve, 64, 0.15, 8, true]} />
       <meshBasicMaterial
         color={getRarity3DColor(asteroid.rarity)}
         transparent
-        opacity={0.4}
+        opacity={0.6}
+        depthWrite={false}
       />
     </mesh>
   );
@@ -1550,7 +1553,7 @@ function AsteroidInfoPanel({ asteroid, onClose, onOpenDetailed, onSimulateImpact
       initial={{ opacity: 0, y: 20, scale: 0.9 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 20, scale: 0.9 }}
-      className="absolute bottom-2 left-2 right-2 md:left-auto md:bottom-4 md:right-4 z-10 bg-black/60 backdrop-blur-md rounded-xl p-3 md:p-5 md:max-w-sm border border-white/10 shadow-2xl pointer-events-auto"
+      className="absolute bottom-2 left-2 right-2 md:left-auto md:bottom-4 md:right-4 z-30 bg-black/60 backdrop-blur-md rounded-xl p-3 md:p-5 md:max-w-sm max-h-[calc(100%-1rem)] md:max-h-[calc(100%-2rem)] overflow-y-auto border border-white/10 shadow-2xl pointer-events-auto"
     >
       <div className="flex justify-between items-start mb-4">
         <div>

@@ -13,11 +13,14 @@ interface Message {
   toolCalls?: Array<{ name: string; arguments: Record<string, unknown> }>;
 }
 
+const RATE_LIMIT_TOTAL = 30; // must match server constant
+
 export function ChatPanel() {
   const { chatOpen, setChatOpen, selectAsteroid, setRiskFilter, setViewMode, toggleTrajectories, setCinematicTarget, asteroids } = useAsteroidStore();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
+  const [remaining, setRemaining] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -68,6 +71,28 @@ export function ChatPanel() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: apiMessages }),
       });
+
+      // Update remaining from response headers
+      const rlRemaining = response.headers.get('X-RateLimit-Remaining');
+      if (rlRemaining !== null) setRemaining(parseInt(rlRemaining, 10));
+
+      // Handle rate limit
+      if (response.status === 429) {
+        const retryAfter = response.headers.get('Retry-After');
+        const minutes = retryAfter ? Math.ceil(parseInt(retryAfter, 10) / 60) : 60;
+        assistantMessage.content = `You\u2019ve reached the limit of ${RATE_LIMIT_TOTAL} messages per hour. Please try again in ~${minutes} minute${minutes !== 1 ? 's' : ''}.`;
+        setMessages(prev => [...prev.slice(0, -1), { ...assistantMessage }]);
+        setRemaining(0);
+        return;
+      }
+
+      // Handle validation errors
+      if (response.status === 400) {
+        const err = await response.json();
+        assistantMessage.content = err.error || 'Invalid request.';
+        setMessages(prev => [...prev.slice(0, -1), { ...assistantMessage }]);
+        return;
+      }
 
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
@@ -145,8 +170,11 @@ export function ChatPanel() {
             {/* Messages */}
             <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
               {messages.length === 0 && (
-                <div className="text-center text-gray-500 text-sm mt-8">
-                  Ask about asteroids, or say &quot;show me the closest one&quot;
+                <div className="text-center text-gray-500 text-sm mt-8 space-y-3">
+                  <p>Ask about near-Earth asteroids, hazards, or say &quot;show me the closest one&quot;.</p>
+                  <p className="text-gray-600 text-xs">
+                    {RATE_LIMIT_TOTAL} messages per hour &middot; max 2,000 chars per message
+                  </p>
                 </div>
               )}
               {messages.map(msg => (
@@ -157,6 +185,13 @@ export function ChatPanel() {
 
             {/* Input */}
             <div className="px-4 py-3 border-t border-white/[0.08]">
+              {remaining !== null && remaining <= 5 && (
+                <div className={`text-xs mb-2 ${remaining === 0 ? 'text-red-400' : 'text-yellow-400/80'}`}>
+                  {remaining === 0
+                    ? 'Rate limit reached \u2014 please wait before sending more messages.'
+                    : `${remaining} message${remaining !== 1 ? 's' : ''} remaining this hour`}
+                </div>
+              )}
               <div className="flex gap-2">
                 <input
                   ref={inputRef}
@@ -164,13 +199,14 @@ export function ChatPanel() {
                   value={input}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && sendMessage()}
-                  placeholder="Ask about asteroids..."
-                  disabled={isStreaming}
+                  placeholder={remaining === 0 ? 'Rate limit reached...' : 'Ask about asteroids...'}
+                  disabled={isStreaming || remaining === 0}
+                  maxLength={2000}
                   className="flex-1 bg-white/[0.04] border border-white/[0.1] rounded-lg px-3 py-2 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-purple-500/50 disabled:opacity-50"
                 />
                 <button
                   onClick={sendMessage}
-                  disabled={!input.trim() || isStreaming}
+                  disabled={!input.trim() || isStreaming || remaining === 0}
                   className="w-9 h-9 flex items-center justify-center bg-purple-600 rounded-lg hover:bg-purple-500 disabled:opacity-30 transition-colors"
                 >
                   <Send className="w-4 h-4 text-white" />

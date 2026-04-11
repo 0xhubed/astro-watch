@@ -219,7 +219,7 @@ export function TrajectoryAnalysis({ asteroids }: Props) {
       <div className="bg-yellow-900/20 rounded-lg p-4 border border-yellow-700/30">
         <div className="text-yellow-300 text-sm font-medium mb-2">Reference Comparisons</div>
         <div className="text-yellow-200 text-xs space-y-1">
-          <div>• Tunguska Event (1908): ~15 megatons</div>
+          <div>• Tunguska Event (1908): ~3-5 megatons</div>
           <div>• Chelyabinsk meteor (2013): ~0.5 megatons</div>
           <div>• Chicxulub impact: ~100 million megatons</div>
         </div>
@@ -318,7 +318,7 @@ export function TrajectoryAnalysis({ asteroids }: Props) {
                   </div>
                   <div className="bg-white/5 rounded-lg p-3">
                     <div className="text-white/60 text-xs mb-1">Inclination</div>
-                    <div className="text-white font-mono">{(selectedAsteroid.orbit.inclination * 180 / Math.PI).toFixed(2)}°</div>
+                    <div className="text-white font-mono">{selectedAsteroid.orbit.inclination.toFixed(2)}°</div>
                   </div>
                   <div className="bg-white/5 rounded-lg p-3">
                     <div className="text-white/60 text-xs mb-1">Eccentricity</div>

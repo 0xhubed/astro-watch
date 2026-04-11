@@ -60,15 +60,12 @@ export function calculateMoonCollisionRisk(asteroid: EnhancedAsteroid): MoonColl
   // 3. Gravitational focusing effects
   const gravitationalFocusing = calculateGravitationalFocusing(asteroid);
   
-  // 4. Combined probability
-  let moonCollisionProbability = geometricProbability * orbitalFactors * gravitationalFocusing;
-  
-  // Apply minimum probability based on historical impact rates
-  // For asteroids passing within 0.1 AU of Earth, there's always some small chance
-  if (asteroid.missDistance < 0.1 && asteroid.size > 0.1) {
-    const minProbability = 1e-8 * (asteroid.size / 10); // Scale with size
-    moonCollisionProbability = Math.max(moonCollisionProbability, minProbability);
-  }
+  // 4. Combined probability, capped at physically realistic values.
+  // Even the most favourable geometry yields P << 1e-4 for a single pass.
+  const moonCollisionProbability = Math.min(
+    geometricProbability * orbitalFactors * gravitationalFocusing,
+    1e-4,
+  );
   
   // 5. Impact characteristics if collision occurs
   const impactVelocity = calculateImpactVelocity(asteroid);
@@ -116,35 +113,46 @@ export function calculateMoonCollisionRisk(asteroid: EnhancedAsteroid): MoonColl
 }
 
 /**
- * Calculate basic geometric collision probability
+ * Calculate basic geometric collision probability.
+ *
+ * For an asteroid crossing the Moon's orbital zone, the probability
+ * of collision is approximately the fraction of the Moon's orbital
+ * torus that the Moon actually occupies, weighted by the time the
+ * asteroid spends in that zone.
  */
 function calculateGeometricCollisionProbability(asteroid: EnhancedAsteroid): number {
-  // Moon's cross-sectional area as seen by incoming asteroid
-  const moonCrossSection = Math.PI * MOON_DATA.radius * MOON_DATA.radius; // km²
-  
-  // Effective target area considering Moon's orbital motion
-  // Moon sweeps out an annular area in its orbit
-  const moonOrbitCircumference = 2 * Math.PI * MOON_DATA.orbitalRadius; // km
-  const moonOrbitWidth = MOON_DATA.radius * 2; // km
-  const moonOrbitArea = moonOrbitCircumference * moonOrbitWidth; // km²
-  
-  // Basic geometric probability
-  // Consider the asteroid's uncertainty region and Moon's capture cross-section
-  const asteroidUncertaintyKm = asteroid.missDistance * 1.496e8 * 0.01; // 1% uncertainty in AU to km
-  const effectiveTargetRadius = MOON_DATA.radius + asteroidUncertaintyKm;
-  const effectiveCrossSection = Math.PI * effectiveTargetRadius * effectiveTargetRadius;
-  
-  // Moon's orbital sweep area per day
-  const moonDailyOrbitArc = (2 * Math.PI * MOON_DATA.orbitalRadius) / MOON_DATA.orbitalPeriod;
-  const sweepArea = moonDailyOrbitArc * (2 * effectiveTargetRadius);
-  
-  // Base probability considering encounter duration
-  const encounterDurationDays = 3; // Typical close approach window
-  const baseCollisionChance = (effectiveCrossSection / sweepArea) * encounterDurationDays;
-  
+  const missDistanceKm = asteroid.missDistance * 149597870.7; // AU to km
+  const moonOrbitRadiusKm = MOON_DATA.orbitalRadius;         // 384,400 km
+
+  // If asteroid doesn't pass through the Moon's orbital zone, probability ≈ 0
+  if (missDistanceKm > moonOrbitRadiusKm * 1.1) {
+    return 1e-12; // negligible but non-zero for display purposes
+  }
+
+  // Moon's cross-section (physical disk as seen by projectile)
+  const moonCrossSection = Math.PI * MOON_DATA.radius ** 2; // km²
+
+  // Moon's orbital circumference — the Moon could be anywhere along it
+  const moonOrbitCircumference = 2 * Math.PI * moonOrbitRadiusKm; // km
+
+  // Fraction of orbit occupied by the Moon's diameter
+  const positionalFraction = (2 * MOON_DATA.radius) / moonOrbitCircumference;
+
+  // Encounter duration: time the asteroid spends within ±1 Moon-radius
+  // of the Moon's orbital shell, at its geocentric velocity
+  const vKmS = asteroid.velocity; // km/s
+  const crossingTimeS = (2 * MOON_DATA.radius) / Math.max(vKmS, 0.1); // seconds
+  const crossingTimeDays = crossingTimeS / 86400;
+
+  // Probability the Moon is at the crossing point during that window
+  const timingFraction = crossingTimeDays / MOON_DATA.orbitalPeriod;
+
+  // Base collision probability: positional × timing
+  const baseCollisionChance = positionalFraction * timingFraction;
+
   // Adjust for asteroid approach geometry
   const approachGeometryFactor = calculateApproachGeometry(asteroid);
-  
+
   return baseCollisionChance * approachGeometryFactor;
 }
 
@@ -267,26 +275,28 @@ function calculateImpactEnergy(asteroid: EnhancedAsteroid, impactVelocity: numbe
 }
 
 /**
- * Calculate expected crater diameter
+ * Calculate expected crater diameter using Collins et al. (2005) Pi-scaling
+ * adapted for lunar surface parameters.
+ *
+ *   D = 1.161 * (ρ_proj/ρ_target)^(1/3) * L^0.78 * v^0.44 * g^-0.22 * sin(θ)^(1/3)
  */
 function calculateCraterDiameter(asteroid: EnhancedAsteroid, impactVelocity: number): number {
-  // Simplified crater scaling law for Moon
-  // D = K * (E/ρg)^(1/3.4)
-  // Where: D = diameter, E = energy, ρ = target density, g = surface gravity
-  
-  const impactEnergy = calculateImpactEnergy(asteroid, impactVelocity);
-  const targetDensity = 2500; // kg/m³ (lunar regolith)
-  const surfaceGravity = MOON_DATA.surfaceGravity; // m/s²
-  
-  // Scaling constant (empirically derived)
-  const scalingConstant = 1.8;
-  
-  // Crater diameter in meters
-  const craterDiameter = scalingConstant * Math.pow(
-    impactEnergy / (targetDensity * surfaceGravity),
-    1/3.4
-  );
-  
+  const projDensity = 2500;  // kg/m³ (assumed rocky asteroid)
+  const targetDensity = 1500; // kg/m³ (lunar regolith, lower than crustal rock)
+  const g = MOON_DATA.surfaceGravity; // 1.62 m/s²
+  const L = asteroid.size;            // projectile diameter in metres
+  const v = impactVelocity * 1000;    // km/s → m/s
+  const sinTheta = Math.sin(Math.PI / 4); // 45° canonical angle
+
+  const densityRatio = Math.pow(projDensity / targetDensity, 1 / 3);
+  const craterDiameter =
+    1.161 *
+    densityRatio *
+    Math.pow(L, 0.78) *
+    Math.pow(v, 0.44) *
+    Math.pow(g, -0.22) *
+    Math.pow(sinTheta, 1 / 3);
+
   return craterDiameter;
 }
 

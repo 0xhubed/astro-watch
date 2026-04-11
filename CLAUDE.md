@@ -28,8 +28,8 @@ npm run deploy       # Run deploy script
 - **3D:** Three.js 0.178 via React Three Fiber + Drei (postprocessing disabled — incompatible with Three.js 0.178)
 - **State:** Zustand (client state in `lib/store.ts`) + TanStack Query (server state, 5min cache / 15min refetch)
 - **Chat AI:** Ollama Cloud (gemma4:31b-cloud) via OpenAI-compatible API at https://ollama.com/v1
-- **Agent AI:** Claude (claude-sonnet-4-6) via Anthropic SDK, runs every 4h via Vercel Cron
-- **Agent Memory:** Vercel KV with TTLs (falls back to in-memory for local dev)
+- **Agent AI:** Claude Advisor Strategy (Haiku executor + Opus advisor) via Anthropic SDK, runs every 4h via Vercel Cron
+- **Agent Memory:** Vercel KV (Upstash Redis) with TTLs (falls back to in-memory for local dev). Uses `@vercel/kv` — do NOT install `@upstash/redis` separately.
 - **Data:** NASA NEO API, NASA APOD API
 - **Alerts:** Resend email service for critical asteroid notifications
 - **Deployment:** Vercel with 4-hourly cron for `/api/monitoring` (autonomous agent)
@@ -47,7 +47,7 @@ npm run deploy       # Run deploy script
 ### Dual-Model AI Architecture
 
 - **Chat** (`/api/chat`): Ollama Cloud OpenAI-compatible API, gemma4:31b-cloud, SSE streaming, tool-calling for scene control
-- **Agent** (`/api/monitoring`): Anthropic SDK, claude-sonnet-4-6, persistent memory via Vercel KV, publishes to `/briefings` and `/threats/[id]`
+- **Agent** (`/api/monitoring`): Anthropic SDK, Advisor Strategy — Haiku executor with Opus advisor (`max_uses: 3`) for high-stakes decisions (alerts, threat levels). Persistent memory via Vercel KV, publishes to `/briefings` and `/threats/[id]`
 
 ### Key Directories (under `astro-watch/`)
 
@@ -81,7 +81,7 @@ npm run deploy       # Run deploy script
 
 ## Environment Variables
 
-Copy `.env.example` to `.env.local`. Required: `NASA_API_KEY`, `OLLAMA_CLOUD_API_KEY`, `OLLAMA_CLOUD_BASE_URL`. Optional: `ANTHROPIC_API_KEY` (agent), `KV_REST_API_URL`/`KV_REST_API_TOKEN` (agent memory), `RESEND_API_KEY` and `NOTIFICATION_EMAIL` (alerts).
+Copy `.env.example` to `.env.local`. Required: `NASA_API_KEY`, `OLLAMA_CLOUD_API_KEY`, `OLLAMA_CLOUD_BASE_URL`. Optional: `ANTHROPIC_API_KEY` (agent), `KV_REST_API_URL`/`KV_REST_API_TOKEN` (agent memory), `RESEND_API_KEY`/`ALERT_TO_EMAIL`/`ALERT_FROM_EMAIL` (alerts — sender defaults to `onboarding@resend.dev`).
 
 ## Path Alias
 
@@ -89,6 +89,7 @@ Copy `.env.example` to `.env.local`. Required: `NASA_API_KEY`, `OLLAMA_CLOUD_API
 
 ## Gotchas
 
+- `/api/chat` has `maxDuration: 30` and `/api/monitoring` has `maxDuration: 60` — Hobby plan limit is 60s for streaming; Pro allows up to 300s
 - `@react-three/postprocessing` EffectComposer causes flickering with Three.js 0.178 — disabled, do not re-enable without testing
 - R3F `Html` component renders in a DOM portal that ignores z-index — use `body.modal-open` CSS class to hide labels when modals are open
 - Stale `.next` Turbopack cache can cause runtime errors — fix with `rm -rf .next`

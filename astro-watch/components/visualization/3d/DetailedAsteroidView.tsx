@@ -110,7 +110,7 @@ export function DetailedAsteroidView({ asteroid, isOpen, onClose }: DetailedAste
                   </div>
                 </div>
                 <div className="bg-white/5 rounded-lg p-4">
-                  <div className="text-white/60 text-sm mb-1">Size (Max)</div>
+                  <div className="text-white/60 text-sm mb-1">Estimated Size</div>
                   <div className="text-white font-mono text-lg">
                     {asteroid.size >= 1000 
                       ? `${(asteroid.size / 1000).toFixed(2)} km`
@@ -317,7 +317,7 @@ export function DetailedAsteroidView({ asteroid, isOpen, onClose }: DetailedAste
                     {(asteroid.moonCollisionData.impactEnergy / 1e12).toFixed(1)} TJ
                   </div>
                   <div className="text-white/60 text-xs mt-1">
-                    {(asteroid.moonCollisionData.impactEnergy / 4.184e12).toFixed(1)} tons TNT equivalent
+                    {(asteroid.moonCollisionData.impactEnergy / 4.184e12).toFixed(1)} kt TNT equivalent
                   </div>
                 </div>
               </div>

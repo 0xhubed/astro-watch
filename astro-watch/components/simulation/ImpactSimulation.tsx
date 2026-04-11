@@ -116,8 +116,24 @@ export function ImpactSimulation({ asteroid, onClose }: Props) {
     },
   ];
 
-  // Re-point globe camera when impact location changes
+  // Point globe camera to impact location once globe is ready (initial mount)
+  const handleGlobeReady = useCallback(() => {
+    if (globeRef.current) {
+      globeRef.current.pointOfView(
+        { lat: impactLocation.lat, lng: impactLocation.lng, altitude: 1.5 },
+        0, // immediate — no animation on initial load
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // intentionally empty: captures initial impactLocation via ref timing
+
+  // Re-point globe camera when impact location changes after initial mount
+  const initialMount = useRef(true);
   useEffect(() => {
+    if (initialMount.current) {
+      initialMount.current = false;
+      return; // skip first render — handled by onGlobeReady
+    }
     if (globeRef.current) {
       globeRef.current.pointOfView(
         { lat: impactLocation.lat, lng: impactLocation.lng, altitude: 1.5 },
@@ -264,6 +280,7 @@ export function ImpactSimulation({ asteroid, onClose }: Props) {
             ringMaxRadius={(d: object) => (d as RingDatum).maxR}
             ringPropagationSpeed={(d: object) => (d as RingDatum).propagationSpeed}
             ringRepeatPeriod={(d: object) => (d as RingDatum).repeatPeriod}
+            onGlobeReady={handleGlobeReady}
             onGlobeClick={handleGlobeClick}
             enablePointerInteraction
           />

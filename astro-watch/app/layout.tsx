@@ -25,7 +25,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <title>AstroWatch - Near-Earth Asteroid Tracker</title>
+        <title>AstroWatch</title>
         <meta name="description" content="Browse and visualize near-Earth asteroids using NASA data" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
         <meta name="theme-color" content="#0a0a0f" />

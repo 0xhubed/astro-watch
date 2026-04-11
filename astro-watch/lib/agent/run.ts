@@ -30,7 +30,12 @@ export interface AgentRunResult {
 // Constants
 // ---------------------------------------------------------------------------
 
-const MODEL = 'claude-sonnet-4-6';
+/** Haiku drives the loop — fast, cheap, handles routine data crunching. */
+const EXECUTOR_MODEL = 'claude-haiku-4-5-20251001';
+/** Opus advises on high-stakes decisions (alerts, threat levels). */
+const ADVISOR_MODEL = 'claude-opus-4-6';
+/** Max times the executor can consult the advisor per run. */
+const ADVISOR_MAX_USES = 3;
 const MAX_TOKENS = 4096;
 /** Guard against runaway tool-calling loops. */
 const MAX_ITERATIONS = 10;
@@ -70,7 +75,8 @@ Guidelines:
   - Prioritise objects with high rarity scores, PHA designation, or very close miss distances (<0.05 AU).
   - Always call update_briefing once at the end of your analysis.
   - Keep annotation labels short (≤ 30 chars).
-  - For send_alert, use the ALERT_TO_EMAIL environment variable as the recipient.`;
+  - For send_alert, use the ALERT_TO_EMAIL environment variable as the recipient.
+  - Consult the advisor before: sending email alerts, assigning "high" or "critical" threat levels, or when uncertain about an unusual orbital pattern. The advisor provides expert-level reasoning for these high-stakes decisions.`;
 }
 
 function buildUserPrompt(asteroids: EnhancedAsteroid[]): string {
@@ -150,10 +156,19 @@ export async function runAgent(): Promise<AgentRunResult> {
       iterations++;
 
       const response = await client.messages.create({
-        model: MODEL,
+        model: EXECUTOR_MODEL,
         max_tokens: MAX_TOKENS,
         system: systemPrompt,
-        tools: agentTools,
+        tools: [
+          // Advisor: Opus provides strategic guidance on high-stakes decisions
+          {
+            type: 'advisor_20260301',
+            name: 'advisor',
+            model: ADVISOR_MODEL,
+            max_uses: ADVISOR_MAX_USES,
+          } as unknown as Anthropic.Tool,
+          ...agentTools,
+        ],
         messages,
       });
 

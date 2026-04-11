@@ -9,7 +9,7 @@
  * frequency of near-Earth objects." Icarus, 366, 114585.
  */
 
-const EARTH_RADIUS_KM = 6371;
+// Earth radius no longer needed: NASA miss distances are already geocentric
 
 /**
  * Estimate cumulative NEO population N(>D) using a polynomial fit
@@ -74,7 +74,7 @@ export function calculateRarity(H: number, r_km: number): number {
   // Step 3: Gravitational focusing — effective cross-section
   // v_esc at distance r from Earth center
   const GM_EARTH = 3.986e5; // km^3/s^2
-  const r_center = r_km + EARTH_RADIUS_KM; // distance from Earth center
+  const r_center = r_km; // r_km is already geocentric (NASA API convention)
   const v_esc2 = 2 * GM_EARTH / r_center;
   const v_inf2 = v_inf * v_inf;
   const focusFactor = 1 + v_esc2 / v_inf2;

@@ -2,6 +2,8 @@ import { NextRequest } from 'next/server';
 import { chatTools, executeQueryAsteroids, executeGetStatistics, executeGetAgentInsights } from '@/lib/chat/tools';
 import { buildSystemPrompt } from '@/lib/chat/system-prompt';
 import { fetchNEOFeed, EnhancedAsteroid } from '@/lib/nasa-api';
+import { rateLimit } from '@/lib/rate-limit';
+import { filterMessage } from '@/lib/content-filter';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -63,8 +65,97 @@ async function executeTool(
   }
 }
 
+// Limits — tune as needed
+const RATE_LIMIT_PER_HOUR = 30;      // max chat messages per IP per hour
+const GLOBAL_DAILY_LIMIT = 1000;     // max chat messages across ALL users per day
+const MAX_MESSAGE_LENGTH = 2000;     // max characters per user message
+const MAX_CONVERSATION_MESSAGES = 30; // max messages in a single request
+
 export async function POST(request: NextRequest) {
-  const { messages } = (await request.json()) as { messages: ChatMessage[] };
+  // --- Rate limiting (per IP, sliding window) ---
+  const ip =
+    request.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
+    request.headers.get('x-real-ip') ||
+    'anonymous';
+
+  const { allowed, remaining, retryAfterSeconds } = await rateLimit(
+    `chat:${ip}`,
+    RATE_LIMIT_PER_HOUR,
+    3600,
+  );
+
+  if (!allowed) {
+    return new Response(
+      JSON.stringify({ error: 'Rate limit exceeded. Please try again later.' }),
+      {
+        status: 429,
+        headers: {
+          'Retry-After': String(retryAfterSeconds),
+          'X-RateLimit-Limit': String(RATE_LIMIT_PER_HOUR),
+          'X-RateLimit-Remaining': '0',
+        },
+      },
+    );
+  }
+
+  // --- Global daily budget (all users combined) ---
+  const { allowed: globalAllowed } = await rateLimit(
+    'chat:global',
+    GLOBAL_DAILY_LIMIT,
+    86400,
+  );
+
+  if (!globalAllowed) {
+    return new Response(
+      JSON.stringify({ error: 'The AI assistant has reached its daily usage limit. Please check back tomorrow.' }),
+      {
+        status: 429,
+        headers: { 'Retry-After': '3600' },
+      },
+    );
+  }
+
+  // --- Input validation ---
+  let body: { messages?: ChatMessage[] };
+  try {
+    body = await request.json();
+  } catch {
+    return new Response(JSON.stringify({ error: 'Invalid JSON' }), { status: 400 });
+  }
+
+  const messages = body.messages;
+  if (!Array.isArray(messages) || messages.length === 0) {
+    return new Response(JSON.stringify({ error: 'messages array is required' }), { status: 400 });
+  }
+
+  if (messages.length > MAX_CONVERSATION_MESSAGES) {
+    return new Response(
+      JSON.stringify({ error: `Too many messages (max ${MAX_CONVERSATION_MESSAGES})` }),
+      { status: 400 },
+    );
+  }
+
+  const lastUserMessage = messages.filter(m => m.role === 'user').pop();
+  if (lastUserMessage && lastUserMessage.content.length > MAX_MESSAGE_LENGTH) {
+    return new Response(
+      JSON.stringify({ error: `Message too long (max ${MAX_MESSAGE_LENGTH} characters)` }),
+      { status: 400 },
+    );
+  }
+
+  // --- Content filter (runs before LLM call — saves tokens) ---
+  if (lastUserMessage) {
+    const filterResult = filterMessage(lastUserMessage.content);
+    if (!filterResult.allowed) {
+      return new Response(JSON.stringify({ error: filterResult.reason }), { status: 400 });
+    }
+  }
+
+  // --- Message sanitization: only allow user/assistant roles from the client ---
+  // Prevents clients from injecting system or tool role messages.
+  const sanitizedMessages = messages.filter(
+    m => m.role === 'user' || m.role === 'assistant',
+  );
 
   const apiKey = process.env.OLLAMA_CLOUD_API_KEY;
   const baseUrl = process.env.OLLAMA_CLOUD_BASE_URL || 'https://ollama.com/v1';
@@ -81,7 +172,7 @@ export async function POST(request: NextRequest) {
 
   const allMessages: ChatMessage[] = [
     { role: 'system', content: systemPrompt },
-    ...messages.slice(-20),
+    ...sanitizedMessages.slice(-20),
   ];
 
   const encoder = new TextEncoder();
@@ -219,6 +310,8 @@ export async function POST(request: NextRequest) {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
       Connection: 'keep-alive',
+      'X-RateLimit-Limit': String(RATE_LIMIT_PER_HOUR),
+      'X-RateLimit-Remaining': String(remaining),
     },
   });
 }

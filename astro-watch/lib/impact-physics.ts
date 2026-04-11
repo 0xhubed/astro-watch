@@ -6,8 +6,8 @@
 
 const HIROSHIMA_J = 6.3e13;        // Joules (Little Boy bomb yield)
 const MT_TNT_J = 4.184e15;         // Joules per megaton TNT
-const CHELYABINSK_J = 4.4e14;      // Joules (2013 Chelyabinsk event)
-const TUNGUSKA_J = 1e16;           // Joules (1908 Tunguska event)
+const CHELYABINSK_J = 2.0e15;       // Joules (2013 Chelyabinsk event, ~500 kt TNT per Brown et al. 2013)
+const TUNGUSKA_J = 1.5e16;          // Joules (1908 Tunguska event, ~3-5 Mt TNT per modern airburst models)
 const EXTINCTION_J = 4.2e23;       // Joules (Chicxulub ~10 km impactor estimate)
 
 const SURFACE_GRAVITY = 9.81;      // m/s² (Earth surface)
@@ -61,8 +61,8 @@ function inferAsteroidType(diameterM: number, isPHA: boolean): { type: string; d
     return { type: 'C', density: DENSITIES.C };
   }
   if (diameterM < 50) {
-    // Small, compact objects favour metallic composition
-    return { type: 'M', density: DENSITIES.M };
+    // Small NEOs are predominantly S-type (stony); only ~5% are M-type
+    return { type: 'S', density: DENSITIES.DEFAULT };
   }
   return { type: 'S', density: DENSITIES.DEFAULT };
 }
@@ -215,7 +215,7 @@ export function computeImpact(
   const hiroshimaMultiple = kineticEnergyJ / HIROSHIMA_J;
 
   const craterDiameterM = computeCraterDiameter(diameterM, velocityKmS, density);
-  const craterDepthM = 0.2 * craterDiameterM;
+  const craterDepthM = 0.3 * craterDiameterM; // transient crater d/D ≈ 0.3 (Melosh 1989)
 
   const fireballRadiusM = computeFireballRadius(kineticEnergyJ);
   const thermalRadiusM = 10 * fireballRadiusM;

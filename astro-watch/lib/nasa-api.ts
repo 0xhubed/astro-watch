@@ -84,26 +84,35 @@ const BASE_URL = 'https://api.nasa.gov/neo/rest/v1';
 
 export async function getAPOD(date?: string): Promise<APOD> {
   const apiKey = NASA_API_KEY || 'DEMO_KEY';
-  let url = `https://api.nasa.gov/planetary/apod?api_key=${apiKey}`;
-  
-  if (date) {
-    url += `&date=${date}`;
-  }
-  
-  try {
+
+  const fetchAPOD = async (d?: string) => {
+    let url = `https://api.nasa.gov/planetary/apod?api_key=${apiKey}`;
+    if (d) url += `&date=${d}`;
     const response = await fetch(url, {
       next: { revalidate: 86400 } // Cache for 24 hours
     });
-    
     if (!response.ok) {
       throw new Error(`NASA APOD API error: ${response.status}`);
     }
-    
-    const data = await response.json();
-    return data;
+    return response.json();
+  };
+
+  try {
+    return await fetchAPOD(date);
   } catch (error) {
-    console.error('Error fetching APOD:', error);
-    throw error;
+    // NASA APOD often 500s for today's date before the image is published;
+    // fall back to yesterday
+    const requestDate = date || new Date().toISOString().split('T')[0];
+    const yesterday = new Date(requestDate + 'T00:00:00');
+    yesterday.setDate(yesterday.getDate() - 1);
+    const fallbackDate = yesterday.toISOString().split('T')[0];
+
+    try {
+      return await fetchAPOD(fallbackDate);
+    } catch {
+      console.error('Error fetching APOD (including fallback):', error);
+      throw error;
+    }
   }
 }
 
@@ -143,7 +152,8 @@ export async function fetchNEOFeed(startDate: string, endDate: string): Promise<
 }
 
 export async function enhanceAsteroidData(asteroid: Asteroid): Promise<EnhancedAsteroid> {
-  const size = asteroid.estimated_diameter.meters.estimated_diameter_max;
+  // Use mean diameter — mass ∝ d³ so using max overestimates by 2-3×
+  const size = (asteroid.estimated_diameter.meters.estimated_diameter_min + asteroid.estimated_diameter.meters.estimated_diameter_max) / 2;
   const velocity = parseFloat(asteroid.close_approach_data[0].relative_velocity.kilometers_per_second);
   const missDistance = parseFloat(asteroid.close_approach_data[0].miss_distance.astronomical);
   const missDistanceKm = parseFloat(asteroid.close_approach_data[0].miss_distance.kilometers || '0')

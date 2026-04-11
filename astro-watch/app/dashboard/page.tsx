@@ -180,8 +180,12 @@ export default function Home() {
               Filtered: {filteredAsteroids.length} |
               Rare: {asteroids.filter(a => a.rarity >= 4).length}
             </div>
-            <div className="text-xs">
-              Last Updated: {new Date().toLocaleTimeString()}
+            <div className="text-xs flex items-center gap-3">
+              <span>Last Updated: {new Date().toLocaleTimeString()}</span>
+              <span className="text-gray-600">·</span>
+              <a href="/#about" className="text-gray-600 hover:text-gray-400 transition-colors">
+                Data may contain inaccuracies — not for safety decisions
+              </a>
             </div>
           </div>
         </div>

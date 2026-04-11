@@ -266,9 +266,12 @@ export function LandingPage() {
             transition={{ delay: 0.2 }}
             className="mt-12 p-6 bg-white/[0.02] rounded-xl border border-white/10 backdrop-blur-sm"
           >
-            <h3 className="text-xl font-semibold text-white mb-2">Real Data, Refreshed Often</h3>
+            <h3 className="text-xl font-semibold text-white mb-2">Data & Disclaimer</h3>
             <p className="text-gray-400">
-              Powered by NASA's Near-Earth Object API. Data refreshes every 15 minutes.
+              Powered by NASA&apos;s Near-Earth Object API with data refreshed every 15 minutes.
+              This is a personal project for educational and exploratory purposes — risk assessments,
+              AI-generated briefings, and impact simulations are approximations and may contain errors.
+              Do not use this as a source for safety decisions.
             </p>
           </motion.div>
         </motion.div>

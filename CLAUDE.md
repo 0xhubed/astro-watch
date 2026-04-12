@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-AstroWatch is an interactive 3D visualization and agentic AI platform for exploring near-Earth asteroids. It combines NASA NEO API data with a dual-model AI system (Ollama Cloud chat + Claude autonomous agent) and Three.js visualizations. Live at https://www.astro-watch.com/.
+AstroWatch is a personal project that visualizes near-Earth asteroid data from NASA in a 3D scene, with an AI chat interface and experimental periodic monitoring. Built with Next.js, Three.js, Ollama Cloud (chat), and Claude (monitoring agent). Live at https://www.astro-watch.com/.
 
 The application code lives in `astro-watch/` (not the repo root).
 
@@ -71,7 +71,7 @@ npm run deploy       # Run deploy script
 - `GET /api/asteroids?range=[day|week|month]` - Enriched asteroid data (7-day NASA API limit)
 - `POST /api/chat` - SSE streaming chat with Ollama Cloud tool-calling
 - `GET /api/agent-data` - Returns agent annotations and briefing for client
-- `GET /api/monitoring?dryRun=[0|1]` - Triggers autonomous Claude agent (4h cron)
+- `GET /api/monitoring?dryRun=[0|1]` - Triggers monitoring agent (4h cron, requires `CRON_SECRET` auth)
 - `GET /api/apod?date=YYYY-MM-DD` - Astronomy Picture of the Day (CDN cached: 1h s-maxage, 24h stale-while-revalidate)
 
 ### Server vs Client Split
@@ -81,7 +81,7 @@ npm run deploy       # Run deploy script
 
 ## Environment Variables
 
-Copy `.env.example` to `.env.local`. Required: `NASA_API_KEY`, `OLLAMA_CLOUD_API_KEY`, `OLLAMA_CLOUD_BASE_URL`. Optional: `ANTHROPIC_API_KEY` (agent), `KV_REST_API_URL`/`KV_REST_API_TOKEN` (agent memory), `RESEND_API_KEY`/`ALERT_TO_EMAIL`/`ALERT_FROM_EMAIL` (alerts — sender defaults to `onboarding@resend.dev`).
+Copy `.env.example` to `.env.local`. Required: `NASA_API_KEY`, `OLLAMA_CLOUD_API_KEY`, `OLLAMA_CLOUD_BASE_URL`. Optional: `CRON_SECRET` (required in production — protects `/api/monitoring`), `ANTHROPIC_API_KEY` (agent), `KV_REST_API_URL`/`KV_REST_API_TOKEN` (agent memory), `RESEND_API_KEY`/`ALERT_TO_EMAIL`/`ALERT_FROM_EMAIL` (alerts — sender defaults to `onboarding@resend.dev`).
 
 ## Path Alias
 
@@ -102,6 +102,8 @@ Copy `.env.example` to `.env.local`. Required: `NASA_API_KEY`, `OLLAMA_CLOUD_API
 - The Ollama Cloud setup matches the pattern in `~/Documents/projects/modelrisk/configs/models.yaml`
 - NASA APOD API returns transient 503s — `getAPOD()` retries once with 1s delay; `/api/apod` route returns 503 with `Retry-After` header
 - `/api/chat` caches asteroids in-memory (5min TTL) to avoid re-fetching NASA NEO feed on every message — critical for staying within function timeout
+- CORS is handled by `middleware.ts` (not `vercel.json`) — allows `astro-watch.com` and `localhost` only
+- `lib/rate-limit.ts` is a fixed-window rate limiter (counter + TTL reset), not sliding-window
 
 ## Notes
 
@@ -110,3 +112,4 @@ Copy `.env.example` to `.env.local`. Required: `NASA_API_KEY`, `OLLAMA_CLOUD_API
 - Images allowed from `nasa.gov`, `apod.nasa.gov`, `unpkg.com`
 - Feature branches follow `ticket/<Feature>` or `claude/<description>` naming
 - Contact email: `danielhuber.dev@proton.me` — used in landing page, layout footer, and README instead of personal name
+- Copy should be humble and honest — this is a hobby/home project, not a product. Avoid "platform", "engine", "autonomous", and marketing-style language in UI and README

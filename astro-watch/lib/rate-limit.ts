@@ -10,7 +10,7 @@ interface RateLimitResult {
 const memoryStore = new Map<string, { count: number; resetAt: number }>();
 
 /**
- * Sliding-window rate limiter backed by Vercel KV.
+ * Fixed-window rate limiter backed by Vercel KV.
  * Falls back to in-memory store when KV is not configured.
  *
  * @param key       Unique identifier (e.g. IP address)

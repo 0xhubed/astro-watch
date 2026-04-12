@@ -22,33 +22,33 @@ export function LandingPage() {
   const features = [
     {
       icon: <Orbit className="w-6 h-6" />,
-      title: "Live 3D Solar System",
-      description: "Explore asteroid orbits around Earth in an interactive 3D scene with cinematic camera, trajectory trails, and particle effects."
+      title: "3D Solar System",
+      description: "Browse asteroid orbits around Earth in an interactive 3D scene with camera controls and trajectory trails."
     },
     {
       icon: <Sparkles className="w-6 h-6" />,
-      title: "AI Chat Assistant",
-      description: "Ask questions, control the 3D scene, query asteroid data, and run impact simulations — all through natural conversation."
+      title: "AI Chat",
+      description: "Ask questions about asteroids, navigate the 3D scene, and look up data through a chat interface powered by Ollama Cloud."
     },
     {
       icon: <Globe className="w-6 h-6" />,
       title: "Impact Simulation",
-      description: "Pick any asteroid and drop it anywhere on a 3D globe. See crater size, blast radius, and fireball physics in real time."
+      description: "Pick an asteroid and a location on a 3D globe to see estimated crater size and blast radius based on simplified physics models."
     },
     {
       icon: <Bot className="w-6 h-6" />,
-      title: "Autonomous Agent",
-      description: "A Claude-powered agent runs every 4 hours to analyze new data, publish threat briefings, and flag notable approaches."
+      title: "Periodic Agent",
+      description: "An experimental Claude-powered agent checks for new data every 4 hours and writes short summaries of notable approaches."
     },
     {
       icon: <BarChart3 className="w-6 h-6" />,
-      title: "Analytics & Trajectories",
-      description: "Risk dashboards, approach timelines, orbital classification, and velocity scatter plots to explore patterns in the data."
+      title: "Charts & Timelines",
+      description: "Simple dashboards showing approach timelines, size distributions, and orbital classifications from the NASA data."
     },
     {
       icon: <Telescope className="w-6 h-6" />,
       title: "Daily Discovery",
-      description: "NASA's Astronomy Picture of the Day with date navigation and HD downloads."
+      description: "NASA's Astronomy Picture of the Day with date navigation."
     }
   ];
 
@@ -142,8 +142,8 @@ export function LandingPage() {
           transition={{ delay: 0.4 }}
           className="text-base sm:text-lg md:text-xl text-gray-400 mb-6 md:mb-8 max-w-2xl mx-auto px-4"
         >
-          Visualize asteroid orbits in 3D, chat with an AI assistant,
-          simulate impacts, and follow autonomous threat briefings — all powered by live NASA data.
+          A hobby project that turns NASA asteroid data into a 3D scene
+          you can explore, with an AI chat and some experimental automation on top.
         </motion.p>
 
         <motion.div
@@ -197,10 +197,10 @@ export function LandingPage() {
           className="max-w-7xl mx-auto"
         >
           <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-center text-white mb-4">
-            What You Can Do
+            What&apos;s Inside
           </h2>
           <p className="text-center text-gray-400 mb-12 max-w-2xl mx-auto">
-            Interactive tools to explore and understand asteroid data
+            A few ways to poke around the data
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -233,23 +233,22 @@ export function LandingPage() {
           className="max-w-4xl mx-auto text-center"
         >
           <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-8">
-            Understanding Our Cosmic Neighborhood
+            What This Is
           </h2>
           <div className="space-y-6 text-gray-400">
             <p className="text-base md:text-lg px-4 md:px-0">
-              AstroWatch combines NASA near-Earth object data with 3D visualization
-              and agentic AI. Explore asteroid orbits, simulate impacts on a 3D globe,
-              and read AI-generated threat briefings — all in one place.
+              AstroWatch is a personal project that pulls near-Earth object data from
+              NASA&apos;s API and shows it in a 3D scene. There&apos;s a chat interface for asking
+              questions and an experimental AI agent that periodically checks for new data.
             </p>
             <p className="text-base md:text-lg px-4 md:px-0">
-              A chat assistant lets you ask questions, control the 3D scene, and query
-              live data through natural conversation. Behind the scenes, an autonomous
-              Claude agent monitors new approaches every 4 hours and publishes briefings
-              when something notable comes up.
+              The visualizations are approximate — orbital positions are simplified for
+              display, and the impact simulator uses basic physics models. It&apos;s meant to
+              be interesting and educational, not scientifically rigorous.
             </p>
             <p className="text-base md:text-lg px-4 md:px-0">
-              Whether you're a student, hobbyist, or just curious about space,
-              AstroWatch makes asteroid data accessible without any specialized knowledge.
+              Built as a way to learn and experiment with 3D graphics, AI tooling,
+              and real-time data. If you find it fun or useful, that&apos;s great.
             </p>
             <p className="text-base md:text-lg px-4 md:px-0">
               Questions or feedback? Reach out at{' '}
@@ -266,12 +265,13 @@ export function LandingPage() {
             transition={{ delay: 0.2 }}
             className="mt-12 p-6 bg-white/[0.02] rounded-xl border border-white/10 backdrop-blur-sm"
           >
-            <h3 className="text-xl font-semibold text-white mb-2">Data & Disclaimer</h3>
+            <h3 className="text-xl font-semibold text-white mb-2">Disclaimer</h3>
             <p className="text-gray-400">
-              Powered by NASA&apos;s Near-Earth Object API with data refreshed every 15 minutes.
-              This is a personal project for educational and exploratory purposes — risk assessments,
-              AI-generated briefings, and impact simulations are approximations and may contain errors.
-              Do not use this as a source for safety decisions.
+              Data comes from NASA&apos;s Near-Earth Object API. Everything else — risk labels,
+              AI summaries, impact estimates, orbital positions — is approximate, often
+              simplified, and sometimes heuristic. This is a hobby project, not a scientific
+              tool. For real asteroid data, use{' '}
+              <a href="https://cneos.jpl.nasa.gov/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 transition-colors">NASA/JPL CNEOS</a>.
             </p>
           </motion.div>
         </motion.div>
@@ -286,16 +286,16 @@ export function LandingPage() {
           className="max-w-4xl mx-auto text-center"
         >
           <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-white mb-4">
-            Begin Your Exploration
+            Take a Look
           </h2>
           <p className="text-lg text-gray-400 mb-8">
-            Browse asteroid data and orbital visualizations
+            Browse today&apos;s asteroid data
           </p>
           <Link
             href="/dashboard"
             className="inline-flex items-center gap-2 px-8 py-4 bg-white text-black hover:bg-zinc-200 font-medium rounded-lg transition-colors group"
           >
-            Launch Dashboard
+            Open Dashboard
             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
           </Link>
         </motion.div>

@@ -1,41 +1,38 @@
-# AstroWatch - Near-Earth Asteroid Visualization & AI Platform
+# AstroWatch
 
 ### https://www.astro-watch.com/
 
-An interactive 3D visualization and agentic AI platform for exploring near-Earth asteroids. Built with Next.js, Three.js, and a dual-model AI system combining Ollama Cloud chat with an autonomous Claude agent.
+A personal project that visualizes near-Earth asteroid data from NASA in a 3D scene, with an AI chat interface and some experimental automation. Built with Next.js, Three.js, and a couple of AI integrations (Ollama Cloud for chat, Claude for a periodic monitoring agent).
 
-> **Disclaimer**: This is an experimental project, not a production-ready risk assessment tool. All risk assessments are for educational and exploratory purposes. For authoritative asteroid data, refer to official sources like NASA/JPL and ESA.
+> **Disclaimer**: This is a hobby project — not a scientific tool or production system. Risk labels, AI-generated summaries, impact estimates, and orbital positions are approximate and often simplified. For authoritative asteroid data, refer to [NASA/JPL CNEOS](https://cneos.jpl.nasa.gov/) and ESA.
 
 ## Features
 
 ### 3D Visualization
-- **Interactive Solar System** — Real-time 3D scene with Earth, Moon, Sun, and asteroid orbits
-- **Procedural Asteroids** — GPU-instanced rendering with unique geometry per asteroid
-- **Cinematic Camera** — Auto-orbit, follow-asteroid, and manual camera modes
-- **Particle Effects** — Atmospheric and orbital trail effects
+- **Solar System Scene** — Earth, Moon, Sun, and asteroid orbits in a Three.js scene (positions are simplified for display, not orbital-mechanics-accurate)
+- **Procedural Asteroids** — GPU-instanced rendering with per-asteroid geometry
+- **Camera Modes** — Auto-orbit, follow-asteroid, and manual controls
 
-### AI Assistant
-- **Chat Interface** — Ask questions about asteroids, get risk explanations, control the 3D scene
-- **Tool-Calling** — AI can select asteroids, change camera views, query data, and run impact simulations
-- **Streaming Responses** — SSE-based real-time chat via Ollama Cloud (Gemma 4 1B Cloud)
+### AI Chat
+- **Chat Interface** — Ask questions about asteroids, navigate the scene, look up data
+- **Tool-Calling** — The model can select asteroids, change views, and run simulations
+- **Streaming** — SSE-based chat via Ollama Cloud (Gemma 4 1B Cloud)
 
-### Autonomous Agent
-- **Claude Advisor Strategy** — Haiku executor with Opus advisor for high-stakes decisions
-- **4-Hour Monitoring Cycle** — Vercel Cron triggers autonomous analysis of new asteroid data
-- **Published Briefings** — Agent writes threat assessments at `/briefings` and `/threats/[id]`
-- **Persistent Memory** — Vercel KV (Upstash Redis) stores agent context across runs
-- **Email Alerts** — Resend-powered notifications for critical asteroid approaches
+### Periodic Agent (experimental)
+- **Advisor Pattern** — Haiku executor with Opus advisor for higher-stakes decisions
+- **4-Hour Cron** — Checks for new asteroid data and writes short summaries
+- **Summaries** — Published at `/briefings` and `/threats/[id]` (AI-generated, not expert analysis)
+- **Memory** — Vercel KV stores context across runs
+- **Email Alerts** — Optional Resend-based notifications for notable approaches
 
-### Analytics & Dashboards
-- **Risk Dashboard** — Charts for risk distribution, approach frequency, and size analysis
-- **Approach Timeline** — Interactive timeline of upcoming close approaches
-- **Trajectory Analysis** — Hyperbolic flyby distance curves
-- **Monitoring Dashboard** — Agent status, annotation history, and briefing feed
+### Charts & Dashboards
+- **Risk Overview** — Charts for size distribution, approach frequency, and basic risk labels
+- **Approach Timeline** — Timeline of upcoming close approaches
+- **Trajectory View** — Hyperbolic flyby distance curves
 
 ### Impact Simulation
-- **Globe Visualization** — Globe.gl-based 3D Earth with selectable impact points
-- **Physics Engine** — Collins et al. 2005 crater scaling and blast wave calculations
-- **What-If Scenarios** — Simulate impacts for any asteroid at any location
+- **Globe** — Globe.gl-based 3D Earth with selectable impact points
+- **Simplified Physics** — Crater scaling and blast wave estimates loosely based on Collins et al. 2005 (educational approximation, not a rigorous model)
 
 ### Daily Discovery
 - **NASA APOD** — Astronomy Picture of the Day with date navigation at `/apod`
@@ -58,7 +55,7 @@ An interactive 3D visualization and agentic AI platform for exploring near-Earth
 
 ### AI
 - **Ollama Cloud** (gemma4:31b-cloud) — OpenAI-compatible chat API with tool-calling
-- **Anthropic SDK** (Claude) — Advisor Strategy autonomous agent
+- **Anthropic SDK** (Claude) — Periodic monitoring agent
 - **Vercel KV** — Agent memory persistence
 
 ### Infrastructure
@@ -95,6 +92,7 @@ OLLAMA_CLOUD_BASE_URL=https://ollama.com/v1
 
 Optional (agent + alerts):
 ```env
+CRON_SECRET=your_vercel_cron_secret
 ANTHROPIC_API_KEY=your_anthropic_api_key
 KV_REST_API_URL=your_vercel_kv_url
 KV_REST_API_TOKEN=your_vercel_kv_token
@@ -155,18 +153,18 @@ astro-watch/
 | `/api/asteroids?range=[day\|week\|month]` | GET | Enriched asteroid data (7-day NASA API limit) |
 | `/api/chat` | POST | SSE streaming chat with Ollama Cloud tool-calling |
 | `/api/agent-data` | GET | Agent annotations and latest briefing |
-| `/api/monitoring?dryRun=[0\|1]` | GET | Trigger autonomous Claude agent |
+| `/api/monitoring` | GET | Trigger monitoring agent (requires `CRON_SECRET`) |
 | `/api/apod?date=YYYY-MM-DD` | GET | Astronomy Picture of the Day (CDN cached) |
 
 ## Deployment
 
-Deployed on Vercel with a 4-hourly cron for the autonomous agent:
+Deployed on Vercel with a 4-hourly cron for the monitoring agent:
 
 ```bash
 npm run deploy
 ```
 
-The `vercel.json` configures function timeouts, CORS headers, and the `/api/monitoring` cron schedule (`0 */4 * * *`).
+The `vercel.json` configures function timeouts, caching headers, and the `/api/monitoring` cron schedule (`0 */4 * * *`). CORS is handled by Next.js middleware.
 
 ## Contact
 
@@ -185,4 +183,4 @@ This project is licensed under the MIT License — see the [LICENSE](LICENSE) fi
 
 ---
 
-*An interactive platform for exploring near-Earth asteroids through 3D visualization and agentic AI.*
+*A hobby project for browsing near-Earth asteroid data in 3D.*

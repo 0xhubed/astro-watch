@@ -33,7 +33,7 @@ export interface AgentRunResult {
 /** Haiku drives the loop — fast, cheap, handles routine data crunching. */
 const EXECUTOR_MODEL = 'claude-haiku-4-5-20251001';
 /** Opus advises on high-stakes decisions (alerts, threat levels). */
-const ADVISOR_MODEL = 'claude-opus-4-6';
+const ADVISOR_MODEL = 'claude-opus-4-7';
 /** Max times the executor can consult the advisor per run. */
 const ADVISOR_MAX_USES = 3;
 const MAX_TOKENS = 4096;

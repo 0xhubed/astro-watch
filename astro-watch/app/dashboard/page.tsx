@@ -186,6 +186,10 @@ export default function Home() {
               <a href="/#about" className="text-gray-600 hover:text-gray-400 transition-colors">
                 Data may contain inaccuracies — not for safety decisions
               </a>
+              <span className="text-gray-600">·</span>
+              <a href="mailto:danielhuber.dev@proton.me" className="text-gray-600 hover:text-gray-400 transition-colors">
+                danielhuber.dev@proton.me
+              </a>
             </div>
           </div>
         </div>

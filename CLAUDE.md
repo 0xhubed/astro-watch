@@ -104,6 +104,7 @@ Copy `.env.example` to `.env.local`. Required: `NASA_API_KEY`, `OLLAMA_CLOUD_API
 - `/api/chat` caches asteroids in-memory (5min TTL) to avoid re-fetching NASA NEO feed on every message — critical for staying within function timeout
 - CORS is handled by `middleware.ts` (not `vercel.json`) — allows `astro-watch.com` and `localhost` only
 - `lib/rate-limit.ts` is a fixed-window rate limiter (counter + TTL reset), not sliding-window
+- Asteroid `risk` is a display-only 0–1 score (`calculateRiskScore` in `lib/nasa-api.ts`, a proximity-gated severity model) — risk *filtering* uses `rarity`, chat `risk_distribution` stats use `hazardLevel`; no consumer applies a numeric threshold to `risk` itself
 
 ## Notes
 

@@ -279,27 +279,27 @@ function calculateRiskScore(asteroid: Asteroid): { risk: number; confidence: num
   const missDistance = parseFloat(asteroid.close_approach_data[0].miss_distance.astronomical);
   const isPHA = asteroid.is_potentially_hazardous_asteroid;
   
-  // More realistic risk calculation based on actual parameters
-  // Size factor (larger = more dangerous)
+  // Risk = how close it comes (proximity) gated against how concerning the
+  // object intrinsically is (severity). A large, fast asteroid that misses by
+  // a wide margin is not a risk, so distance must gate the whole score rather
+  // than contribute as one additive term.
+
+  // Intrinsic severity factors (how bad it would be if on a collision course)
   const sizeFactor = Math.min(1, Math.log10(size + 1) / 3); // log scale, normalized
-  
-  // Distance factor (closer = more dangerous)
-  // 1 AU = Earth-Sun distance, 0.05 AU is about 19.5 lunar distances
-  const distanceFactor = missDistance < 0.05 ? 1 - (missDistance / 0.05) : 0;
-  
-  // Velocity factor (faster = more dangerous)
   const velocityFactor = Math.min(1, velocity / 30); // 30 km/s is very fast
-  
-  // PHA designation adds base risk
-  const phaFactor = isPHA ? 0.3 : 0;
-  
-  // Weighted risk calculation
-  const riskScore = Math.min(1, 
-    sizeFactor * 0.25 + 
-    distanceFactor * 0.4 + 
-    velocityFactor * 0.15 + 
-    phaFactor * 0.2
-  );
+  const phaFactor = isPHA ? 1 : 0;
+
+  const severity =
+    sizeFactor * 0.5 +
+    velocityFactor * 0.3 +
+    phaFactor * 0.2;
+
+  // Proximity gates the whole score. 0.05 AU (~19.5 lunar distances, the PHA
+  // close-approach threshold) is the e-folding scale, so risk decays smoothly
+  // with distance instead of hard-cutting to zero at 0.05 AU.
+  const proximityFactor = Math.exp(-missDistance / 0.05);
+
+  const riskScore = Math.min(1, proximityFactor * severity);
   
   // Confidence based on data quality and distance
   const confidence = missDistance < 0.1 ? 0.95 : 0.75 + (0.2 * (1 - missDistance));

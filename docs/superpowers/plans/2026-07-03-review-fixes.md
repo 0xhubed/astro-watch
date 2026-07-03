@@ -179,35 +179,20 @@ export function formatDateShort(iso: string): string {
 - [ ] **Step 3: Verify** `npm run typecheck && npm run lint`. Runtime: `npm run dev`, temporarily hardcode one annotation object in the component's data path matching a rendered asteroid id, confirm the label tracks the asteroid, then remove the hardcode. (`/api/agent-data` may legitimately return `[]` locally.)
 - [ ] **Step 4: Commit** `git commit -m "Fix agent annotations: consume SceneAnnotation schema and render in scene coordinates (review #1, #2)"`
 
-### Task 6: Alert/email hardening (#19, #20, #21, #15)
+### Task 6: Deprecate the email alert path (supersedes #19, #20, #21; keeps #15) — USER DECISION 2026-07-03
+
+The user decided to remove email alerts instead of hardening them.
 
 **Files:**
-- Modify: `lib/agent/tools.ts` (~154-158: remove `to` from the `send_alert` schema; ~280-284: use only `process.env.ALERT_TO_EMAIL`, return a tool error string like `"alert not sent: ALERT_TO_EMAIL not configured"` if unset), `lib/email.ts` (escape interpolations; fixed subject prefix), `lib/agent/memory.ts` (~173-175: add TTL to `saveThreat`, 30 days = `{ ex: 60 * 60 * 24 * 30 }` matching the option style of the other saves in that file), `repo:astro-watch/.env.example` (~15-22)
+- Delete: `lib/email.ts`
+- Modify: `lib/agent/tools.ts` (remove the `send_alert` tool definition ~154-183 AND its `executeAgentTool` case ~280-284; grep `send_alert\|sendAlert\|email` in `lib/agent/` and remove all references), `lib/agent/run.ts` (~78: remove prompt text instructing the agent about alerts/ALERT_TO_EMAIL; if the advisor-consultation criteria mention alerts as a high-stakes decision, drop that mention), `lib/agent/memory.ts` (~173-175: add TTL to `saveThreat`, 30 days = `{ ex: 60 * 60 * 24 * 30 }` matching the option style of the other saves — #15 still applies), `repo:astro-watch/.env.example` (remove the entire alert/email var block incl. the `0xFriday@pm.me` address and `RESEND_API_KEY`), `repo:CLAUDE.md` (remove the "Alerts: Resend email service" stack line and the `RESEND_API_KEY`/`ALERT_TO_EMAIL`/`ALERT_FROM_EMAIL` env-var sentence)
+- Check: `package.json` — if `resend` is a direct dependency and now unused, `npm rm resend`
 
-**Interfaces:**
-- Produces in `lib/email.ts`:
-
-```typescript
-export function escapeHtml(s: string): string; // & < > " ' → entities
-```
-
-- [ ] **Step 1: `escapeHtml` + apply** to `a.name`, dates, and any model-supplied strings interpolated into the HTML template (~35-50, 74). Keep model-supplied `subject` but sanitize: strip `\r\n` and prefix with `"[AstroWatch] "`.
-
-```typescript
-export function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-```
-
-- [ ] **Step 2: Remove model-controlled recipient** — delete `to` from the tool's JSON schema **and** from the prompt text that mentions ALERT_TO_EMAIL (`lib/agent/run.ts` ~78); in `executeAgentTool` use `process.env.ALERT_TO_EMAIL` only.
-- [ ] **Step 3: Fix `.env.example`** — replace `NOTIFICATION_EMAIL`/`ALERT_TORINO_MIN`/`ALERT_RISK_MIN`/`ALERT_ONLY_PHA` block with the vars the code reads: `ALERT_TO_EMAIL=` and `ALERT_FROM_EMAIL=` (empty placeholders); delete the `0xFriday@pm.me` address.
-- [ ] **Step 4: Verify** `npm run typecheck && npm run lint`.
-- [ ] **Step 5: Commit** `git commit -m "Harden alert path: server-owned recipient, HTML escaping, threat TTL, fix .env.example (review #19, #20, #21, #15)"`
+- [ ] **Step 1:** grep the codebase for `resend\|send_alert\|ALERT_TO_EMAIL\|ALERT_FROM_EMAIL\|lib/email` to build the removal list; delete `lib/email.ts` and every reference (tool schema, executor case, prompt text, imports).
+- [ ] **Step 2:** add the `saveThreat` TTL (#15).
+- [ ] **Step 3:** clean `.env.example` and `repo:CLAUDE.md` as above; `npm rm resend` if present.
+- [ ] **Step 4: Verify** `npm run typecheck && npm run build`.
+- [ ] **Step 5: Commit** `git commit -m "Remove email alert path, add threat TTL (user decision; supersedes review #19-#21, fixes #15)"`
 
 ### Task 7: API robustness (#4, #5, #6, #7, #22, #10, #23)
 

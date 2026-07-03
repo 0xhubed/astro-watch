@@ -3,6 +3,7 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { EnhancedAsteroid } from '@/lib/nasa-api';
 import { X, ExternalLink, AlertTriangle, Info, Orbit, Calendar, Gauge, HelpCircle } from 'lucide-react';
+import { rarityStyle } from '@/lib/rarity-colors';
 
 interface DetailedAsteroidViewProps {
   asteroid: EnhancedAsteroid;
@@ -11,11 +12,8 @@ interface DetailedAsteroidViewProps {
 }
 
 function getRarityLevelInfo(rarity: number) {
-  if (rarity === 0) return { level: 'Routine', color: 'text-blue-400', bgColor: 'bg-blue-500/20' };
-  if (rarity <= 1) return { level: 'Common', color: 'text-green-400', bgColor: 'bg-green-500/20' };
-  if (rarity <= 3) return { level: 'Noteworthy', color: 'text-yellow-400', bgColor: 'bg-yellow-500/20' };
-  if (rarity <= 5) return { level: 'Rare', color: 'text-orange-400', bgColor: 'bg-orange-500/20' };
-  return { level: 'Exceptional', color: 'text-red-400', bgColor: 'bg-red-500/20' };
+  const style = rarityStyle(rarity);
+  return { level: style.label, color: style.textClass, bgColor: style.bgClass };
 }
 
 function InfoTooltip({ text, children, position = "auto" }: { text: string; children: React.ReactNode; position?: "left" | "right" | "auto" }) {

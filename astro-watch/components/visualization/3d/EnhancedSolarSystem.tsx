@@ -8,7 +8,8 @@ import { ImpactSimulation } from '@/components/simulation/ImpactSimulation';
 import * as THREE from 'three';
 import { EnhancedAsteroid } from '@/lib/nasa-api';
 import { useAsteroidStore } from '@/lib/store';
-import { RiskLegend, getRarityInfo, getRarityColor, getRarity3DColor } from '@/components/ui/RiskLegend';
+import { RiskLegend, getRarityInfo } from '@/components/ui/RiskLegend';
+import { rarityStyle } from '@/lib/rarity-colors';
 import { DetailedAsteroidView } from './DetailedAsteroidView';
 import { ProceduralAsteroid } from './ProceduralAsteroid';
 import { SolarWind, SpaceDust } from './ParticleEffects';
@@ -1219,7 +1220,7 @@ function AsteroidField({ asteroids, onAsteroidSelect, selectedAsteroid, hoveredA
         const isSelected = selectedAsteroid?.id === asteroid.id;
         const isHovered = hoveredAsteroid === index;
         const seed = parseInt(asteroid.id.replace(/\D/g, '').slice(-6)) || index;
-        const riskColor = getRarity3DColor(asteroid.rarity);
+        const riskColor = rarityStyle(asteroid.rarity).hex;
         const emissiveIntensity = isSelected ? 0.8 : isHovered ? 0.5 : 0.15 + asteroid.rarity * 0.08;
 
         return (
@@ -1302,7 +1303,7 @@ function AsteroidTrails({ asteroids }: { asteroids: EnhancedAsteroid[] }) {
     
     asteroids.forEach((asteroid, asteroidIndex) => {
       const orbit = asteroid.orbit;
-      const rarityColor = getRarity3DColor(asteroid.rarity);
+      const rarityColor = rarityStyle(asteroid.rarity).hex;
       const rgb = parseInt(rarityColor.slice(1), 16);
       const baseColor = [(rgb >> 16) / 255, ((rgb >> 8) & 0xff) / 255, (rgb & 0xff) / 255];
 
@@ -1346,7 +1347,7 @@ function AsteroidTrails({ asteroids }: { asteroids: EnhancedAsteroid[] }) {
       }
       return {
         curve: trailPoints.length >= 2 ? new THREE.CatmullRomCurve3(trailPoints) : null,
-        color: getRarity3DColor(asteroid.rarity),
+        color: rarityStyle(asteroid.rarity).hex,
         id: asteroid.id,
       };
     });
@@ -1420,7 +1421,7 @@ function TrajectoryLine({ asteroid }: { asteroid: EnhancedAsteroid }) {
     <mesh>
       <tubeGeometry args={[curve, 64, 0.15, 8, true]} />
       <meshBasicMaterial
-        color={getRarity3DColor(asteroid.rarity)}
+        color={rarityStyle(asteroid.rarity).hex}
         transparent
         opacity={0.6}
         depthWrite={false}

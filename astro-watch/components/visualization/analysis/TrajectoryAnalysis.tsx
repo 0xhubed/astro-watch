@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { EnhancedAsteroid } from '@/lib/nasa-api';
 import { getRarityInfo } from '@/components/ui/RiskLegend';
+import { rarityStyle } from '@/lib/rarity-colors';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   ScatterChart, Scatter, ReferenceLine, Cell
@@ -128,13 +129,9 @@ export function TrajectoryAnalysis({ asteroids }: Props) {
           <ReferenceLine y={30} stroke="#f59e0b" strokeDasharray="2 2" label="High Velocity" />
           <Scatter data={orbitalAnalysis.distanceVsVelocity} fill="#8884d8">
             {orbitalAnalysis.distanceVsVelocity.map((entry, index) => (
-              <Cell 
-                key={`cell-${index}`} 
-                fill={
-                  entry.rarity >= 4 ? '#ef4444' :
-                  entry.rarity >= 2 ? '#f59e0b' :
-                  entry.rarity >= 1 ? '#10b981' : '#93c5fd'
-                }
+              <Cell
+                key={`cell-${index}`}
+                fill={rarityStyle(entry.rarity).hex}
               />
             ))}
           </Scatter>

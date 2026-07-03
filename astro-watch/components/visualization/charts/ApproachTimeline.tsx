@@ -16,7 +16,7 @@ import { motion } from 'framer-motion';
 import { useMemo } from 'react';
 import { EnhancedAsteroid } from '@/lib/nasa-api';
 import { computeApproachCurve } from '@/lib/approach-curve';
-import { getRarity3DColor } from '@/components/ui/RiskLegend';
+import { rarityStyle } from '@/lib/rarity-colors';
 
 interface Props {
   asteroids: EnhancedAsteroid[];
@@ -36,8 +36,8 @@ function CompactTimeline({ asteroid }: { asteroid: EnhancedAsteroid }) {
       <AreaChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
         <defs>
           <linearGradient id="approachGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor={getRarity3DColor(asteroid.rarity)} stopOpacity={0.6} />
-            <stop offset="95%" stopColor={getRarity3DColor(asteroid.rarity)} stopOpacity={0.05} />
+            <stop offset="5%" stopColor={rarityStyle(asteroid.rarity).hex} stopOpacity={0.6} />
+            <stop offset="95%" stopColor={rarityStyle(asteroid.rarity).hex} stopOpacity={0.05} />
           </linearGradient>
         </defs>
 
@@ -66,7 +66,7 @@ function CompactTimeline({ asteroid }: { asteroid: EnhancedAsteroid }) {
         <Area
           type="monotone"
           dataKey="distance"
-          stroke={getRarity3DColor(asteroid.rarity)}
+          stroke={rarityStyle(asteroid.rarity).hex}
           strokeWidth={1.5}
           fill="url(#approachGradient)"
           dot={false}

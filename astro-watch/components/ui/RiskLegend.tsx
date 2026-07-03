@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { useState } from 'react';
+import { RARITY_COLORS } from '@/lib/rarity-colors';
 
 interface RarityLevel {
   scale: number;
@@ -11,64 +12,26 @@ interface RarityLevel {
   bgColor: string;
 }
 
-const RARITY_SCALE: RarityLevel[] = [
-  {
-    scale: 0,
-    level: 'Routine',
-    color: 'text-blue-300',
-    bgColor: 'bg-blue-500/20',
-    description: 'Close approaches of this size happen multiple times per year.'
-  },
-  {
-    scale: 1,
-    level: 'Common',
-    color: 'text-green-300',
-    bgColor: 'bg-green-500/20',
-    description: 'Expected roughly once per year. Typical small-body flyby.'
-  },
-  {
-    scale: 2,
-    level: 'Noteworthy',
-    color: 'text-green-400',
-    bgColor: 'bg-green-500/30',
-    description: 'Expected roughly once per decade. Merits public interest.'
-  },
-  {
-    scale: 3,
-    level: 'Uncommon',
-    color: 'text-yellow-300',
-    bgColor: 'bg-yellow-500/20',
-    description: 'Expected roughly once per century. Unusual close approach.'
-  },
-  {
-    scale: 4,
-    level: 'Rare',
-    color: 'text-orange-300',
-    bgColor: 'bg-orange-500/20',
-    description: 'Expected roughly once per millennium. Very rare event.'
-  },
-  {
-    scale: 5,
-    level: 'Very Rare',
-    color: 'text-orange-400',
-    bgColor: 'bg-orange-500/30',
-    description: 'Expected roughly once per 10,000 years. Extremely uncommon.'
-  },
-  {
-    scale: 6,
-    level: 'Exceptionally Rare',
-    color: 'text-red-400',
-    bgColor: 'bg-red-500/20',
-    description: 'Expected roughly once per 100,000 years. Historic-scale event.'
-  },
-  {
-    scale: 7,
-    level: 'Extraordinary',
-    color: 'text-red-500',
-    bgColor: 'bg-red-500/30',
-    description: 'Expected less than once per million years. Unprecedented.'
-  }
+// Descriptions shown in the legend, indexed by rarity level (0-7).
+// Colors and labels come from lib/rarity-colors.ts (single source of truth, review #42).
+const RARITY_DESCRIPTIONS: string[] = [
+  'Close approaches of this size happen multiple times per year.',
+  'Expected roughly once per year. Typical small-body flyby.',
+  'Expected roughly once per decade. Merits public interest.',
+  'Expected roughly once per century. Unusual close approach.',
+  'Expected roughly once per millennium. Very rare event.',
+  'Expected roughly once per 10,000 years. Extremely uncommon.',
+  'Expected roughly once per 100,000 years. Historic-scale event.',
+  'Expected less than once per million years. Unprecedented.'
 ];
+
+const RARITY_SCALE: RarityLevel[] = RARITY_COLORS.map((rc) => ({
+  scale: rc.level,
+  level: rc.label,
+  color: rc.textClass,
+  bgColor: rc.bgClass,
+  description: RARITY_DESCRIPTIONS[rc.level]
+}));
 
 interface Props {
   expanded?: boolean;
@@ -187,31 +150,6 @@ export function getRarityInfo(rarity: number): RarityLevel {
   return RARITY_SCALE[Math.min(Math.max(0, Math.round(rarity)), 7)];
 }
 
-// Helper function to get risk color based on rarity
-export function getRarityColor(rarity: number): string {
-  const info = getRarityInfo(rarity);
-  const colorMap: Record<string, string> = {
-    'text-blue-300': '#93c5fd',
-    'text-green-300': '#6ee7b7',
-    'text-green-400': '#4ade80',
-    'text-yellow-300': '#fef08a',
-    'text-orange-300': '#fed7aa',
-    'text-orange-400': '#fb923c',
-    'text-red-400': '#f87171',
-    'text-red-500': '#ef4444'
-  };
-  return colorMap[info.color] || '#ffffff';
-}
-
-// Helper function to get brighter colors specifically for 3D rendering
-export function getRarity3DColor(rarity: number): string {
-  if (rarity === 0) return '#4488ff';  // Blue for routine
-  if (rarity === 1) return '#00ff00';  // Green for common
-  if (rarity === 2) return '#44ff44';  // Bright green for noteworthy
-  if (rarity === 3) return '#ffff00';  // Yellow for uncommon
-  if (rarity === 4) return '#ff8800';  // Orange for rare
-  if (rarity === 5) return '#ff4400';  // Orange-red for very rare
-  if (rarity === 6) return '#ff0000';  // Red for exceptionally rare
-  if (rarity >= 7) return '#ff00ff';   // Magenta for extraordinary
-  return '#4488ff';
-}
+// Note: color/3D-color lookups now live in lib/rarity-colors.ts (rarityStyle()).
+// Import rarityStyle directly for hex colors; getRarityInfo above remains for
+// the tailwind class + description pairing used by legend-style chips.

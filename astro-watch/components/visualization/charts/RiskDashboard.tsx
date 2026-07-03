@@ -9,6 +9,7 @@ import {
 import { motion } from 'framer-motion';
 import { EnhancedAsteroid } from '@/lib/nasa-api';
 import { RiskLegend, getRarityInfo } from '@/components/ui/RiskLegend';
+import { RARITY_COLORS, rarityStyle } from '@/lib/rarity-colors';
 import { ApproachTimeline } from './ApproachTimeline';
 
 interface Props {
@@ -96,12 +97,13 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
 
   const RiskDistribution = () => {
     // Group by rarity levels
+    // Colors keyed to the upper end of each bucket's rarity range (single source: lib/rarity-colors.ts).
     const rarityGroups = [
-      { name: 'Routine (R0)', value: asteroids.filter(a => a.rarity === 0).length, color: '#93c5fd' },
-      { name: 'Common (R1)', value: asteroids.filter(a => a.rarity === 1).length, color: '#10b981' },
-      { name: 'Noteworthy (R2-3)', value: asteroids.filter(a => a.rarity >= 2 && a.rarity <= 3).length, color: '#f59e0b' },
-      { name: 'Rare (R4-5)', value: asteroids.filter(a => a.rarity >= 4 && a.rarity <= 5).length, color: '#ef4444' },
-      { name: 'Exceptional (R6+)', value: asteroids.filter(a => a.rarity >= 6).length, color: '#991b1b' }
+      { name: 'Routine (R0)', value: asteroids.filter(a => a.rarity === 0).length, color: rarityStyle(0).hex },
+      { name: 'Common (R1)', value: asteroids.filter(a => a.rarity === 1).length, color: rarityStyle(1).hex },
+      { name: 'Noteworthy (R2-3)', value: asteroids.filter(a => a.rarity >= 2 && a.rarity <= 3).length, color: rarityStyle(3).hex },
+      { name: 'Rare (R4-5)', value: asteroids.filter(a => a.rarity >= 4 && a.rarity <= 5).length, color: rarityStyle(5).hex },
+      { name: 'Exceptional (R6+)', value: asteroids.filter(a => a.rarity >= 6).length, color: rarityStyle(7).hex }
     ].filter(group => group.value > 0);
 
     return (
@@ -333,11 +335,7 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
             />
             <Scatter data={scatterData} fill="#8884d8">
               {scatterData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={
-                  entry.rarity >= 4 ? '#ef4444' :
-                  entry.rarity >= 2 ? '#f59e0b' :
-                  entry.rarity >= 1 ? '#10b981' : '#93c5fd'
-                } />
+                <Cell key={`cell-${index}`} fill={rarityStyle(entry.rarity).hex} />
               ))}
             </Scatter>
           </ScatterChart>
@@ -347,16 +345,22 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
   };
 
   const RarityScaleCard = () => {
-    const scaleInfo = [
-      { level: 0, color: '#93c5fd', label: 'Routine', description: 'Multiple per year' },
-      { level: 1, color: '#10b981', label: 'Common', description: '~Once per year' },
-      { level: 2, color: '#4ade80', label: 'Noteworthy', description: '~Once per decade' },
-      { level: 3, color: '#fef08a', label: 'Uncommon', description: '~Once per century' },
-      { level: 4, color: '#fed7aa', label: 'Rare', description: '~Once per millennium' },
-      { level: 5, color: '#fb923c', label: 'Very Rare', description: '~Once per 10,000 years' },
-      { level: 6, color: '#f87171', label: 'Exceptionally Rare', description: '~Once per 100,000 years' },
-      { level: 7, color: '#ef4444', label: 'Extraordinary', description: '< Once per million years' }
-    ];
+    const descriptions: Record<number, string> = {
+      0: 'Multiple per year',
+      1: '~Once per year',
+      2: '~Once per decade',
+      3: '~Once per century',
+      4: '~Once per millennium',
+      5: '~Once per 10,000 years',
+      6: '~Once per 100,000 years',
+      7: '< Once per million years'
+    };
+    const scaleInfo = RARITY_COLORS.map((rc) => ({
+      level: rc.level,
+      color: rc.hex,
+      label: rc.label,
+      description: descriptions[rc.level]
+    }));
 
     return (
       <motion.div

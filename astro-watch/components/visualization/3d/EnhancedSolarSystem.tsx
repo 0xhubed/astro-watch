@@ -10,7 +10,6 @@ import { EnhancedAsteroid } from '@/lib/nasa-api';
 import { useAsteroidStore } from '@/lib/store';
 import { RiskLegend, getRarityInfo, getRarityColor, getRarity3DColor } from '@/components/ui/RiskLegend';
 import { DetailedAsteroidView } from './DetailedAsteroidView';
-import { PostProcessingEffects } from './PostProcessing';
 import { ProceduralAsteroid } from './ProceduralAsteroid';
 import { SolarWind, SpaceDust } from './ParticleEffects';
 import { useCinematicCamera } from './CinematicCamera';

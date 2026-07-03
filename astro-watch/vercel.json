@@ -33,12 +33,6 @@
       ]
     }
   ],
-  "rewrites": [
-    {
-      "source": "/api/nasa/(.*)",
-      "destination": "https://api.nasa.gov/neo/rest/v1/$1"
-    }
-  ],
   "crons": [
     {
       "path": "/api/monitoring",

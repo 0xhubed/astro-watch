@@ -10,7 +10,6 @@ import { motion } from 'framer-motion';
 import { EnhancedAsteroid } from '@/lib/nasa-api';
 import { RiskLegend, getRarityInfo } from '@/components/ui/RiskLegend';
 import { ApproachTimeline } from './ApproachTimeline';
-import { useState } from 'react';
 
 interface Props {
   asteroids: EnhancedAsteroid[];
@@ -18,7 +17,6 @@ interface Props {
 }
 
 export function RiskDashboard({ asteroids, timeRange }: Props) {
-  const [selectedEducationalTab, setSelectedEducationalTab] = useState('facts');
   const processTimeSeriesData = (asteroids: EnhancedAsteroid[], range: string) => {
     // Group asteroids by date
     const grouped = asteroids.reduce((acc, asteroid) => {

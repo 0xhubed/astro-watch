@@ -1,5 +1,23 @@
 # Review Fixes — Status (session ended 2026-07-03)
 
+> **UPDATE 2026-09-04 — session `claude/visual-functional-polish` (base = current `main`).**
+> Tasks **4, 5, 6, 12** complete; **13** complete (incl. API-status rewire via
+> `dataUpdatedAt`/`isError` props; #55 nav dedupe was already fine); **15**
+> complete (aria-labels, `role="dialog"` + Escape via new `lib/use-dialog.ts`,
+> prefers-reduced-motion CSS, chat pending indicator, friendly error+Retry,
+> rarity-0 chip left as-is per reviewer's-call option). NaN guard applied.
+> Landed with it: shared `lib/format.ts` (formatters + DARK_TOOLTIP), shared
+> `.custom-scrollbar` in globals.css (6 styled-jsx copies removed), Inter font
+> vars actually wired (#59-partial), agent-annotation coordinate fix (#1/#2),
+> `saveThreat` TTL, `npm rm resend`. Lint errors 48 → 45 (no new). Build passes.
+> NEW: `components/landing/HeroOrbits.tsx` — R3F particle-globe landing hero,
+> technique adapted from the ThreeUI MCP catalog examples (Orbital Sphere /
+> Orbital Dust), honoring the user's "keep in mind our mcp server to three js
+> examples" instruction. Branch not pushed/merged.
+> Still open from the plan: **Tasks 7–11, 14** (14 largely done earlier:
+> rings + auto-zoom + labeled close already present — verify #73 narrative
+> debounce if picking it up).
+
 Execution state of `docs/superpowers/plans/2026-07-03-review-fixes.md`
 (fixes from `docs/review-2026-07-03.md`). Branch: **`claude/review-fixes`**
 (base `ab47046` = main). Not pushed, not merged. `main` untouched.

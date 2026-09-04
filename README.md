@@ -23,7 +23,6 @@ A personal project that visualizes near-Earth asteroid data from NASA in a 3D sc
 - **4-Hour Cron** — Checks for new asteroid data and writes short summaries
 - **Summaries** — Published at `/briefings` and `/threats/[id]` (AI-generated, not expert analysis)
 - **Memory** — Vercel KV stores context across runs
-- **Email Alerts** — Optional Resend-based notifications for notable approaches
 
 ### Charts & Dashboards
 - **Risk Overview** — Charts for size distribution, approach frequency, and basic risk labels
@@ -60,7 +59,6 @@ A personal project that visualizes near-Earth asteroid data from NASA in a 3D sc
 
 ### Infrastructure
 - **Vercel** — Hosting, serverless functions, cron jobs
-- **Resend** — Email alerts for critical asteroids
 - **NASA NEO API** + **NASA APOD API** — Data sources
 
 ## Getting Started
@@ -90,15 +88,12 @@ OLLAMA_CLOUD_API_KEY=your_ollama_cloud_api_key
 OLLAMA_CLOUD_BASE_URL=https://ollama.com/v1
 ```
 
-Optional (agent + alerts):
+Optional (agent):
 ```env
 CRON_SECRET=your_vercel_cron_secret
 ANTHROPIC_API_KEY=your_anthropic_api_key
 KV_REST_API_URL=your_vercel_kv_url
 KV_REST_API_TOKEN=your_vercel_kv_token
-RESEND_API_KEY=your_resend_api_key
-ALERT_TO_EMAIL=recipient@example.com
-ALERT_FROM_EMAIL=alerts@your-domain.com
 ```
 
 ### Run

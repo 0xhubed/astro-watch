@@ -1,17 +1,15 @@
 /**
  * Agent tool definitions (Anthropic SDK format) and execution logic.
  *
- * Five tools are exposed to Claude:
+ * Four tools are exposed to Claude:
  *   1. save_observation   — record a noteworthy asteroid in persistent memory
  *   2. annotate_scene     — attach a visible label to an asteroid in the 3-D scene
  *   3. publish_threat     — store a structured threat assessment for an object
  *   4. update_briefing    — write today's mission briefing
- *   5. send_alert         — email the operator when a critical body is detected
  */
 
 import Anthropic from '@anthropic-ai/sdk';
 import { EnhancedAsteroid } from '@/lib/nasa-api';
-import { sendCriticalAsteroidsEmail, CriticalAsteroidSummary } from '@/lib/email';
 import {
   loadMemory,
   saveObservations,
@@ -143,46 +141,6 @@ export const agentTools: Anthropic.Tool[] = [
       required: ['summary', 'highlights'],
     },
   },
-
-  {
-    name: 'send_alert',
-    description:
-      'Send an email alert to the operator about one or more critical asteroids. ' +
-      'Only call this for genuinely high-priority or critical objects — avoid alert fatigue.',
-    input_schema: {
-      type: 'object' as const,
-      properties: {
-        to: {
-          type: 'string',
-          description: 'Recipient email address (use ALERT_TO_EMAIL env var value if available).',
-        },
-        subject: {
-          type: 'string',
-          description: 'Optional custom email subject line.',
-        },
-        asteroids: {
-          type: 'array',
-          description: 'List of critical asteroids to include in the alert.',
-          items: {
-            type: 'object',
-            properties: {
-              id: { type: 'string' },
-              name: { type: 'string' },
-              rarity: { type: 'number' },
-              risk: { type: 'number' },
-              isPHA: { type: 'boolean' },
-              size: { type: 'number', description: 'Max estimated diameter in meters.' },
-              velocity: { type: 'number', description: 'Relative velocity in km/s.' },
-              missDistance: { type: 'number', description: 'Miss distance in AU.' },
-              closeApproachDate: { type: 'string', description: 'ISO date string.' },
-            },
-            required: ['id', 'name', 'rarity', 'risk', 'isPHA', 'size', 'velocity', 'missDistance'],
-          },
-        },
-      },
-      required: ['to', 'asteroids'],
-    },
-  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -275,31 +233,6 @@ export async function executeAgentTool(
         await saveBriefing(briefing);
 
         return JSON.stringify({ success: true, date: today });
-      }
-
-      case 'send_alert': {
-        const alertTo = (input.to as string) || process.env.ALERT_TO_EMAIL || '';
-        if (!alertTo) {
-          return JSON.stringify({ success: false, error: 'No recipient address provided and ALERT_TO_EMAIL is not set.' });
-        }
-
-        const asteroidSummaries = (input.asteroids as CriticalAsteroidSummary[]);
-
-        const result = await sendCriticalAsteroidsEmail({
-          to: alertTo,
-          subject: input.subject as string | undefined,
-          asteroids: asteroidSummaries,
-        });
-
-        if (!result) {
-          return JSON.stringify({ success: false, error: 'Email sending skipped — RESEND_API_KEY not configured.' });
-        }
-
-        if (result.error) {
-          return JSON.stringify({ success: false, error: result.error });
-        }
-
-        return JSON.stringify({ success: true, emailId: result.id });
       }
 
       default:

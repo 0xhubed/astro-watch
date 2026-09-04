@@ -31,7 +31,6 @@ npm run deploy       # Run deploy script
 - **Agent AI:** Claude Advisor Strategy (Haiku executor + Opus advisor) via Anthropic SDK, runs every 4h via Vercel Cron
 - **Agent Memory:** Vercel KV (Upstash Redis) with TTLs (falls back to in-memory for local dev). Uses `@vercel/kv` — do NOT install `@upstash/redis` separately.
 - **Data:** NASA NEO API, NASA APOD API
-- **Alerts:** Resend email service for critical asteroid notifications
 - **Deployment:** Vercel with 4-hourly cron for `/api/monitoring` (autonomous agent)
 
 ## Architecture
@@ -76,12 +75,12 @@ npm run deploy       # Run deploy script
 
 ### Server vs Client Split
 
-- **Server:** NASA API calls, data enrichment, risk calculations, chat API proxy, agent execution, email alerts
+- **Server:** NASA API calls, data enrichment, risk calculations, chat API proxy, agent execution
 - **Client:** 3D rendering (Three.js), interactive controls, chat UI, impact simulation, globe visualization
 
 ## Environment Variables
 
-Copy `.env.example` to `.env.local`. Required: `NASA_API_KEY`, `OLLAMA_CLOUD_API_KEY`, `OLLAMA_CLOUD_BASE_URL`. Optional: `CRON_SECRET` (required in production — protects `/api/monitoring`), `ANTHROPIC_API_KEY` (agent), `KV_REST_API_URL`/`KV_REST_API_TOKEN` (agent memory), `RESEND_API_KEY`/`ALERT_TO_EMAIL`/`ALERT_FROM_EMAIL` (alerts — sender defaults to `onboarding@resend.dev`).
+Copy `.env.example` to `.env.local`. Required: `NASA_API_KEY`, `OLLAMA_CLOUD_API_KEY`, `OLLAMA_CLOUD_BASE_URL`. Optional: `CRON_SECRET` (required in production — protects `/api/monitoring`), `ANTHROPIC_API_KEY` (agent), `KV_REST_API_URL`/`KV_REST_API_TOKEN` (agent memory).
 
 ## Path Alias
 

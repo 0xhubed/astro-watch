@@ -343,7 +343,6 @@ function createMoonTexture(): THREE.Texture {
   return new THREE.CanvasTexture(canvas);
 }
 
-
 function Moon({ earthPosition, hideLabels }: { earthPosition: [number, number, number]; hideLabels?: boolean }) {
   const meshRef = useRef<THREE.Mesh>(null);
   const groupRef = useRef<THREE.Group>(null);
@@ -2136,22 +2135,6 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
         </div>
       </motion.div>
       
-      <style jsx>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: rgba(255, 255, 255, 0.05);
-          border-radius: 3px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.2);
-          border-radius: 3px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(255, 255, 255, 0.3);
-        }
-      `}</style>
 
       
       <div className="absolute bottom-2 md:bottom-4 right-4 z-10 text-xs text-white/40">

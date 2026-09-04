@@ -27,6 +27,9 @@ export const RARITY_COLORS: RarityLevelStyle[] = [
 ];
 
 export function rarityStyle(level: number): RarityLevelStyle {
-  const idx = Math.min(Math.max(Math.round(level ?? 0), 0), RARITY_COLORS.length - 1);
+  // NaN passes through `?? 0` and would index RARITY_COLORS to undefined,
+  // so guard with Number.isFinite before rounding.
+  const n = Number.isFinite(level) ? level : 0;
+  const idx = Math.min(Math.max(Math.round(n), 0), RARITY_COLORS.length - 1);
   return RARITY_COLORS[idx];
 }

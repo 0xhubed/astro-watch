@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { Analytics } from '@vercel/analytics/react';
 import './globals.css';
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export default function RootLayout({
   children,
@@ -32,7 +32,7 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/apple-icon.png" />
       </head>
-      <body className={inter.className}>
+      <body className={`${inter.variable} font-sans antialiased`}>
         <QueryClientProvider client={queryClient}>
           <div className="min-h-screen flex flex-col">
             <main className="flex-grow">

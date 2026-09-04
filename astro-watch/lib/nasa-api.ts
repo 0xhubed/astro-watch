@@ -57,11 +57,6 @@ export interface EnhancedAsteroid extends Asteroid {
     semi_major_axis: number;
     isInnerOrbit?: boolean;
   };
-  position: {
-    x: number;
-    y: number;
-    z: number;
-  };
   moonCollisionData: {
     probability: number;              // 0-1 probability
     confidence: number;               // Assessment confidence
@@ -168,7 +163,6 @@ export async function enhanceAsteroidData(asteroid: Asteroid): Promise<EnhancedA
   // Calculate enhanced properties
   const impactEnergy = calculateImpactEnergy(size, velocity);
   const orbit = calculateOrbitParameters(asteroid);
-  const position = calculatePosition(asteroid);
 
   const { risk, confidence } = calculateRiskScore(asteroid);
 
@@ -194,7 +188,6 @@ export async function enhanceAsteroidData(asteroid: Asteroid): Promise<EnhancedA
     missDistance,
     impactEnergy,
     orbit,
-    position,
     moonCollisionData: {
       probability: 0,
       confidence: 0,
@@ -254,22 +247,6 @@ function calculateOrbitParameters(asteroid: Asteroid): any {
     eccentricity: actualEccentricity,
     semi_major_axis: semiMajorAxis,
     isInnerOrbit: semiMajorAxis < 1.0
-  };
-}
-
-function calculatePosition(asteroid: Asteroid): any {
-  // Calculate 3D position for visualization using semi-major axis (distance from Sun)
-  const angle = Math.random() * Math.PI * 2;
-  const orbitalData = asteroid.orbital_data;
-  const missDistance = parseFloat(asteroid.close_approach_data[0].miss_distance.astronomical);
-  const semiMajorAxis = orbitalData?.semi_major_axis
-    ? parseFloat(orbitalData.semi_major_axis)
-    : 1.0 + missDistance;
-
-  return {
-    x: Math.cos(angle) * semiMajorAxis,
-    y: (Math.random() - 0.5) * 0.1,
-    z: Math.sin(angle) * semiMajorAxis
   };
 }
 
@@ -378,11 +355,6 @@ function generateMockAsteroids(): EnhancedAsteroid[] {
         eccentricity: 0.1 + Math.random() * 0.8,
         semi_major_axis: 1 + Math.random() * 2,
         isInnerOrbit: false
-      },
-      position: {
-        x: (Math.random() - 0.5) * 3,
-        y: (Math.random() - 0.5) * 0.5,
-        z: (Math.random() - 0.5) * 3
       },
       moonCollisionData: {
         probability: Math.random() * 0.1,

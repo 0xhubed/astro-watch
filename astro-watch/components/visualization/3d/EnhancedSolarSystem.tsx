@@ -1785,9 +1785,10 @@ function SolarSystemScene({
           onOpenDetailed={onOpenDetailed}
           hideLabels={!!selectedAsteroid || showDetailedView || modalOpen}
         />
+        {/* Agent annotations share the Earth group's coordinate space so
+            labels track the same local placement as the asteroids. */}
+        <AgentAnnotations asteroids={asteroids} />
       </group>
-
-      <AgentAnnotations />
 
     </>
   );

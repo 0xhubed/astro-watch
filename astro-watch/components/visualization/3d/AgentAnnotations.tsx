@@ -3,19 +3,27 @@
 import { useState, useEffect } from 'react';
 import { Html } from '@react-three/drei';
 import { useAsteroidStore } from '@/lib/store';
+import { EnhancedAsteroid } from '@/lib/nasa-api';
 
-interface Annotation {
-  objectId: string;
+/** Schema persisted by the monitoring agent (lib/agent/memory.ts). */
+interface SceneAnnotation {
+  asteroidId: string;
   label: string;
-  severity: string;
-  explanation: string;
-  priority: number;
-  updatedAt: string;
+  color?: string;
+  notes?: string;
+  createdAt: string;
 }
 
-export function AgentAnnotations() {
-  const [annotations, setAnnotations] = useState<Annotation[]>([]);
-  const asteroids = useAsteroidStore(s => s.asteroids);
+const FALLBACK_COLOR = '#f59e0b';
+
+/**
+ * Renders the agent's scene annotations as labels pinned to the annotated
+ * asteroids. Must be mounted inside the same Earth-offset group as
+ * AsteroidField — placement below reuses AsteroidField's exact math so the
+ * label tracks the rock (review #1: schema mismatch, #2: coordinate space).
+ */
+export function AgentAnnotations({ asteroids }: { asteroids: EnhancedAsteroid[] }) {
+  const [annotations, setAnnotations] = useState<SceneAnnotation[]>([]);
 
   useEffect(() => {
     const fetchAnnotations = async () => {
@@ -23,7 +31,7 @@ export function AgentAnnotations() {
         const res = await fetch('/api/agent-data');
         if (res.ok) {
           const data = await res.json();
-          setAnnotations(data.annotations || []);
+          setAnnotations(Array.isArray(data.annotations) ? data.annotations : []);
         }
       } catch { /* silent fail */ }
     };
@@ -33,37 +41,46 @@ export function AgentAnnotations() {
     return () => clearInterval(interval);
   }, []);
 
-  if (annotations.length === 0) return null;
+  if (annotations.length === 0 || asteroids.length === 0) return null;
 
   return (
     <>
       {annotations.map(ann => {
-        const asteroid = asteroids.find(a => a.id === ann.objectId || a.name.includes(ann.objectId));
-        if (!asteroid) return null;
+        const asteroid = asteroids.find(a => a.id === ann.asteroidId);
+        if (!asteroid) return null; // annotated object left the 7-day feed
 
-        const severityColors: Record<string, string> = {
-          critical: '#ef4444',
-          warning: '#f59e0b',
-          info: '#3b82f6',
-        };
-        const color = severityColors[ann.severity] || severityColors.info;
+        // Exact same placement math as AsteroidField (EnhancedSolarSystem).
+        const orbit = asteroid.orbit;
+        const angle = orbit.phase;
+        const actualRadius = Math.max(5.0, orbit.radius);
+        const x = Math.cos(angle) * actualRadius;
+        const z = Math.sin(angle) * actualRadius;
+        const y = Math.sin(angle * 0.2) * orbit.inclination * 0.15;
+
+        const color = ann.color || FALLBACK_COLOR;
 
         return (
-          <group key={ann.objectId} position={[asteroid.position.x, asteroid.position.y + 3, asteroid.position.z]}>
-            <Html center style={{ pointerEvents: 'auto', zIndex: 1 }}>
+          <group key={`${ann.asteroidId}-${ann.createdAt}`} position={[x, y + 3, z]}>
+            <Html center style={{ pointerEvents: 'none', zIndex: 1 }}>
               <div
                 style={{
-                  background: `${color}12`,
-                  border: `1px solid ${color}60`,
+                  background: 'rgba(0,0,0,0.8)',
+                  border: `1px solid ${color}80`,
+                  borderLeft: `3px solid ${color}`,
                   borderRadius: 6,
                   padding: '4px 8px',
-                  maxWidth: 180,
-                  fontSize: 11,
-                  whiteSpace: 'nowrap',
+                  maxWidth: 200,
+                  fontSize: 12,
+                  lineHeight: 1.35,
+                  whiteSpace: 'normal',
                 }}
-                title={ann.explanation}
               >
-                <div style={{ color, fontWeight: 600, fontSize: 10 }}>{ann.label}</div>
+                <div style={{ color, fontWeight: 600 }}>{ann.label}</div>
+                {ann.notes && (
+                  <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, marginTop: 2 }}>
+                    {ann.notes}
+                  </div>
+                )}
               </div>
             </Html>
           </group>

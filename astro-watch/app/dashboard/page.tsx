@@ -2,17 +2,47 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import dynamic from 'next/dynamic';
 import { useAsteroidStore } from '@/lib/store';
-import { EnhancedSolarSystem } from '@/components/visualization/3d/EnhancedSolarSystem';
-import { RiskDashboard } from '@/components/visualization/charts/RiskDashboard';
 import { MobileControls } from '@/components/visualization/controls/MobileControls';
-import { AsteroidAnalysisHub } from '@/components/visualization/analysis/AsteroidAnalysisHub';
 import { EnhancedAsteroid } from '@/lib/nasa-api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Orbit, BarChart3, Shield } from 'lucide-react';
-import { ChatPanel } from '@/components/chat/ChatPanel';
-import { AgentStatusIndicator } from '@/components/dashboard/AgentStatusIndicator';
-import { GuidedTour } from '@/components/tour/GuidedTour';
+
+// Heavy views are code-split: each loads only when its view mode is first
+// shown, keeping the dashboard route's initial bundle small (#31).
+const EnhancedSolarSystem = dynamic(
+  () => import('@/components/visualization/3d/EnhancedSolarSystem').then(m => m.EnhancedSolarSystem),
+  { ssr: false, loading: () => <SceneLoading /> }
+);
+const RiskDashboard = dynamic(
+  () => import('@/components/visualization/charts/RiskDashboard').then(m => m.RiskDashboard),
+  { ssr: false, loading: () => <SceneLoading /> }
+);
+const AsteroidAnalysisHub = dynamic(
+  () => import('@/components/visualization/analysis/AsteroidAnalysisHub').then(m => m.AsteroidAnalysisHub),
+  { ssr: false, loading: () => <SceneLoading /> }
+);
+const ChatPanel = dynamic(
+  () => import('@/components/chat/ChatPanel').then(m => m.ChatPanel),
+  { ssr: false }
+);
+const GuidedTour = dynamic(
+  () => import('@/components/tour/GuidedTour').then(m => m.GuidedTour),
+  { ssr: false }
+);
+const AgentStatusIndicator = dynamic(
+  () => import('@/components/dashboard/AgentStatusIndicator').then(m => m.AgentStatusIndicator),
+  { ssr: false }
+);
+
+function SceneLoading() {
+  return (
+    <div className="w-full h-full min-h-[300px] flex items-center justify-center">
+      <div className="animate-spin w-10 h-10 border-4 border-zinc-500 border-t-transparent rounded-full" aria-label="Loading view" />
+    </div>
+  );
+}
 
 export default function Home() {
   const {

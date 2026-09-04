@@ -2,10 +2,17 @@
 
 import { motion } from 'framer-motion';
 
+interface ToolCallInfo {
+  name: string;
+  arguments: Record<string, unknown>;
+}
+
 interface ChatMessageProps {
   role: 'user' | 'assistant';
   content: string;
-  toolCall?: { name: string; arguments: Record<string, unknown> };
+  toolCalls?: ToolCallInfo[];
+  /** Show an animated "thinking" placeholder instead of an empty bubble. */
+  pending?: boolean;
 }
 
 function formatInline(text: string) {
@@ -39,7 +46,7 @@ function formatContent(text: string) {
   });
 }
 
-export function ChatMessage({ role, content, toolCall }: ChatMessageProps) {
+export function ChatMessage({ role, content, toolCalls, pending = false }: ChatMessageProps) {
   const isUser = role === 'user';
 
   return (
@@ -55,10 +62,26 @@ export function ChatMessage({ role, content, toolCall }: ChatMessageProps) {
             : 'bg-white/[0.04] border border-white/[0.08] text-gray-300 rounded-bl-sm'
         }`}
       >
-        {formatContent(content)}
-        {toolCall && (
-          <div className="mt-1.5 text-[10px] text-gray-500 italic">
-            Used {toolCall.name}
+        {pending ? (
+          <div className="flex items-center gap-1.5 py-1" aria-label="Assistant is typing">
+            {[0, 1, 2].map(i => (
+              <span
+                key={i}
+                className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce"
+                style={{ animationDelay: `${i * 0.15}s` }}
+              />
+            ))}
+          </div>
+        ) : (
+          formatContent(content)
+        )}
+        {toolCalls && toolCalls.length > 0 && (
+          <div className="mt-1.5 space-y-0.5">
+            {toolCalls.map((tc, i) => (
+              <div key={i} className="text-[10px] text-gray-500 italic">
+                Used {tc.name}
+              </div>
+            ))}
           </div>
         )}
       </div>

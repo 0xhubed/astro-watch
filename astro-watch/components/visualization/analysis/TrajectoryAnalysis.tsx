@@ -6,6 +6,7 @@ import { EnhancedAsteroid } from '@/lib/nasa-api';
 import { getRarityInfo } from '@/components/ui/RiskLegend';
 import { rarityStyle } from '@/lib/rarity-colors';
 import { formatMeters, DARK_TOOLTIP, DARK_TOOLTIP_LABEL, DARK_TOOLTIP_ITEM } from '@/lib/format';
+import { useEscapeToClose } from '@/lib/use-dialog';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   ScatterChart, Scatter, ReferenceLine, Cell
@@ -17,6 +18,7 @@ interface Props {
 
 export function TrajectoryAnalysis({ asteroids }: Props) {
   const [selectedAsteroid, setSelectedAsteroid] = useState<EnhancedAsteroid | null>(null);
+  useEscapeToClose(selectedAsteroid !== null, () => setSelectedAsteroid(null));
 
   // Analyze orbital characteristics
   const orbitalAnalysis = useMemo(() => {
@@ -265,6 +267,9 @@ export function TrajectoryAnalysis({ asteroids }: Props) {
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${selectedAsteroid.name} details`}
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
         >
           {/* Backdrop */}

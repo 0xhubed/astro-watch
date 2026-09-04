@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { EnhancedAsteroid } from '@/lib/nasa-api';
 import { getRarityInfo } from '@/components/ui/RiskLegend';
 import { formatMeters, formatNumber } from '@/lib/format';
+import { useEscapeToClose } from '@/lib/use-dialog';
 
 interface Props {
   asteroids: EnhancedAsteroid[];
@@ -23,6 +24,7 @@ interface Alert {
 
 export function MonitoringDashboard({ asteroids, dataUpdatedAt }: Props) {
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
+  useEscapeToClose(selectedAlert !== null, () => setSelectedAlert(null));
 
   // Derive alert-like highlights from the real feed data only.
   // No simulated observatory telemetry or fabricated discovery events.
@@ -334,6 +336,9 @@ export function MonitoringDashboard({ asteroids, dataUpdatedAt }: Props) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Alert details"
             className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
             onClick={() => setSelectedAlert(null)}
           >
@@ -346,8 +351,9 @@ export function MonitoringDashboard({ asteroids, dataUpdatedAt }: Props) {
             >
               <div className="flex justify-between items-start mb-4">
                 <h3 className="text-xl font-bold text-white">Alert Details</h3>
-                <button 
+                <button
                   onClick={() => setSelectedAlert(null)}
+                  aria-label="Close alert details"
                   className="text-white/60 hover:text-white text-xl"
                 >
                   ×

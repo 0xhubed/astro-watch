@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 import { X, MapPin, Zap, Circle, Radio } from 'lucide-react';
 import { EnhancedAsteroid } from '@/lib/nasa-api';
 import { computeImpact, formatEnergy, formatDistance, ImpactResult } from '@/lib/impact-physics';
+import { useEscapeToClose } from '@/lib/use-dialog';
 
 // Dynamic import to prevent SSR issues with WebGL
 const Globe = dynamic(() => import('react-globe.gl'), { ssr: false });
@@ -70,6 +71,7 @@ function StatRow({ label, value, highlight }: { label: string; value: string; hi
 
 export function ImpactSimulation({ asteroid, onClose }: Props) {
   useBodyModalClass();
+  useEscapeToClose(true, onClose);
   // Pick a random default location
   const [impactLocation, setImpactLocation] = useState(() => {
     const idx = Math.floor(Math.random() * IMPACT_LOCATIONS.length);
@@ -228,6 +230,9 @@ export function ImpactSimulation({ asteroid, onClose }: Props) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Impact simulation"
         className="fixed inset-0 z-[100] bg-black/95 flex flex-col md:flex-row overflow-hidden"
       >
         {/* ── Globe (left 60%) ───────────────────────────────────────────── */}

@@ -5,6 +5,7 @@ import { EnhancedAsteroid } from '@/lib/nasa-api';
 import { X, ExternalLink, AlertTriangle, Info, Orbit, Calendar, Gauge, HelpCircle } from 'lucide-react';
 import { rarityStyle } from '@/lib/rarity-colors';
 import { formatMeters } from '@/lib/format';
+import { useEscapeToClose } from '@/lib/use-dialog';
 
 interface DetailedAsteroidViewProps {
   asteroid: EnhancedAsteroid;
@@ -39,6 +40,7 @@ function InfoTooltip({ text, children, position = "auto" }: { text: string; chil
 }
 
 export function DetailedAsteroidView({ asteroid, isOpen, onClose }: DetailedAsteroidViewProps) {
+  useEscapeToClose(isOpen, onClose);
   if (!isOpen) return null;
 
   const rarityInfo = getRarityLevelInfo(asteroid.rarity);
@@ -50,6 +52,9 @@ export function DetailedAsteroidView({ asteroid, isOpen, onClose }: DetailedAste
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${asteroid.name} details`}
         className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
         onClick={onClose}
       >
@@ -84,6 +89,7 @@ export function DetailedAsteroidView({ asteroid, isOpen, onClose }: DetailedAste
               <button
                 type="button"
                 onClick={onClose}
+                aria-label="Close details"
                 className="text-white/40 hover:text-white/80 transition-colors p-2 hover:bg-white/10 rounded-lg"
               >
                 <X className="w-6 h-6" />

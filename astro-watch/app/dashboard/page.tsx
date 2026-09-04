@@ -27,7 +27,7 @@ export default function Home() {
   const [selectedAsteroid, setSelectedAsteroid] = useState<EnhancedAsteroid | null>(null);
   const [hoveredAsteroid, setHoveredAsteroid] = useState<number | null>(null);
   
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch, dataUpdatedAt } = useQuery({
     queryKey: ['asteroids', timeRange],
     queryFn: async () => {
       const response = await fetch(`/api/asteroids?range=${timeRange}`);
@@ -70,8 +70,16 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           className="text-white text-center"
         >
-          <p className="text-lg text-red-400">Error loading asteroid data</p>
-          <p className="text-sm text-gray-400 mt-2">Please check your NASA API key</p>
+          <p className="text-lg text-red-400">Couldn&apos;t load asteroid data</p>
+          <p className="text-sm text-gray-400 mt-2">
+            NASA&apos;s API may be briefly unavailable. Check your connection and try again.
+          </p>
+          <button
+            onClick={() => refetch()}
+            className="mt-4 px-4 py-2 rounded-md bg-white/10 text-white text-sm hover:bg-white/20 border border-white/20 transition-colors"
+          >
+            Retry
+          </button>
         </motion.div>
       </div>
     );
@@ -128,7 +136,7 @@ export default function Home() {
               transition={{ duration: 0.5 }}
               className="w-full px-4 py-4 md:py-8 h-[calc(100dvh-8rem)] md:h-auto overflow-y-auto md:overflow-visible"
             >
-              <RiskDashboard asteroids={filteredAsteroids} timeRange={timeRange} />
+              <RiskDashboard asteroids={filteredAsteroids} timeRange={timeRange} dataUpdatedAt={dataUpdatedAt} />
             </motion.div>
           )}
 
@@ -141,7 +149,7 @@ export default function Home() {
               transition={{ duration: 0.5 }}
               className="h-[calc(100dvh-8rem)] md:h-[calc(100dvh-4rem)]"
             >
-              <AsteroidAnalysisHub asteroids={filteredAsteroids} />
+              <AsteroidAnalysisHub asteroids={filteredAsteroids} dataUpdatedAt={dataUpdatedAt} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -181,7 +189,9 @@ export default function Home() {
               Rare: {asteroids.filter(a => a.rarity >= 4).length}
             </div>
             <div className="text-xs flex items-center gap-3">
-              <span>Last Updated: {new Date().toLocaleTimeString()}</span>
+              <span>
+                Last Updated: {dataUpdatedAt ? new Date(dataUpdatedAt).toLocaleTimeString() : '—'}
+              </span>
               <span className="text-gray-600">·</span>
               <a href="/#about" className="text-gray-600 hover:text-gray-400 transition-colors">
                 Data may contain inaccuracies — not for safety decisions

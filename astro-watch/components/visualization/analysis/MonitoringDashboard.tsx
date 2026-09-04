@@ -1,99 +1,73 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { EnhancedAsteroid } from '@/lib/nasa-api';
 import { getRarityInfo } from '@/components/ui/RiskLegend';
+import { formatMeters, formatNumber } from '@/lib/format';
 
 interface Props {
   asteroids: EnhancedAsteroid[];
+  /** Timestamp of the last successful feed fetch (from TanStack Query). */
+  dataUpdatedAt?: number;
 }
 
 interface Alert {
   id: string;
-  type: 'close-approach' | 'new-discovery' | 'risk-update';
+  type: 'close-approach' | 'risk-update';
   severity: 'low' | 'medium' | 'high';
   message: string;
   timestamp: Date;
   asteroid?: EnhancedAsteroid;
 }
 
-export function MonitoringDashboard({ asteroids }: Props) {
-  const [lastUpdate, setLastUpdate] = useState(new Date());
+export function MonitoringDashboard({ asteroids, dataUpdatedAt }: Props) {
   const [selectedAlert, setSelectedAlert] = useState<Alert | null>(null);
 
-  // Update every 15 minutes to match NASA API refresh rate
-  useEffect(() => {
-    const timer = setInterval(() => setLastUpdate(new Date()), 15 * 60 * 1000); // 15 minutes
-    return () => clearInterval(timer);
-  }, []);
-
-  // Generate stable monitoring data that doesn't change with time updates
+  // Derive alert-like highlights from the real feed data only.
+  // No simulated observatory telemetry or fabricated discovery events.
   const monitoringData = useMemo(() => {
-    const baseTime = new Date(); // Use a fixed base time for calculations
-    
-    // Generate realistic alerts based on asteroid data
+    const baseTime = new Date();
+
     const alerts: Alert[] = [];
-    
-    // Close approach alerts (within 7 days) - use consistent random seed
-    asteroids.forEach((asteroid, index) => {
+
+    // Close approach alerts (within 7 days)
+    asteroids.forEach((asteroid) => {
       const approachDate = new Date(asteroid.close_approach_data[0].close_approach_date);
       const daysUntil = Math.ceil((approachDate.getTime() - baseTime.getTime()) / (1000 * 60 * 60 * 24));
-      
+
       if (daysUntil <= 7 && daysUntil >= 0) {
-        // Use asteroid ID to create consistent timestamp offset
-        const seed = parseInt(asteroid.id.slice(-4), 16) || 1000;
-        const timeOffset = (seed % 3600) * 1000; // Consistent offset within last hour
-        
         alerts.push({
           id: `approach-${asteroid.id}`,
           type: 'close-approach',
-          severity: asteroid.missDistance < 0.05 ? 'high' : 
+          severity: asteroid.missDistance < 0.05 ? 'high' :
                    asteroid.missDistance < 0.1 ? 'medium' : 'low',
           message: `${asteroid.name} approaching within ${asteroid.missDistance.toFixed(3)} AU in ${daysUntil} days`,
-          timestamp: new Date(baseTime.getTime() - timeOffset),
+          timestamp: approachDate,
           asteroid
         });
       }
     });
 
-    // Notable rarity object alerts - use consistent timestamps
+    // Notable rarity objects in the current feed
     asteroids
       .filter(a => a.rarity >= 3)
       .slice(0, 3)
-      .forEach((asteroid, index) => {
-        const seed = parseInt(asteroid.id.slice(-3), 16) || 1000;
-        const timeOffset = ((seed % 120) + 60) * 60 * 1000; // 1-3 hours ago
-
+      .forEach((asteroid) => {
         alerts.push({
           id: `risk-${asteroid.id}`,
           type: 'risk-update',
           severity: 'high',
-          message: `Rarity R${asteroid.rarity} object ${asteroid.name} under continuous monitoring`,
-          timestamp: new Date(baseTime.getTime() - timeOffset),
+          message: `Rarity R${asteroid.rarity} object ${asteroid.name} in the current feed`,
+          timestamp: baseTime,
           asteroid
         });
       });
 
-    // New discovery simulation - use stable timestamps
-    const newDiscoveries = asteroids.slice(-3);
-    newDiscoveries.forEach((asteroid, index) => {
-      const timeOffset = (index + 1) * 3600000; // Staggered by hours
-      
-      alerts.push({
-        id: `discovery-${asteroid.id}`,
-        type: 'new-discovery',
-        severity: 'medium',
-        message: `New NEO discovered: ${asteroid.name} (${asteroid.size.toFixed(1)} m)`,
-        timestamp: new Date(baseTime.getTime() - timeOffset),
-        asteroid
-      });
-    });
+    // Sort alerts by approach date (soonest first)
+    alerts.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
 
-    // Sort alerts by timestamp (newest first)
-    alerts.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-
-    // Current tracking statistics - stable calculations
+    // Current tracking statistics - derived from the feed
     const trackingStats = {
       totalTracked: asteroids.length,
       activelyMonitored: asteroids.filter(a => a.rarity > 0).length,
@@ -103,44 +77,14 @@ export function MonitoringDashboard({ asteroids }: Props) {
         return daysUntil <= 30 && daysUntil >= 0;
       }).length,
       highRiskObjects: asteroids.filter(a => a.rarity >= 3).length,
-      newThisWeek: Math.min(asteroids.length, 5), // Simulated
       averageSize: asteroids.reduce((sum, a) => sum + a.size, 0) / asteroids.length
     };
 
-    // Observatory data simulation - stable timestamps
-    const observatories = [
-      {
-        name: 'LINEAR (New Mexico)',
-        status: 'active',
-        objectsTracked: Math.floor(asteroids.length * 0.3),
-        lastUpdate: new Date(baseTime.getTime() - 15 * 60000) // 15 minutes ago
-      },
-      {
-        name: 'Catalina Sky Survey',
-        status: 'active',
-        objectsTracked: Math.floor(asteroids.length * 0.25),
-        lastUpdate: new Date(baseTime.getTime() - 8 * 60000) // 8 minutes ago
-      },
-      {
-        name: 'NEOWISE Space Telescope',
-        status: 'active',
-        objectsTracked: Math.floor(asteroids.length * 0.2),
-        lastUpdate: new Date(baseTime.getTime() - 22 * 60000) // 22 minutes ago
-      },
-      {
-        name: 'Pan-STARRS (Hawaii)',
-        status: 'maintenance',
-        objectsTracked: Math.floor(asteroids.length * 0.15),
-        lastUpdate: new Date(baseTime.getTime() - 4 * 3600000) // 4 hours ago
-      }
-    ];
-
     return {
-      alerts: alerts.slice(0, 10), // Show latest 10 alerts
-      trackingStats,
-      observatories
+      alerts: alerts.slice(0, 10),
+      trackingStats
     };
-  }, [asteroids]); // Only depend on asteroids, not currentTime
+  }, [asteroids]);
 
   const AlertItem = ({ alert }: { alert: Alert }) => {
     const severityColors = {
@@ -151,7 +95,6 @@ export function MonitoringDashboard({ asteroids }: Props) {
 
     const typeIcons = {
       'close-approach': '🛸',
-      'new-discovery': '🔍',
       'risk-update': '⚠️'
     };
 
@@ -168,7 +111,9 @@ export function MonitoringDashboard({ asteroids }: Props) {
             <div>
               <div className="text-white text-sm font-medium">{alert.message}</div>
               <div className="text-white/60 text-xs mt-1">
-                {alert.timestamp.toLocaleTimeString()} • {alert.type.replace('-', ' ')}
+                {alert.type === 'close-approach'
+                  ? `Approach date: ${alert.timestamp.toLocaleDateString()}`
+                  : `Derived from today's feed`}
               </div>
             </div>
           </div>
@@ -190,34 +135,31 @@ export function MonitoringDashboard({ asteroids }: Props) {
       animate={{ opacity: 1, y: 0 }}
       className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-6 border border-gray-800"
     >
-      <h3 className="text-xl font-semibold mb-4 text-white flex items-center">
+      <h3 className="text-xl font-semibold mb-1 text-white flex items-center">
         <span className="mr-2">📡</span>
-        Real-Time Tracking Status
+        Tracking Status
       </h3>
-      
+      <p className="text-white/40 text-xs mb-4">Illustrative view — derived from today's feed, not live telemetry.</p>
+
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
         <div className="bg-blue-900/20 rounded-lg p-4 border border-blue-700/30">
-          <div className="text-2xl font-bold text-blue-300">{monitoringData.trackingStats.totalTracked}</div>
-          <div className="text-sm text-blue-200">Total Objects</div>
+          <div className="text-2xl font-bold text-blue-300">{formatNumber(monitoringData.trackingStats.totalTracked)}</div>
+          <div className="text-sm text-blue-200">Objects in Feed</div>
         </div>
         <div className="bg-green-900/20 rounded-lg p-4 border border-green-700/30">
-          <div className="text-2xl font-bold text-green-300">{monitoringData.trackingStats.activelyMonitored}</div>
-          <div className="text-sm text-green-200">Actively Monitored</div>
+          <div className="text-2xl font-bold text-green-300">{formatNumber(monitoringData.trackingStats.activelyMonitored)}</div>
+          <div className="text-sm text-green-200">Rarity R1+</div>
         </div>
         <div className="bg-yellow-900/20 rounded-lg p-4 border border-yellow-700/30">
-          <div className="text-2xl font-bold text-yellow-300">{monitoringData.trackingStats.closeApproaches}</div>
+          <div className="text-2xl font-bold text-yellow-300">{formatNumber(monitoringData.trackingStats.closeApproaches)}</div>
           <div className="text-sm text-yellow-200">Close Approaches (30d)</div>
         </div>
         <div className="bg-red-900/20 rounded-lg p-4 border border-red-700/30">
-          <div className="text-2xl font-bold text-red-300">{monitoringData.trackingStats.highRiskObjects}</div>
+          <div className="text-2xl font-bold text-red-300">{formatNumber(monitoringData.trackingStats.highRiskObjects)}</div>
           <div className="text-sm text-red-200">Notable (R≥3)</div>
         </div>
-        <div className="bg-purple-900/20 rounded-lg p-4 border border-purple-700/30">
-          <div className="text-2xl font-bold text-purple-300">{monitoringData.trackingStats.newThisWeek}</div>
-          <div className="text-sm text-purple-200">New This Week</div>
-        </div>
         <div className="bg-indigo-900/20 rounded-lg p-4 border border-indigo-700/30">
-          <div className="text-2xl font-bold text-indigo-300">{monitoringData.trackingStats.averageSize.toFixed(1)} km</div>
+          <div className="text-2xl font-bold text-indigo-300">{formatMeters(monitoringData.trackingStats.averageSize)}</div>
           <div className="text-sm text-indigo-200">Average Size</div>
         </div>
       </div>
@@ -225,56 +167,19 @@ export function MonitoringDashboard({ asteroids }: Props) {
       <div className="bg-gray-800/50 rounded-lg p-4">
         <div className="text-white/80 text-sm">
           <div className="mb-2">
-            <strong>System Status:</strong> 
-            <span className="text-green-300 ml-2">● OPERATIONAL</span>
-          </div>
-          <div className="mb-2">
-            <strong>Last Global Update:</strong> {lastUpdate.toLocaleTimeString()}
+            <strong>Feed freshness:</strong>
+            {dataUpdatedAt ? (
+              <span className="text-green-300 ml-2">
+                Loaded {new Date(dataUpdatedAt).toLocaleTimeString()} · refreshes every 15 min
+              </span>
+            ) : (
+              <span className="text-blue-300 ml-2">Refreshes every 15 minutes</span>
+            )}
           </div>
           <div>
-            <strong>Data Refresh:</strong> <span className="text-blue-300">Every 15 minutes</span>
+            <strong>Data source:</strong> <span className="text-blue-300">NASA NEO Web Service (today's feed)</span>
           </div>
         </div>
-      </div>
-    </motion.div>
-  );
-
-  const ObservatoryStatus = () => (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.1 }}
-      className="bg-gray-900/50 backdrop-blur-sm rounded-xl p-6 border border-gray-800"
-    >
-      <h3 className="text-xl font-semibold mb-4 text-white flex items-center">
-        <span className="mr-2">🔭</span>
-        Observatory Network
-      </h3>
-      
-      <div className="space-y-3">
-        {monitoringData.observatories.map((obs, index) => (
-          <motion.div
-            key={obs.name}
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: index * 0.1 }}
-            className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg"
-          >
-            <div>
-              <div className="text-white font-medium">{obs.name}</div>
-              <div className="text-gray-400 text-sm">
-                Tracking {obs.objectsTracked} objects • Last update: {obs.lastUpdate.toLocaleTimeString()}
-              </div>
-            </div>
-            <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-              obs.status === 'active' 
-                ? 'bg-green-500/20 text-green-300' 
-                : 'bg-yellow-500/20 text-yellow-300'
-            }`}>
-              {obs.status.toUpperCase()}
-            </div>
-          </motion.div>
-        ))}
       </div>
     </motion.div>
   );
@@ -416,11 +321,8 @@ export function MonitoringDashboard({ asteroids }: Props) {
   return (
     <div className="space-y-6 px-4 pb-8">
       <TrackingStatus />
-      
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ObservatoryStatus />
-        <AlertsPanel />
-      </div>
+
+      <AlertsPanel />
 
       {/* External Resources */}
       <ExternalResources />
@@ -459,7 +361,7 @@ export function MonitoringDashboard({ asteroids }: Props) {
                 </div>
                 
                 <div>
-                  <div className="text-sm text-gray-400">Time</div>
+                  <div className="text-sm text-gray-400">{selectedAlert.type === 'close-approach' ? 'Approach Date' : 'Added'}</div>
                   <div className="text-white">{selectedAlert.timestamp.toLocaleString()}</div>
                 </div>
                 

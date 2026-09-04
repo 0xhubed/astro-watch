@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { EnhancedAsteroid } from '@/lib/nasa-api';
 import { X, ExternalLink, AlertTriangle, Info, Orbit, Calendar, Gauge, HelpCircle } from 'lucide-react';
 import { rarityStyle } from '@/lib/rarity-colors';
+import { formatMeters } from '@/lib/format';
 
 interface DetailedAsteroidViewProps {
   asteroid: EnhancedAsteroid;
@@ -110,10 +111,7 @@ export function DetailedAsteroidView({ asteroid, isOpen, onClose }: DetailedAste
                 <div className="bg-white/5 rounded-lg p-4">
                   <div className="text-white/60 text-sm mb-1">Estimated Size</div>
                   <div className="text-white font-mono text-lg">
-                    {asteroid.size >= 1000 
-                      ? `${(asteroid.size / 1000).toFixed(2)} km`
-                      : `${asteroid.size.toFixed(1)} m`
-                    }
+                    {formatMeters(asteroid.size)}
                   </div>
                 </div>
                 <div className="bg-white/5 rounded-lg p-4">
@@ -224,28 +222,28 @@ export function DetailedAsteroidView({ asteroid, isOpen, onClose }: DetailedAste
               <div className="bg-white/5 rounded-lg p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <InfoTooltip text="AI-calculated probability of this asteroid posing a threat to Earth based on size, speed, and trajectory">
-                      <div className="text-white/60 text-sm mb-2">Risk Level</div>
+                    <InfoTooltip text="Heuristic 0-10 score combining size, velocity and proximity. Not an impact probability.">
+                      <div className="text-white/60 text-sm mb-2">Severity Index</div>
                     </InfoTooltip>
                     <div className="flex items-center gap-3">
                       <div className="w-full bg-gray-700 rounded-full h-3">
-                        <div 
+                        <div
                           className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-3 rounded-full transition-all duration-500"
                           style={{ width: `${asteroid.risk * 100}%` }}
                         ></div>
                       </div>
                       <span className="text-white font-mono text-sm">
-                        {(asteroid.risk * 100).toFixed(1)}%
+                        {(asteroid.risk * 10).toFixed(1)}
                       </span>
                     </div>
                   </div>
                   <div>
-                    <InfoTooltip text="How confident our AI model is in the risk assessment based on data quality and orbital precision" position="right">
-                      <div className="text-white/60 text-sm mb-2">Confidence Level</div>
+                    <InfoTooltip text="Heuristic data-quality score based on how close the approach is. Closer objects have better-measured trajectories." position="right">
+                      <div className="text-white/60 text-sm mb-2">Data Confidence</div>
                     </InfoTooltip>
                     <div className="flex items-center gap-3">
                       <div className="w-full bg-gray-700 rounded-full h-3">
-                        <div 
+                        <div
                           className="bg-blue-500 h-3 rounded-full transition-all duration-500"
                           style={{ width: `${asteroid.confidence * 100}%` }}
                         ></div>
@@ -353,7 +351,7 @@ export function DetailedAsteroidView({ asteroid, isOpen, onClose }: DetailedAste
                   <div className="space-y-2 text-blue-200 text-sm">
                     <p><strong>Rarity Score:</strong> Based on Farnocchia & Chodas (2021), this 0-7 scale measures how many years between close approaches of a given size at a given distance. Higher = rarer.</p>
                     <p><strong>Potentially Hazardous:</strong> Asteroids larger than 140 meters that come within 0.05 AU (7.5 million km) of Earth's orbit.</p>
-                    <p><strong>Data Source:</strong> NASA's Near Earth Object Web Service (NeoWs) with machine learning risk assessment enhancement.</p>
+                    <p><strong>Data Source:</strong> NASA's Near Earth Object Web Service (NeoWs), with heuristic severity and rarity scores added for display.</p>
                   </div>
                 </div>
               </div>

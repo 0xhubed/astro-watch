@@ -8,11 +8,13 @@ import { MonitoringDashboard } from './MonitoringDashboard';
 
 interface Props {
   asteroids: EnhancedAsteroid[];
+  /** Timestamp of the last successful feed fetch, passed to the monitoring tab. */
+  dataUpdatedAt?: number;
 }
 
 type TabType = 'trajectories' | 'monitoring';
 
-export function AsteroidAnalysisHub({ asteroids }: Props) {
+export function AsteroidAnalysisHub({ asteroids, dataUpdatedAt }: Props) {
   const [activeTab, setActiveTab] = useState<TabType>('trajectories');
 
   const tabs = [
@@ -24,9 +26,9 @@ export function AsteroidAnalysisHub({ asteroids }: Props) {
     },
     {
       id: 'monitoring' as TabType,
-      name: 'Real-Time Monitoring',
+      name: 'Feed Monitoring',
       icon: '📡',
-      description: 'Live tracking and discovery timeline'
+      description: "Highlights and stats derived from today's feed"
     }
   ];
 
@@ -91,7 +93,7 @@ export function AsteroidAnalysisHub({ asteroids }: Props) {
               transition={{ duration: 0.3 }}
               className="h-full"
             >
-              <MonitoringDashboard asteroids={asteroids} />
+              <MonitoringDashboard asteroids={asteroids} dataUpdatedAt={dataUpdatedAt} />
             </motion.div>
           )}
         </AnimatePresence>

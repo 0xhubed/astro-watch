@@ -340,7 +340,7 @@ export function TrajectoryAnalysis({ asteroids }: Props) {
                   </div>
                   <div className="bg-white/5 rounded-lg p-3">
                     <div className="text-white/60 text-xs mb-1">Inclination</div>
-                    <div className="text-white font-mono">{selectedAsteroid.orbit.inclination.toFixed(2)}°</div>
+                    <div className="text-white font-mono">{(selectedAsteroid.orbit.inclination * 180 / Math.PI).toFixed(2)}°</div>
                   </div>
                   <div className="bg-white/5 rounded-lg p-3">
                     <div className="text-white/60 text-xs mb-1">Eccentricity</div>

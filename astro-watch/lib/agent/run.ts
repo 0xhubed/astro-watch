@@ -94,7 +94,7 @@ function buildUserPrompt(asteroids: EnhancedAsteroid[]): string {
     orbit: {
       semiMajorAxis: a.orbit.semi_major_axis,
       eccentricity: a.orbit.eccentricity,
-      inclination: a.orbit.inclination,
+      inclination: parseFloat((a.orbit.inclination * 180 / Math.PI).toFixed(2)),
     },
   }));
 
@@ -194,22 +194,22 @@ export async function runAgent(): Promise<AgentRunResult> {
         break;
       }
 
-      // Execute tools in parallel
-      const toolResults = await Promise.all(
-        toolUseBlocks.map(async (block) => {
-          toolCallsMade++;
-          const resultText = await executeAgentTool(
-            block.name,
-            block.input as Record<string, unknown>,
-            asteroids,
-          );
-          return {
-            type: 'tool_result' as const,
-            tool_use_id: block.id,
-            content: resultText,
-          };
-        }),
-      );
+      // Execute tools sequentially and in order — each tool does read-modify-
+      // write on KV memory, so parallel execution raced on shared state (#3).
+      const toolResults = [];
+      for (const block of toolUseBlocks) {
+        toolCallsMade++;
+        const resultText = await executeAgentTool(
+          block.name,
+          block.input as Record<string, unknown>,
+          asteroids,
+        );
+        toolResults.push({
+          type: 'tool_result' as const,
+          tool_use_id: block.id,
+          content: resultText,
+        });
+      }
 
       // Append assistant turn + tool results to the conversation
       messages.push({ role: 'assistant', content: response.content });

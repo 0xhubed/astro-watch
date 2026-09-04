@@ -1266,7 +1266,7 @@ function AsteroidField({ asteroids, onAsteroidSelect, selectedAsteroid, hoveredA
         const actualRadius = Math.max(minDistance, orbit.radius);
         const x = Math.cos(angle) * actualRadius;
         const z = Math.sin(angle) * actualRadius;
-        const y = Math.sin(angle * 0.2) * orbit.inclination * 0.15;
+        const y = Math.sin(angle * 0.2) * (orbit.inclination * 180 / Math.PI) * 0.15;
         const distanceFactor = Math.min(1.5, Math.max(0.5, 30 / actualRadius));
         const baseScale = Math.max(0.15, Math.log10(Math.max(1, asteroid.size)) * 0.35) * distanceFactor;
         const isSelected = selectedAsteroid?.id === asteroid.id;
@@ -1333,7 +1333,7 @@ function AsteroidLabel({ asteroid }: { asteroid: EnhancedAsteroid }) {
   
   const x = Math.cos(angle) * actualRadius;
   const z = Math.sin(angle) * actualRadius;
-  const y = Math.sin(angle * 0.2) * orbit.inclination * 0.15;
+  const y = Math.sin(angle * 0.2) * (orbit.inclination * 180 / Math.PI) * 0.15;
   
   return (
     <Html position={[x, y + 2, z]} center style={{ zIndex: 1 }}>
@@ -1366,7 +1366,7 @@ function AsteroidTrails({ asteroids }: { asteroids: EnhancedAsteroid[] }) {
         const actualRadius = Math.max(5.0, orbit.radius);
         const x = Math.cos(angle) * actualRadius;
         const z = Math.sin(angle) * actualRadius;
-        const y = Math.sin(angle * 0.2) * orbit.inclination * 0.15;
+        const y = Math.sin(angle * 0.2) * (orbit.inclination * 180 / Math.PI) * 0.15;
 
         positions[trailIndex * 3] = x;
         positions[trailIndex * 3 + 1] = y;
@@ -1393,7 +1393,7 @@ function AsteroidTrails({ asteroids }: { asteroids: EnhancedAsteroid[] }) {
         const actualRadius = Math.max(5.0, orbit.radius);
         trailPoints.push(new THREE.Vector3(
           Math.cos(angle) * actualRadius,
-          Math.sin(angle * 0.2) * orbit.inclination * 0.15,
+          Math.sin(angle * 0.2) * (orbit.inclination * 180 / Math.PI) * 0.15,
           Math.sin(angle) * actualRadius,
         ));
       }
@@ -1462,7 +1462,7 @@ function TrajectoryLine({ asteroid }: { asteroid: EnhancedAsteroid }) {
       const angle = (i / 64) * Math.PI * 2;
       points.push(new THREE.Vector3(
         Math.cos(angle) * actualRadius,
-        Math.sin(angle * 0.2) * orbit.inclination * 0.15,
+        Math.sin(angle * 0.2) * (orbit.inclination * 180 / Math.PI) * 0.15,
         Math.sin(angle) * actualRadius,
       ));
     }
@@ -1726,7 +1726,7 @@ function SolarSystemScene({
     const aRadius = Math.max(minDist, orbit.radius);
     const ax = Math.cos(aAngle) * aRadius;
     const az = Math.sin(aAngle) * aRadius;
-    const ay = Math.sin(aAngle * 0.2) * orbit.inclination * 0.15;
+    const ay = Math.sin(aAngle * 0.2) * (orbit.inclination * 180 / Math.PI) * 0.15;
     return new THREE.Vector3(ex + ax, ey + ay, ez + az);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAsteroid, cinematicMode]);
@@ -1759,7 +1759,7 @@ function SolarSystemScene({
         const aRadius = Math.max(minDist, orbit.radius);
         const ax = Math.cos(aAngle) * aRadius;
         const az = Math.sin(aAngle) * aRadius;
-        const ay = Math.sin(aAngle * 0.2) * orbit.inclination * 0.15;
+        const ay = Math.sin(aAngle * 0.2) * (orbit.inclination * 180 / Math.PI) * 0.15;
         controlsRef.current.target.set(x + ax, y + ay, z + az);
       } else {
         controlsRef.current.target.set(x, y, z);
@@ -1989,7 +1989,7 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
 
     const ax = Math.cos(angle) * actualRadius;
     const az = Math.sin(angle) * actualRadius;
-    const ay = Math.sin(angle * 0.2) * orbit.inclination * 0.15;
+    const ay = Math.sin(angle * 0.2) * (orbit.inclination * 180 / Math.PI) * 0.15;
 
     // World position = current Earth position + asteroid offset
     const controls = controlsRef.current;

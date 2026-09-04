@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { runAgent } from '@/lib/agent/run';
 
-export const maxDuration = 60;
+export const maxDuration = 300; // Vercel Pro allows up to 300s for cron functions
 
 function isAuthorized(request: Request): boolean {
   const cronSecret = process.env.CRON_SECRET;

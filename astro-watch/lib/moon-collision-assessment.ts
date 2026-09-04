@@ -162,7 +162,8 @@ function calculateGeometricCollisionProbability(asteroid: EnhancedAsteroid): num
 function calculateOrbitalFactors(asteroid: EnhancedAsteroid): number {
   // 1. Orbital inclination factor
   // Asteroids with similar inclination to Moon more likely to intersect
-  const inclinationDifference = Math.abs(asteroid.orbit.inclination - MOON_DATA.orbitalInclination);
+  const inclinationDeg = asteroid.orbit.inclination * 180 / Math.PI; // stored in radians
+  const inclinationDifference = Math.abs(inclinationDeg - MOON_DATA.orbitalInclination);
   const inclinationFactor = Math.exp(-inclinationDifference / 10); // Exponential decay
   
   // 2. Timing factor - Moon moves fast, timing is critical
@@ -223,8 +224,9 @@ function calculateApproachGeometry(asteroid: EnhancedAsteroid): number {
   // 1. Radial vs tangential approach
   const radialFactor = Math.cos(asteroid.orbit.phase); // Radial approach more likely
   
-  // 2. Prograde vs retrograde motion
-  const progradeBonus = asteroid.orbit.inclination < 90 ? 1.2 : 0.8;
+  // 2. Prograde vs retrograde motion (inclination stored in radians)
+  const inclinationDeg = asteroid.orbit.inclination * 180 / Math.PI;
+  const progradeBonus = inclinationDeg < 90 ? 1.2 : 0.8;
   
   // 3. Distance factor - closer approaches to Earth more likely to hit Moon
   // Use a more gradual decay function
@@ -326,7 +328,7 @@ function calculateConfidence(asteroid: EnhancedAsteroid): number {
   
   // Lower confidence for highly eccentric or inclined orbits
   if (asteroid.orbit.eccentricity > 0.5) confidence -= 0.1;
-  if (Math.abs(asteroid.orbit.inclination) > 30) confidence -= 0.1;
+  if (Math.abs(asteroid.orbit.inclination * 180 / Math.PI) > 30) confidence -= 0.1;
   
   return Math.max(0.3, Math.min(0.95, confidence));
 }

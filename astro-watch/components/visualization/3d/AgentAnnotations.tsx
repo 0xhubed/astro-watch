@@ -55,7 +55,7 @@ export function AgentAnnotations({ asteroids }: { asteroids: EnhancedAsteroid[] 
         const actualRadius = Math.max(5.0, orbit.radius);
         const x = Math.cos(angle) * actualRadius;
         const z = Math.sin(angle) * actualRadius;
-        const y = Math.sin(angle * 0.2) * orbit.inclination * 0.15;
+        const y = Math.sin(angle * 0.2) * (orbit.inclination * 180 / Math.PI) * 0.15;
 
         const color = ann.color || FALLBACK_COLOR;
 

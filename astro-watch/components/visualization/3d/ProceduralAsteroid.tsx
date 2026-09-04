@@ -81,7 +81,10 @@ export function ProceduralAsteroid({
     }
   });
 
-  const finalScale = scale * (isSelected ? 2 : isHovered ? 1.5 : 1);
+  // Size stays truthful to the data (review #62) — selection is conveyed by
+  // the rarity ring and emissive boost, never by inflating the mesh.
+  const finalScale = scale;
+  const ringScale = finalScale * (isSelected ? 2.4 : isHovered ? 2.0 : 1.8);
 
   return (
     <group position={position}>
@@ -103,12 +106,12 @@ export function ProceduralAsteroid({
         />
       </mesh>
 
-      <mesh rotation={[Math.PI / 2, 0, 0]} scale={finalScale * 1.8}>
+      <mesh rotation={[Math.PI / 2, 0, 0]} scale={ringScale}>
         <ringGeometry args={[0.9, 1.0, 32]} />
         <meshBasicMaterial
           color={riskColor}
           transparent
-          opacity={isSelected ? 0.7 : isHovered ? 0.5 : 0.2 + emissiveIntensity * 0.3}
+          opacity={isSelected ? 0.95 : isHovered ? 0.7 : 0.2 + emissiveIntensity * 0.3}
           side={THREE.DoubleSide}
           blending={THREE.AdditiveBlending}
           depthWrite={false}

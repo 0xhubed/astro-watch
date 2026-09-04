@@ -346,6 +346,9 @@ function createMoonTexture(): THREE.Texture {
 function Moon({ earthPosition, hideLabels }: { earthPosition: [number, number, number]; hideLabels?: boolean }) {
   const meshRef = useRef<THREE.Mesh>(null);
   const groupRef = useRef<THREE.Group>(null);
+  // Moon label is only shown when the camera is near the Moon — at system
+  // scale it otherwise collides with the Earth label (review #52).
+  const [showLabel, setShowLabel] = useState(false);
 
   // Load NASA LROC moon texture with procedural fallback
   const [moonTexture, setMoonTexture] = useState<THREE.Texture>(() => createMoonTexture());
@@ -382,6 +385,14 @@ function Moon({ earthPosition, hideLabels }: { earthPosition: [number, number, n
       groupRef.current.position.set(x, y, z);
       // Tidally locked - slow sync rotation
       meshRef.current.rotation.y = moonAngle + Math.PI;
+
+      // Hysteresis: show within 45 units, hide beyond 60 — avoids flicker
+      // at the threshold and only re-renders on state crossings.
+      const camDist = state.camera.position.distanceTo(groupRef.current.position);
+      setShowLabel(prev => {
+        const next = prev ? camDist < 60 : camDist < 45;
+        return next === prev ? prev : next;
+      });
     }
   });
 
@@ -400,7 +411,7 @@ function Moon({ earthPosition, hideLabels }: { earthPosition: [number, number, n
       </mesh>
 
       {/* Moon label */}
-      {!hideLabels && (
+      {!hideLabels && showLabel && (
         <Html position={[0, 2.5, 0]} center style={{ zIndex: 1 }}>
           <div className="bg-black/90 text-white px-3 py-1 rounded-lg text-sm font-medium pointer-events-none border border-white/20">
             Moon
@@ -860,10 +871,30 @@ function Sun() {
   const sunRef = useRef<THREE.Mesh>(null);
   const coronaRef = useRef<THREE.Mesh>(null);
   const atmosphereRef = useRef<THREE.Mesh>(null);
-  
+
   // Sun corona shader material refs
   const coronaShaderRef = useRef<THREE.ShaderMaterial>(null);
   const outerCoronaShaderRef = useRef<THREE.ShaderMaterial>(null);
+
+  // Billboard glow sprites (review #49): additive radial-gradient billboards
+  // give the sun a soft halo from every camera angle — the fresnel coronas
+  // below only read at the limb. Generated once on a small canvas.
+  const glowTexture = useMemo(() => {
+    const size = 256;
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = size;
+    const ctx = canvas.getContext('2d')!;
+    const gradient = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+    gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+    gradient.addColorStop(0.2, 'rgba(255, 247, 214, 0.55)');
+    gradient.addColorStop(0.5, 'rgba(255, 200, 100, 0.16)');
+    gradient.addColorStop(1, 'rgba(255, 179, 71, 0)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, size, size);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    return texture;
+  }, []);
 
   // Memoized corona uniform objects to avoid per-render allocations
   const coronaUniforms = useMemo(() => ({
@@ -915,6 +946,28 @@ function Sun() {
           toneMapped={false}
         />
       </mesh>
+
+      {/* Soft outer halo sprites (additive, no postprocessing) */}
+      <sprite scale={[52, 52, 1]}>
+        <spriteMaterial
+          map={glowTexture}
+          color="#ffb347"
+          blending={THREE.AdditiveBlending}
+          transparent
+          depthWrite={false}
+          opacity={0.32}
+        />
+      </sprite>
+      <sprite scale={[28, 28, 1]}>
+        <spriteMaterial
+          map={glowTexture}
+          color="#fff7d6"
+          blending={THREE.AdditiveBlending}
+          transparent
+          depthWrite={false}
+          opacity={0.65}
+        />
+      </sprite>
 
       {/* Corona - inner layer with animated noise shader */}
       <mesh ref={coronaRef} scale={1.1}>

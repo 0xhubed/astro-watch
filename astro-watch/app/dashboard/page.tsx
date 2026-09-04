@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAsteroidStore } from '@/lib/store';
 import { EnhancedSolarSystem } from '@/components/visualization/3d/EnhancedSolarSystem';
@@ -21,12 +21,12 @@ export default function Home() {
     timeRange,
     viewMode,
     setViewMode,
+    riskFilter,
     getFilteredAsteroids
   } = useAsteroidStore();
-  
+
   const [selectedAsteroid, setSelectedAsteroid] = useState<EnhancedAsteroid | null>(null);
-  const [hoveredAsteroid, setHoveredAsteroid] = useState<number | null>(null);
-  
+
   const { data, isLoading, error, refetch, dataUpdatedAt } = useQuery({
     queryKey: ['asteroids', timeRange],
     queryFn: async () => {
@@ -37,15 +37,17 @@ export default function Home() {
     refetchInterval: 900000, // Refresh every 15 minutes
     staleTime: 300000, // Consider data stale after 5 minutes
   });
-  
+
   // Set asteroids immediately when data is loaded
   useEffect(() => {
     if (data?.asteroids && data.asteroids.length > 0) {
       setAsteroids(data.asteroids);
     }
   }, [data?.asteroids, setAsteroids]);
-  
-  const filteredAsteroids = getFilteredAsteroids();
+
+  // Referentially stable so downstream components don't re-render on
+  // unrelated store changes (#26/#27).
+  const filteredAsteroids = useMemo(() => getFilteredAsteroids(), [asteroids, riskFilter]);
 
   if (isLoading) {
     return (
@@ -121,8 +123,6 @@ export default function Home() {
                 asteroids={filteredAsteroids}
                 selectedAsteroid={selectedAsteroid}
                 onAsteroidSelect={setSelectedAsteroid}
-                hoveredAsteroid={hoveredAsteroid}
-                setHoveredAsteroid={setHoveredAsteroid}
               />
             </motion.div>
           )}

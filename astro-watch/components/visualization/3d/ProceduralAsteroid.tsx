@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, memo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
@@ -45,7 +45,7 @@ interface ProceduralAsteroidProps {
   onPointerOut?: () => void;
 }
 
-export function ProceduralAsteroid({
+export const ProceduralAsteroid = memo(function ProceduralAsteroid({
   position,
   scale,
   seed,
@@ -62,10 +62,19 @@ export function ProceduralAsteroid({
 
   const detail = isSelected ? 2 : isHovered ? 1 : 0;
 
-  const geometry = useMemo(() => {
-    const baseGeo = new THREE.IcosahedronGeometry(1, detail + 1);
-    return displaceGeometry(baseGeo, seed, 0.3);
-  }, [seed, detail]);
+  // Precompute every LOD level once per seed and swap by reference — hover
+  // and selection must not rebuild geometry (#41).
+  const geometries = useMemo(() => {
+    return [0, 1, 2, 3].map(level =>
+      displaceGeometry(new THREE.IcosahedronGeometry(1, level + 1), seed, 0.3)
+    );
+  }, [seed]);
+
+  useEffect(() => {
+    return () => geometries.forEach(g => g.dispose());
+  }, [geometries]);
+
+  const geometry = geometries[Math.min(detail, geometries.length - 1)];
 
   const baseColor = useMemo(() => {
     const type = seed % 3;
@@ -119,4 +128,4 @@ export function ProceduralAsteroid({
       </mesh>
     </group>
   );
-}
+});

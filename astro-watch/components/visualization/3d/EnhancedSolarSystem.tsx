@@ -2,7 +2,7 @@
 
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Html } from '@react-three/drei';
-import { Suspense, useRef, useState, useMemo, useEffect } from 'react';
+import { Suspense, useRef, useState, useMemo, useEffect, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ImpactSimulation } from '@/components/simulation/ImpactSimulation';
 import * as THREE from 'three';
@@ -21,8 +21,6 @@ interface Props {
   asteroids: EnhancedAsteroid[];
   selectedAsteroid?: EnhancedAsteroid | null;
   onAsteroidSelect?: (asteroid: EnhancedAsteroid | null) => void;
-  hoveredAsteroid?: number | null;
-  setHoveredAsteroid?: (id: number | null) => void;
 }
 
 interface CameraPreset {
@@ -1243,13 +1241,82 @@ function EnhancedStarField() {
   );
 }
 
+/**
+ * One asteroid mesh. Hover state lives in the store as an id; this component
+ * subscribes as `hoveredAsteroidId === id` (boolean) so a hover change
+ * re-renders only the previously- and newly-hovered instances (#26/#27).
+ */
+const SceneAsteroid = memo(function SceneAsteroid({
+  asteroid,
+  index,
+  isSelected,
+  onAsteroidSelect,
+  onOpenDetailed,
+}: {
+  asteroid: EnhancedAsteroid;
+  index: number;
+  isSelected: boolean;
+  onAsteroidSelect?: (asteroid: EnhancedAsteroid | null) => void;
+  onOpenDetailed?: () => void;
+}) {
+  const isHovered = useAsteroidStore(s => s.hoveredAsteroidId === asteroid.id);
+  const setHoveredAsteroidId = useAsteroidStore(s => s.setHoveredAsteroidId);
+
+  const orbit = asteroid.orbit;
+  const angle = orbit.phase;
+  const earthRadius = 3.0;
+  const minDistance = earthRadius + 2.0;
+  const actualRadius = Math.max(minDistance, orbit.radius);
+  const x = Math.cos(angle) * actualRadius;
+  const z = Math.sin(angle) * actualRadius;
+  const y = Math.sin(angle * 0.2) * (orbit.inclination * 180 / Math.PI) * 0.15;
+  const distanceFactor = Math.min(1.5, Math.max(0.5, 30 / actualRadius));
+  const baseScale = Math.max(0.15, Math.log10(Math.max(1, asteroid.size)) * 0.35) * distanceFactor;
+  const seed = parseInt(asteroid.id.replace(/\D/g, '').slice(-6)) || index;
+  const riskColor = rarityStyle(asteroid.rarity).hex;
+  const emissiveIntensity = isSelected ? 0.8 : isHovered ? 0.5 : 0.15 + asteroid.rarity * 0.08;
+
+  const handleClick = useCallback(() => {
+    onAsteroidSelect?.(asteroid);
+  }, [onAsteroidSelect, asteroid]);
+
+  const handleDoubleClick = useCallback(() => {
+    onAsteroidSelect?.(asteroid);
+    onOpenDetailed?.();
+  }, [onAsteroidSelect, onOpenDetailed, asteroid]);
+
+  const handlePointerOver = useCallback(() => {
+    setHoveredAsteroidId(asteroid.id);
+    document.body.style.cursor = 'pointer';
+  }, [setHoveredAsteroidId, asteroid.id]);
+
+  const handlePointerOut = useCallback(() => {
+    setHoveredAsteroidId(null);
+    document.body.style.cursor = 'auto';
+  }, [setHoveredAsteroidId]);
+
+  return (
+    <ProceduralAsteroid
+      position={[x, y, z]}
+      scale={baseScale}
+      seed={seed}
+      riskColor={riskColor}
+      emissiveIntensity={emissiveIntensity}
+      isSelected={isSelected}
+      isHovered={isHovered}
+      onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
+      onPointerOver={handlePointerOver}
+      onPointerOut={handlePointerOut}
+    />
+  );
+});
+
 // Static asteroid field - NO FLASHING
-function AsteroidField({ asteroids, onAsteroidSelect, selectedAsteroid, hoveredAsteroid, setHoveredAsteroid, onOpenDetailed, hideLabels }: { 
-  asteroids: EnhancedAsteroid[]; 
+function AsteroidField({ asteroids, onAsteroidSelect, selectedAsteroid, onOpenDetailed, hideLabels }: {
+  asteroids: EnhancedAsteroid[];
   onAsteroidSelect?: (asteroid: EnhancedAsteroid | null) => void;
   selectedAsteroid?: EnhancedAsteroid | null;
-  hoveredAsteroid?: number | null;
-  setHoveredAsteroid?: (index: number | null) => void;
   onOpenDetailed?: () => void;
   hideLabels?: boolean;
 }) {
@@ -1257,53 +1324,19 @@ function AsteroidField({ asteroids, onAsteroidSelect, selectedAsteroid, hoveredA
 
   return (
     <group>
-      {/* Individual procedural asteroids */}
-      {asteroids.map((asteroid, index) => {
-        const orbit = asteroid.orbit;
-        const angle = orbit.phase;
-        const earthRadius = 3.0;
-        const minDistance = earthRadius + 2.0;
-        const actualRadius = Math.max(minDistance, orbit.radius);
-        const x = Math.cos(angle) * actualRadius;
-        const z = Math.sin(angle) * actualRadius;
-        const y = Math.sin(angle * 0.2) * (orbit.inclination * 180 / Math.PI) * 0.15;
-        const distanceFactor = Math.min(1.5, Math.max(0.5, 30 / actualRadius));
-        const baseScale = Math.max(0.15, Math.log10(Math.max(1, asteroid.size)) * 0.35) * distanceFactor;
-        const isSelected = selectedAsteroid?.id === asteroid.id;
-        const isHovered = hoveredAsteroid === index;
-        const seed = parseInt(asteroid.id.replace(/\D/g, '').slice(-6)) || index;
-        const riskColor = rarityStyle(asteroid.rarity).hex;
-        const emissiveIntensity = isSelected ? 0.8 : isHovered ? 0.5 : 0.15 + asteroid.rarity * 0.08;
+      {/* Individual procedural asteroids — each child subscribes narrowly to
+          hover state so hovering re-renders only the two affected rocks */}
+      {asteroids.map((asteroid, index) => (
+        <SceneAsteroid
+          key={asteroid.id}
+          asteroid={asteroid}
+          index={index}
+          isSelected={selectedAsteroid?.id === asteroid.id}
+          onAsteroidSelect={onAsteroidSelect}
+          onOpenDetailed={onOpenDetailed}
+        />
+      ))}
 
-        return (
-          <ProceduralAsteroid
-            key={asteroid.id}
-            position={[x, y, z]}
-            scale={baseScale}
-            seed={seed}
-            riskColor={riskColor}
-            emissiveIntensity={emissiveIntensity}
-            isSelected={isSelected}
-            isHovered={isHovered}
-            onClick={() => {
-              onAsteroidSelect?.(asteroid);
-            }}
-            onDoubleClick={() => {
-              onAsteroidSelect?.(asteroid);
-              onOpenDetailed?.();
-            }}
-            onPointerOver={() => {
-              setHoveredAsteroid?.(index);
-              document.body.style.cursor = 'pointer';
-            }}
-            onPointerOut={() => {
-              setHoveredAsteroid?.(null);
-              document.body.style.cursor = 'auto';
-            }}
-          />
-        );
-      })}
-      
 
       {/* Asteroid particle trails */}
       <AsteroidTrails asteroids={asteroids} />
@@ -1691,15 +1724,12 @@ function AsteroidInfoPanel({ asteroid, onClose, onOpenDetailed, onSimulateImpact
 // Inner scene component that drives animation via useFrame (no React re-renders)
 function SolarSystemScene({
   asteroids, selectedAsteroid, onAsteroidSelect,
-  hoveredAsteroid, setHoveredAsteroid,
   controlsRef, onOpenDetailed, showDetailedView,
   cinematicMode, onCinematicComplete,
 }: {
   asteroids: EnhancedAsteroid[];
   selectedAsteroid?: EnhancedAsteroid | null;
   onAsteroidSelect?: (asteroid: EnhancedAsteroid | null) => void;
-  hoveredAsteroid: number | null;
-  setHoveredAsteroid: (id: number | null) => void;
   controlsRef: React.RefObject<any>;
   onOpenDetailed: () => void;
   showDetailedView: boolean;
@@ -1833,8 +1863,6 @@ function SolarSystemScene({
           asteroids={asteroids}
           onAsteroidSelect={onAsteroidSelect}
           selectedAsteroid={selectedAsteroid}
-          hoveredAsteroid={hoveredAsteroid}
-          setHoveredAsteroid={setHoveredAsteroid}
           onOpenDetailed={onOpenDetailed}
           hideLabels={!!selectedAsteroid || showDetailedView || modalOpen}
         />
@@ -1901,11 +1929,81 @@ function AnimatedPlanet({ planetData, earthInitialAngle, timeRef, hideLabels }: 
   );
 }
 
-export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSelect, hoveredAsteroid, setHoveredAsteroid }: Props) {
+/**
+ * Desktop list row. Subscribes narrowly to hover-by-id so hovering a row
+ * re-renders just that row (and the matching 3D rock), not the whole panel.
+ */
+const AsteroidListRow = memo(function AsteroidListRow({
+  asteroid,
+  index,
+  isSelected,
+  onAsteroidSelect,
+}: {
+  asteroid: EnhancedAsteroid;
+  index: number;
+  isSelected: boolean;
+  onAsteroidSelect?: (asteroid: EnhancedAsteroid | null) => void;
+}) {
+  const isHovered = useAsteroidStore(s => s.hoveredAsteroidId === asteroid.id);
+  const setHoveredAsteroidId = useAsteroidStore(s => s.setHoveredAsteroidId);
+  const rarityInfo = getRarityInfo(asteroid.rarity);
+
+  return (
+    <motion.button
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: Math.min(index * 0.02, 0.5) }}
+      onClick={() => onAsteroidSelect?.(asteroid)}
+      onMouseEnter={() => setHoveredAsteroidId(asteroid.id)}
+      onMouseLeave={() => setHoveredAsteroidId(null)}
+      className={`w-full text-left p-3 rounded-lg transition-all duration-200 ${
+        isSelected
+          ? 'bg-blue-500/30 border border-blue-400/50'
+          : isHovered
+          ? 'bg-white/10 border border-white/20'
+          : 'bg-white/5 border border-transparent hover:bg-white/10'
+      }`}
+    >
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <div className="text-white text-sm font-medium">{asteroid.name}</div>
+          <div className="flex items-center gap-2 mt-1">
+            <div className={`w-2 h-2 rounded-full bg-current ${rarityInfo.color} ${isSelected || isHovered ? 'animate-pulse' : ''}`}></div>
+            <span className={`text-xs ${rarityInfo.color}`}>
+              R{asteroid.rarity}
+            </span>
+            <span className="text-white/40 text-xs">•</span>
+            <span className="text-white/60 text-xs">
+              {asteroid.size >= 1000
+                ? `${(asteroid.size / 1000).toFixed(2)} km`
+                : `${asteroid.size.toFixed(1)} m`
+              }
+            </span>
+          </div>
+        </div>
+        {(isSelected || isHovered) && (
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            className="ml-2"
+          >
+            <div className="w-4 h-4 rounded-full bg-blue-400/30 flex items-center justify-center">
+              <div className="w-2 h-2 rounded-full bg-blue-400"></div>
+            </div>
+          </motion.div>
+        )}
+      </div>
+      <div className="text-white/40 text-xs mt-1">
+        {asteroid.velocity.toFixed(1)} km/s • {asteroid.missDistance.toFixed(2)} AU
+      </div>
+    </motion.button>
+  );
+});
+
+export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSelect }: Props) {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const [activePreset, setActivePreset] = useState('NEO Overview');
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [internalHoveredAsteroid, setInternalHoveredAsteroid] = useState<number | null>(null);
   const [showDetailedView, setShowDetailedView] = useState(false);
   const [showImpactSim, setShowImpactSim] = useState(false);
   const setModalOpen = useAsteroidStore(s => s.setModalOpen);
@@ -1920,10 +2018,6 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
     Math.sin(earthInitialAngle * 0.3) * earthData.inclination * 10,
     Math.sin(earthInitialAngle) * earthData.distanceFromSun
   ];
-  
-  // Use provided props or internal state
-  const actualHoveredAsteroid = hoveredAsteroid ?? internalHoveredAsteroid;
-  const actualSetHoveredAsteroid = setHoveredAsteroid || setInternalHoveredAsteroid;
   
   const handlePresetChange = async (presetName: string) => {
     if (isTransitioning) return;
@@ -2056,9 +2150,7 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
         }}
         style={{ cursor: 'auto' }}
         onPointerMissed={() => {
-          if (actualSetHoveredAsteroid) {
-            actualSetHoveredAsteroid(null);
-          }
+          useAsteroidStore.getState().setHoveredAsteroidId(null);
           document.body.style.cursor = 'auto';
         }}
       >
@@ -2067,8 +2159,6 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
             asteroids={asteroids}
             selectedAsteroid={selectedAsteroid}
             onAsteroidSelect={onAsteroidSelect}
-            hoveredAsteroid={actualHoveredAsteroid}
-            setHoveredAsteroid={actualSetHoveredAsteroid}
             controlsRef={controlsRef}
             onOpenDetailed={() => setShowDetailedView(true)}
             showDetailedView={showDetailedView}
@@ -2128,63 +2218,15 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
         
         <div className="overflow-y-auto h-[calc(100%-80px)] custom-scrollbar">
           <div className="p-2 space-y-1">
-            {asteroids.map((asteroid, index) => {
-              const rarityInfo = getRarityInfo(asteroid.rarity);
-              const isSelected = selectedAsteroid?.id === asteroid.id;
-              const isHovered = actualHoveredAsteroid === index;
-              
-              return (
-                <motion.button
-                  key={asteroid.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: Math.min(index * 0.02, 0.5) }}
-                  onClick={() => onAsteroidSelect?.(asteroid)}
-                  onMouseEnter={() => actualSetHoveredAsteroid(index)}
-                  onMouseLeave={() => actualSetHoveredAsteroid(null)}
-                  className={`w-full text-left p-3 rounded-lg transition-all duration-200 ${
-                    isSelected 
-                      ? 'bg-blue-500/30 border border-blue-400/50' 
-                      : isHovered
-                      ? 'bg-white/10 border border-white/20'
-                      : 'bg-white/5 border border-transparent hover:bg-white/10'
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="text-white text-sm font-medium">{asteroid.name}</div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <div className={`w-2 h-2 rounded-full bg-current ${rarityInfo.color} ${isSelected || isHovered ? 'animate-pulse' : ''}`}></div>
-                        <span className={`text-xs ${rarityInfo.color}`}>
-                          R{asteroid.rarity}
-                        </span>
-                        <span className="text-white/40 text-xs">•</span>
-                        <span className="text-white/60 text-xs">
-                          {asteroid.size >= 1000 
-                            ? `${(asteroid.size / 1000).toFixed(2)} km`
-                            : `${asteroid.size.toFixed(1)} m`
-                          }
-                        </span>
-                      </div>
-                    </div>
-                    {(isSelected || isHovered) && (
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="ml-2"
-                      >
-                        <div className="w-4 h-4 rounded-full bg-blue-400/30 flex items-center justify-center">
-                          <div className="w-2 h-2 rounded-full bg-blue-400"></div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </div>
-                  <div className="text-white/40 text-xs mt-1">
-                    {asteroid.velocity.toFixed(1)} km/s • {asteroid.missDistance.toFixed(2)} AU
-                  </div>
-                </motion.button>
-              );
-            })}
+            {asteroids.map((asteroid, index) => (
+              <AsteroidListRow
+                key={asteroid.id}
+                asteroid={asteroid}
+                index={index}
+                isSelected={selectedAsteroid?.id === asteroid.id}
+                onAsteroidSelect={onAsteroidSelect}
+              />
+            ))}
           </div>
         </div>
       </motion.div>
@@ -2236,8 +2278,7 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
               {asteroids.map((asteroid) => {
                 const rarityInfo = getRarityInfo(asteroid.rarity);
                 const isSelected = selectedAsteroid?.id === asteroid.id;
-                const isHovered = actualHoveredAsteroid === parseInt(asteroid.id);
-                
+
                 return (
                   <motion.button
                     key={asteroid.id}
@@ -2250,10 +2291,8 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     className={`w-full p-3 rounded-lg border transition-all ${
-                      isSelected 
-                        ? 'bg-purple-900/50 border-purple-500' 
-                        : isHovered
-                        ? 'bg-white/10 border-white/30'
+                      isSelected
+                        ? 'bg-purple-900/50 border-purple-500'
                         : 'bg-white/5 border-white/10 hover:bg-white/10'
                     }`}
                   >

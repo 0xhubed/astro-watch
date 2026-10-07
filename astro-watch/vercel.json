@@ -7,10 +7,10 @@
       "maxDuration": 30
     },
     "app/api/monitoring/route.ts": {
-      "maxDuration": 60
+      "maxDuration": 300
     },
     "app/api/chat/route.ts": {
-      "maxDuration": 30
+      "maxDuration": 60
     }
   },
   "headers": [

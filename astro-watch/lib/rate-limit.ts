@@ -45,7 +45,12 @@ async function rateLimitKV(
       await kv.expire(kvKey, windowSec);
     }
 
+    // Heal stuck keys: if the incr raced with a previous window's expiry the
+    // key can exist with no TTL and would block that IP forever.
     const ttl = await kv.ttl(kvKey);
+    if (ttl < 0) {
+      await kv.expire(kvKey, windowSec);
+    }
     const retryAfterSeconds = ttl > 0 ? ttl : windowSec;
 
     return {

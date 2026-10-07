@@ -145,6 +145,7 @@ export function ChatPanel() {
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           onClick={() => { setChatOpen(true); setTimeout(() => inputRef.current?.focus(), 300); }}
+          aria-label="Open chat assistant"
           className="fixed bottom-20 md:bottom-12 right-4 z-50 w-12 h-12 rounded-full bg-gradient-to-br from-purple-600 to-violet-700 shadow-lg shadow-purple-500/30 flex items-center justify-center hover:scale-110 transition-transform"
         >
           <MessageCircle className="w-5 h-5 text-white" />
@@ -164,7 +165,7 @@ export function ChatPanel() {
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.08]">
               <span className="text-sm font-semibold text-gray-200">AstroWatch AI</span>
-              <button onClick={() => setChatOpen(false)} className="text-gray-500 hover:text-gray-300">
+              <button onClick={() => setChatOpen(false)} aria-label="Close chat" className="text-gray-500 hover:text-gray-300">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -179,9 +180,19 @@ export function ChatPanel() {
                   </p>
                 </div>
               )}
-              {messages.map(msg => (
-                <ChatMessage key={msg.id} role={msg.role} content={msg.content} toolCall={msg.toolCalls?.[0]} />
-              ))}
+              {messages.map((msg, i) => {
+                const isLast = i === messages.length - 1;
+                const pending = isLast && isStreaming && msg.role === 'assistant' && !msg.content && !(msg.toolCalls && msg.toolCalls.length > 0);
+                return (
+                  <ChatMessage
+                    key={msg.id}
+                    role={msg.role}
+                    content={msg.content}
+                    toolCalls={msg.toolCalls}
+                    pending={pending}
+                  />
+                );
+              })}
               <div ref={messagesEndRef} />
             </div>
 

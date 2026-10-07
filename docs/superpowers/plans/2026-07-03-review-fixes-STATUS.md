@@ -1,5 +1,34 @@
 # Review Fixes — Status (session ended 2026-07-03)
 
+> **UPDATE 2026-09-04 — session `claude/visual-functional-polish` (base = current `main`).**
+> ALL remaining plan tasks **4–15 are now done** except 14 (largely done
+> earlier: rings + auto-zoom + labeled close present; #73 narrative debounce
+> unverified). Second commit wave added Tasks **7, 8, 10, 9, 11**:
+> API hardening (feed guard, monitoring maxDuration 300, APOD 400/fallback
+> rules, chat full-message validation + 50KB cap + final `tool_choice:'none'`
+> answer), sequential agent tools + rate-limiter TTL healing, deterministic
+> seeded orbits with inclination in radians (consumers convert — scene keeps
+> prior visual scale via deg conversion), hover-by-id in the store with
+> narrowly-subscribed memo'd `SceneAsteroid`/`AsteroidListRow` + precomputed
+> LOD geometries, and Providers/server-layout-metadata + `next/dynamic` views
+> (**dashboard first-load JS 541 kB → 157 kB**). Verified: typecheck, build,
+> lint 48→45 (no new), curl 400s per plan, browser checks (Escape-close,
+> scene stability, selection/cinematic/info panel, charts, hero).
+> Branch not pushed/merged.
+> NEW: `components/landing/HeroOrbits.tsx` — R3F particle-globe landing hero,
+> technique adapted from the ThreeUI MCP catalog examples (Orbital Sphere /
+> Orbital Dust), honoring the user's "keep in mind our mcp server to three js
+> examples" instruction.
+> FOLLOW-UP (same session): real Keplerian orbits — `lib/orbit-mechanics.ts`
+> (mean anomaly → Newton Kepler solve → ω/i/Ω rotation; mean motion
+> n = 0.2/a^1.5 anchored to the scene's Earth rate); orbit data gained
+> ascendingNode/perihelionArgument (deg→rad at ingest); SceneAsteroid,
+> labels, agent annotations and the cinematic follow target all share
+> `asteroidScenePosition()` on the R3F clock; the asteroid field moved to
+> scene root (Sun-centered world ellipses); static trail tubes replaced by
+> per-asteroid orbit paths that brighten on hover/select (the Trajectories
+> toggle lifts all of them).
+
 Execution state of `docs/superpowers/plans/2026-07-03-review-fixes.md`
 (fixes from `docs/review-2026-07-03.md`). Branch: **`claude/review-fixes`**
 (base `ab47046` = main). Not pushed, not merged. `main` untouched.

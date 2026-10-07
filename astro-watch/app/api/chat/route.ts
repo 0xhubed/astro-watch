@@ -144,27 +144,38 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const lastUserMessage = messages.filter(m => m.role === 'user').pop();
-  if (lastUserMessage && lastUserMessage.content.length > MAX_MESSAGE_LENGTH) {
-    return new Response(
-      JSON.stringify({ error: `Message too long (max ${MAX_MESSAGE_LENGTH} characters)` }),
-      { status: 400 },
-    );
+  // Every message must carry string content, and the whole payload is capped.
+  for (const m of messages) {
+    if (!m || typeof m !== 'object' || typeof m.content !== 'string') {
+      return new Response(JSON.stringify({ error: 'Each message needs string content' }), { status: 400 });
+    }
+  }
+  if (JSON.stringify(messages).length > 50_000) {
+    return new Response(JSON.stringify({ error: 'Conversation payload too large' }), { status: 400 });
   }
 
-  // --- Content filter (runs before LLM call — saves tokens) ---
-  if (lastUserMessage) {
-    const filterResult = filterMessage(lastUserMessage.content);
-    if (!filterResult.allowed) {
-      return new Response(JSON.stringify({ error: filterResult.reason }), { status: 400 });
+  // Length cap + content filter apply to EVERY user message, not just the last.
+  for (const m of messages) {
+    if (m.role === 'user') {
+      if (m.content.length > MAX_MESSAGE_LENGTH) {
+        return new Response(
+          JSON.stringify({ error: `Message too long (max ${MAX_MESSAGE_LENGTH} characters)` }),
+          { status: 400 },
+        );
+      }
+      const filterResult = filterMessage(m.content);
+      if (!filterResult.allowed) {
+        return new Response(JSON.stringify({ error: filterResult.reason }), { status: 400 });
+      }
     }
   }
 
-  // --- Message sanitization: only allow user/assistant roles from the client ---
-  // Prevents clients from injecting system or tool role messages.
-  const sanitizedMessages = messages.filter(
-    m => m.role === 'user' || m.role === 'assistant',
-  );
+  // --- Message sanitization: only plain user/assistant text from the client.
+  // Rebuilding the objects strips any client-supplied tool_calls / tool_call_id
+  // and prevents injection of system or tool role messages.
+  const sanitizedMessages: ChatMessage[] = messages
+    .filter(m => m.role === 'user' || m.role === 'assistant')
+    .map(m => ({ role: m.role as 'user' | 'assistant', content: m.content }));
 
   const apiKey = process.env.OLLAMA_CLOUD_API_KEY;
   const baseUrl = process.env.OLLAMA_CLOUD_BASE_URL || 'https://ollama.com/v1';
@@ -191,93 +202,104 @@ export async function POST(request: NextRequest) {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
       };
 
+      // One upstream call to the OpenAI-compatible endpoint. The last
+      // iteration of the tool loop forces `tool_choice: 'none'` so the model
+      // must produce a text answer instead of stopping on tool calls.
+      const callUpstream = (extra: Record<string, unknown> = {}) =>
+        fetch(`${baseUrl}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify({
+            model,
+            messages: allMessages,
+            tools: chatTools,
+            stream: true,
+            ...extra,
+          }),
+          signal: AbortSignal.timeout(25000), // 25s timeout per LLM call
+        });
+
+      // Consume an upstream SSE response: forwards text deltas to the client,
+      // accumulates and returns any tool calls.
+      const consumeStream = async (response: Response) => {
+        const reader = response.body!.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let content = '';
+        let toolCalls: Array<{
+          id: string;
+          type: 'function';
+          function: { name: string; arguments: string };
+        }> = [];
+        let currentToolCall: {
+          id: string;
+          type: 'function';
+          function: { name: string; arguments: string };
+        } | null = null;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (!line.startsWith('data: ')) continue;
+            const data = line.slice(6).trim();
+            if (data === '[DONE]') continue;
+            try {
+              const parsed = JSON.parse(data);
+              const delta = parsed.choices?.[0]?.delta;
+              if (!delta) continue;
+              if (delta.content) {
+                content += delta.content;
+                send({ type: 'text', content: delta.content });
+              }
+              if (delta.tool_calls) {
+                for (const tc of delta.tool_calls) {
+                  if (tc.id) {
+                    if (currentToolCall) toolCalls.push(currentToolCall);
+                    currentToolCall = {
+                      id: tc.id,
+                      type: 'function',
+                      function: { name: tc.function?.name || '', arguments: '' },
+                    };
+                  }
+                  if (tc.function?.name && currentToolCall) {
+                    currentToolCall.function.name = tc.function.name;
+                  }
+                  if (tc.function?.arguments && currentToolCall) {
+                    currentToolCall.function.arguments += tc.function.arguments;
+                  }
+                }
+              }
+            } catch {
+              /* skip malformed SSE frames */
+            }
+          }
+        }
+        if (currentToolCall) toolCalls.push(currentToolCall);
+        return { content, toolCalls };
+      };
+
       try {
-        let loopCount = 0;
-        while (loopCount < 3) {
-          loopCount++;
+        const MAX_TOOL_LOOPS = 3;
+        for (let loopCount = 0; loopCount < MAX_TOOL_LOOPS; loopCount++) {
+          const isFinalPass = loopCount === MAX_TOOL_LOOPS - 1;
 
-          // OpenAI-compatible endpoint on Ollama Cloud
-          const response = await fetch(`${baseUrl}/chat/completions`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${apiKey}`,
-            },
-            body: JSON.stringify({
-              model,
-              messages: allMessages,
-              tools: chatTools,
-              stream: true,
-            }),
-            signal: AbortSignal.timeout(25000), // 25s timeout per LLM call
-          });
-
+          const response = await callUpstream(isFinalPass ? { tool_choice: 'none' } : {});
           if (!response.ok) {
             const errorText = await response.text();
             send({ type: 'error', content: `API error: ${response.status} ${errorText}` });
             break;
           }
 
-          const reader = response.body!.getReader();
-          const decoder = new TextDecoder();
-          let buffer = '';
-          let assistantContent = '';
-          let toolCalls: Array<{
-            id: string;
-            type: 'function';
-            function: { name: string; arguments: string };
-          }> = [];
-          let currentToolCall: {
-            id: string;
-            type: 'function';
-            function: { name: string; arguments: string };
-          } | null = null;
-
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
-
-            for (const line of lines) {
-              if (!line.startsWith('data: ')) continue;
-              const data = line.slice(6).trim();
-              if (data === '[DONE]') continue;
-              try {
-                const parsed = JSON.parse(data);
-                const delta = parsed.choices?.[0]?.delta;
-                if (!delta) continue;
-                if (delta.content) {
-                  assistantContent += delta.content;
-                  send({ type: 'text', content: delta.content });
-                }
-                if (delta.tool_calls) {
-                  for (const tc of delta.tool_calls) {
-                    if (tc.id) {
-                      if (currentToolCall) toolCalls.push(currentToolCall);
-                      currentToolCall = {
-                        id: tc.id,
-                        type: 'function',
-                        function: { name: tc.function?.name || '', arguments: '' },
-                      };
-                    }
-                    if (tc.function?.name && currentToolCall) {
-                      currentToolCall.function.name = tc.function.name;
-                    }
-                    if (tc.function?.arguments && currentToolCall) {
-                      currentToolCall.function.arguments += tc.function.arguments;
-                    }
-                  }
-                }
-              } catch {
-                /* skip malformed SSE frames */
-              }
-            }
-          }
-
-          if (currentToolCall) toolCalls.push(currentToolCall);
-          if (toolCalls.length === 0) break;
+          const { content: assistantContent, toolCalls } = await consumeStream(response);
+          if (toolCalls.length === 0) break; // plain text answer — done
 
           allMessages.push({
             role: 'assistant',
@@ -297,10 +319,6 @@ export async function POST(request: NextRequest) {
             if (sceneCommand) send({ type: 'scene_command', ...sceneCommand });
             allMessages.push({ role: 'tool', content: result, tool_call_id: tc.id });
           }
-
-          toolCalls = [];
-          currentToolCall = null;
-          assistantContent = '';
         }
 
         send({ type: 'done' });

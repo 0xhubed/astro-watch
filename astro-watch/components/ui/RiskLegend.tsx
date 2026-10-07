@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { useState } from 'react';
-import { RARITY_COLORS } from '@/lib/rarity-colors';
+import { RARITY_COLORS, rarityStyle } from '@/lib/rarity-colors';
 
 interface RarityLevel {
   scale: number;
@@ -125,29 +125,21 @@ export function RiskLegend({ expanded = false, position = 'left', onToggle }: Pr
         </motion.div>
       </div>
 
-      <style jsx>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: rgba(255, 255, 255, 0.05);
-          border-radius: 2px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.2);
-          border-radius: 2px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(255, 255, 255, 0.3);
-        }
-      `}</style>
     </motion.div>
   );
 }
 
-// Helper function to get rarity info
+// Helper to get legend info for a rarity value. Colors/labels come from
+// lib/rarity-colors.ts; rarityStyle() also handles NaN / out-of-range input.
 export function getRarityInfo(rarity: number): RarityLevel {
-  return RARITY_SCALE[Math.min(Math.max(0, Math.round(rarity)), 7)];
+  const style = rarityStyle(rarity);
+  return {
+    scale: style.level,
+    level: style.label,
+    color: style.textClass,
+    bgColor: style.bgClass,
+    description: RARITY_DESCRIPTIONS[style.level]
+  };
 }
 
 // Note: color/3D-color lookups now live in lib/rarity-colors.ts (rarityStyle()).

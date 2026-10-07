@@ -17,6 +17,7 @@ import { useMemo } from 'react';
 import { EnhancedAsteroid } from '@/lib/nasa-api';
 import { computeApproachCurve } from '@/lib/approach-curve';
 import { rarityStyle } from '@/lib/rarity-colors';
+import { DARK_TOOLTIP, DARK_TOOLTIP_LABEL } from '@/lib/format';
 
 interface Props {
   asteroids: EnhancedAsteroid[];
@@ -25,19 +26,22 @@ interface Props {
 
 const FULL_COLORS = ['#8b5cf6', '#3b82f6', '#ef4444', '#f59e0b', '#10b981'];
 
-const TODAY = new Date().toISOString().split('T')[0];
-
 // Compact sparkline for a single asteroid
 function CompactTimeline({ asteroid }: { asteroid: EnhancedAsteroid }) {
   const data = useMemo(() => computeApproachCurve(asteroid), [asteroid]);
+  // Gradient id must be unique per asteroid — a shared id collides when
+  // several sparklines are mounted at once (SVG ids are global).
+  const gradientId = `approachGradient-${asteroid.id}`;
+  const today = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const rarityHex = rarityStyle(asteroid.rarity).hex;
 
   return (
     <ResponsiveContainer width="100%" height={60}>
       <AreaChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
         <defs>
-          <linearGradient id="approachGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor={rarityStyle(asteroid.rarity).hex} stopOpacity={0.6} />
-            <stop offset="95%" stopColor={rarityStyle(asteroid.rarity).hex} stopOpacity={0.05} />
+          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor={rarityHex} stopOpacity={0.6} />
+            <stop offset="95%" stopColor={rarityHex} stopOpacity={0.05} />
           </linearGradient>
         </defs>
 
@@ -45,20 +49,14 @@ function CompactTimeline({ asteroid }: { asteroid: EnhancedAsteroid }) {
         <YAxis hide domain={['auto', 'auto']} />
 
         <Tooltip
-          contentStyle={{
-            backgroundColor: '#111827',
-            border: '1px solid rgba(255,255,255,0.1)',
-            borderRadius: '6px',
-            fontSize: '11px',
-            color: '#f3f4f6',
-          }}
-          labelStyle={{ color: '#9ca3af', marginBottom: 2 }}
+          contentStyle={DARK_TOOLTIP}
+          labelStyle={DARK_TOOLTIP_LABEL}
           formatter={(value: number) => [`${value.toFixed(4)} AU`, 'Distance']}
           labelFormatter={(label: string) => label}
         />
 
         <ReferenceLine
-          x={TODAY}
+          x={today}
           stroke="rgba(255,255,255,0.4)"
           strokeDasharray="3 3"
         />
@@ -66,9 +64,9 @@ function CompactTimeline({ asteroid }: { asteroid: EnhancedAsteroid }) {
         <Area
           type="monotone"
           dataKey="distance"
-          stroke={rarityStyle(asteroid.rarity).hex}
+          stroke={rarityHex}
           strokeWidth={1.5}
-          fill="url(#approachGradient)"
+          fill={`url(#${gradientId})`}
           dot={false}
           isAnimationActive={false}
         />
@@ -146,14 +144,8 @@ function FullTimeline({ asteroids }: { asteroids: EnhancedAsteroid[] }) {
             }}
           />
           <Tooltip
-            contentStyle={{
-              backgroundColor: '#111827',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: '8px',
-              fontSize: '12px',
-              color: '#f3f4f6',
-            }}
-            labelStyle={{ color: '#9ca3af', marginBottom: 4 }}
+            contentStyle={DARK_TOOLTIP}
+            labelStyle={DARK_TOOLTIP_LABEL}
             labelFormatter={(v: number) => `Day ${v > 0 ? '+' : ''}${v}`}
             formatter={(value: number, name: string) => {
               const idx = parseInt(name.replace('d', ''), 10);

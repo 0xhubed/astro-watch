@@ -2,7 +2,7 @@
 
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Html } from '@react-three/drei';
-import { Suspense, useRef, useState, useMemo, useEffect } from 'react';
+import { Suspense, useRef, useState, useMemo, useEffect, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ImpactSimulation } from '@/components/simulation/ImpactSimulation';
 import * as THREE from 'three';
@@ -15,14 +15,13 @@ import { ProceduralAsteroid } from './ProceduralAsteroid';
 import { SolarWind, SpaceDust } from './ParticleEffects';
 import { useCinematicCamera } from './CinematicCamera';
 import { AgentAnnotations } from './AgentAnnotations';
+import { asteroidScenePosition, orbitPathPoints } from '@/lib/orbit-mechanics';
 import { ApproachTimeline } from '@/components/visualization/charts/ApproachTimeline';
 
 interface Props {
   asteroids: EnhancedAsteroid[];
   selectedAsteroid?: EnhancedAsteroid | null;
   onAsteroidSelect?: (asteroid: EnhancedAsteroid | null) => void;
-  hoveredAsteroid?: number | null;
-  setHoveredAsteroid?: (id: number | null) => void;
 }
 
 interface CameraPreset {
@@ -51,6 +50,7 @@ const PLANET_DATA = [
     inclination: 0.01,
     textureType: 'rocky',
     initialPhase: 0.3       // Initial orbital position (30% around orbit)
+    // Mercury: airless — no atmosphere rim
   },
   {
     name: 'Venus', 
@@ -60,6 +60,7 @@ const PLANET_DATA = [
     speed: 0.03,            // 225 Earth days
     inclination: 0.006,
     textureType: 'atmospheric',
+    atmosphere: '#ffd27d',  // thick sulfuric haze
     initialPhase: 0.7       // 70% around orbit
   },
   {
@@ -80,6 +81,7 @@ const PLANET_DATA = [
     speed: 0.015,           // 687 Earth days
     inclination: 0.032,
     textureType: 'rocky',
+    atmosphere: '#ff9e6b',  // thin dusty limb
     initialPhase: 0.15      // 15% around orbit
   },
   {
@@ -90,6 +92,7 @@ const PLANET_DATA = [
     speed: 0.008,           // 12 Earth years
     inclination: 0.022,
     textureType: 'gasGiant',
+    atmosphere: '#e8c9a0',
     initialPhase: 0.45      // 45% around orbit
   },
   {
@@ -101,6 +104,7 @@ const PLANET_DATA = [
     inclination: 0.043,
     hasRings: true,
     textureType: 'gasGiant',
+    atmosphere: '#f5d9a8',
     initialPhase: 0.85      // 85% around orbit
   },
   {
@@ -111,6 +115,7 @@ const PLANET_DATA = [
     speed: 0.004,           // 84 Earth years
     inclination: 0.013,
     textureType: 'iceGiant',
+    atmosphere: '#9be7f2',
     initialPhase: 0.55      // 55% around orbit
   },
   {
@@ -158,94 +163,337 @@ const FRESNEL_FRAGMENT_SHADER = `
   }
 `;
 
+// Sun surface: fully procedural plasma. Layered, domain-warped 3D noise
+// (sampled on object-space position, so there are no UV seams at the poles)
+// drives convection granulation, sparse dark sunspot regions and bright
+// faculae through a physically-motivated color ramp. This is how the good
+// WebGL suns are built — the surface genuinely churns instead of sliding a
+// photo around.
+const SUN_SURFACE_VERTEX_SHADER = `
+  varying vec3 vPos;
+  varying vec3 vNormalW;
+  varying vec3 vWorldPosition;
+  void main() {
+    vPos = position;
+    vNormalW = normalize(mat3(modelMatrix) * normal);
+    vec4 worldPos = modelMatrix * vec4(position, 1.0);
+    vWorldPosition = worldPos.xyz;
+    gl_Position = projectionMatrix * viewMatrix * worldPos;
+  }
+`;
+
+const SUN_SURFACE_FRAGMENT_SHADER = `
+  uniform float time;
+  varying vec3 vPos;
+  varying vec3 vNormalW;
+  varying vec3 vWorldPosition;
+
+  float hash(vec3 p) {
+    p = fract(p * 0.3183099 + 0.1);
+    p *= 17.0;
+    return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+  }
+  float noise(vec3 x) {
+    vec3 i = floor(x);
+    vec3 f = fract(x);
+    f = f * f * (3.0 - 2.0 * f);
+    return mix(
+      mix(mix(hash(i + vec3(0,0,0)), hash(i + vec3(1,0,0)), f.x),
+          mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
+      mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x),
+          mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y),
+      f.z);
+  }
+  float fbm(vec3 p) {
+    float v = 0.0;
+    float a = 0.5;
+    for (int i = 0; i < 5; i++) {
+      v += a * noise(p);
+      p *= 2.15;
+      a *= 0.5;
+    }
+    return v;
+  }
+
+  void main() {
+    vec3 p = normalize(vPos);
+    float t = time * 0.045;
+
+    // Domain-warped convection: large cells advected by slower flows
+    vec3 q = p * 3.0;
+    float flow = fbm(q * 0.6 + vec3(t * 0.6, -t * 0.4, t * 0.5));
+    float n1 = fbm(q + vec3(t, t * 0.7, -t * 0.5) + flow * 1.8);
+    float n2 = fbm(q * 2.4 + vec3(-t * 1.2, t * 0.9, t * 0.6) + n1 * 1.6);
+    float v = n1 * 0.62 + n2 * 0.55;
+
+    // Sparse dark sunspot regions — slow, so they persist while churning
+    float spots = smoothstep(0.60, 0.76, fbm(q * 1.1 + vec3(t * 0.12)));
+    v *= 1.0 - spots * 0.6;
+
+    // Color ramp: umbra -> dim plasma -> photosphere -> white-hot faculae
+    float lum = clamp(v, 0.0, 1.15);
+    vec3 c1 = vec3(0.42, 0.07, 0.0);
+    vec3 c2 = vec3(0.98, 0.34, 0.02);
+    vec3 c3 = vec3(1.0, 0.66, 0.12);
+    vec3 c4 = vec3(1.0, 0.96, 0.75);
+    vec3 col = mix(c1, c2, smoothstep(0.0, 0.38, lum));
+    col = mix(col, c3, smoothstep(0.32, 0.72, lum));
+    col = mix(col, c4, smoothstep(0.68, 1.08, lum));
+
+    // Limb darkening — the disc dims and reddens toward its edge
+    vec3 viewDir = normalize(cameraPosition - vWorldPosition);
+    float mu = clamp(dot(normalize(vNormalW), viewDir), 0.0, 1.0);
+    col *= 0.62 + 0.5 * pow(mu, 0.6);
+
+    gl_FragColor = vec4(col, 1.0);
+  }
+`;
+
 // Reusable constant objects to avoid per-render allocations
 const SUN_EMISSIVE_COLOR = new THREE.Color(1.0, 0.6, 0.1);
 const EARTH_NORMAL_SCALE = new THREE.Vector2(0.2, 0.2);
 
-// Create procedural planet textures
-function createPlanetTexture(textureType: string, baseColor: string): THREE.Texture {
+// Small seeded PRNG so planet surfaces are identical on every reload
+// (matches the deterministic-placement approach used for asteroid orbits).
+function seededRandom(seedStr: string): () => number {
+  let h = 1779033703 ^ seedStr.length;
+  for (let i = 0; i < seedStr.length; i++) {
+    h = Math.imul(h ^ seedStr.charCodeAt(i), 3432918353);
+    h = (h << 13) | (h >>> 19);
+  }
+  return () => {
+    h = Math.imul(h ^ (h >>> 16), 2246822507);
+    h = Math.imul(h ^ (h >>> 13), 3266489909);
+    h ^= h >>> 16;
+    return (h >>> 0) / 4294967296;
+  };
+}
+
+// Create procedural planet textures — richer per-planet surfaces
+function createPlanetTexture(textureType: string, baseColor: string, name: string): THREE.Texture {
   const canvas = document.createElement('canvas');
   canvas.width = 512;
   canvas.height = 256;
   const ctx = canvas.getContext('2d')!;
-  
+  const rand = seededRandom(name);
+
   switch (textureType) {
-    case 'rocky':
-      // Rocky planet texture (Mercury, Mars)
-      ctx.fillStyle = baseColor;
-      ctx.fillRect(0, 0, 512, 256);
-      
-      // Add craters and surface features
-      for (let i = 0; i < 50; i++) {
-        const x = Math.random() * 512;
-        const y = Math.random() * 256;
-        const radius = Math.random() * 15 + 3;
-        
-        ctx.beginPath();
-        ctx.arc(x, y, radius, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(0,0,0,${0.2 + Math.random() * 0.3})`;
-        ctx.fill();
+    case 'rocky': {
+      if (name === 'Mars') {
+        // Rust basalt plains with darker regions and white polar caps
+        const base = ctx.createLinearGradient(0, 0, 512, 256);
+        base.addColorStop(0, '#b8543f');
+        base.addColorStop(0.5, baseColor);
+        base.addColorStop(1, '#a04434');
+        ctx.fillStyle = base;
+        ctx.fillRect(0, 0, 512, 256);
+        // Dark basaltic patches (Syrtis-Major-like)
+        for (let i = 0; i < 14; i++) {
+          const x = rand() * 512;
+          const y = 50 + rand() * 156;
+          const rx = 30 + rand() * 70;
+          const ry = 12 + rand() * 26;
+          ctx.beginPath();
+          ctx.ellipse(x, y, rx, ry, rand() * Math.PI, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(90, 40, 28, ${0.15 + rand() * 0.25})`;
+          ctx.fill();
+        }
+        // Bright dust swirls
+        for (let i = 0; i < 20; i++) {
+          const x = rand() * 512;
+          const y = 40 + rand() * 176;
+          ctx.beginPath();
+          ctx.ellipse(x, y, 20 + rand() * 40, 6 + rand() * 12, rand() * Math.PI, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(230, 160, 110, ${0.08 + rand() * 0.14})`;
+          ctx.fill();
+        }
+        // Polar caps
+        for (const [cy, h] of [[0, 26], [256, 22]] as const) {
+          const cap = ctx.createLinearGradient(0, cy === 0 ? 0 : 256 - h, 0, cy === 0 ? h : 256);
+          cap.addColorStop(0, 'rgba(245, 245, 245, 0.95)');
+          cap.addColorStop(1, 'rgba(245, 245, 245, 0)');
+          ctx.fillStyle = cap;
+          ctx.fillRect(0, cy === 0 ? 0 : 256 - h, 512, h);
+        }
+      } else {
+        // Mercury: grey-tan regolith with many craters of varied shading
+        const base = ctx.createLinearGradient(0, 0, 512, 256);
+        base.addColorStop(0, '#9a8867');
+        base.addColorStop(0.5, baseColor);
+        base.addColorStop(1, '#7a6a48');
+        ctx.fillStyle = base;
+        ctx.fillRect(0, 0, 512, 256);
+        for (let i = 0; i < 3000; i++) {
+          const x = rand() * 512;
+          const y = rand() * 256;
+          const b = 100 + Math.floor(rand() * 70);
+          ctx.fillStyle = `rgb(${b}, ${b - 8}, ${b - 22})`;
+          ctx.fillRect(x, y, 1 + rand() * 2, 1 + rand() * 2);
+        }
+        for (let i = 0; i < 70; i++) {
+          const x = rand() * 512;
+          const y = rand() * 256;
+          const radius = 2 + rand() * 14;
+          const bright = rand() > 0.4;
+          ctx.beginPath();
+          ctx.arc(x, y, radius, 0, Math.PI * 2);
+          ctx.fillStyle = bright
+            ? `rgba(210, 195, 165, ${0.12 + rand() * 0.18})`
+            : `rgba(30, 24, 16, ${0.15 + rand() * 0.25})`;
+          ctx.fill();
+          if (!bright && radius > 5) {
+            ctx.beginPath();
+            ctx.arc(x, y, radius * 0.45, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(220, 208, 180, ${0.15 + rand() * 0.15})`;
+            ctx.fill();
+          }
+        }
       }
       break;
-      
-    case 'atmospheric':
-      // Venus - thick atmosphere
+    }
+
+    case 'atmospheric': {
+      // Venus: thick sulfuric cloud deck — swirled cream/yellow streaks
       const gradient = ctx.createRadialGradient(256, 128, 0, 256, 128, 256);
-      gradient.addColorStop(0, '#ffeb3b');
-      gradient.addColorStop(0.7, '#ffc107');
-      gradient.addColorStop(1, '#ff8f00');
+      gradient.addColorStop(0, '#ffe9a8');
+      gradient.addColorStop(0.7, '#f5c04e');
+      gradient.addColorStop(1, '#d98e2b');
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, 512, 256);
-      
-      // Add atmospheric bands
-      for (let i = 0; i < 8; i++) {
-        ctx.fillStyle = `rgba(255,255,255,${0.1 + Math.random() * 0.2})`;
-        ctx.fillRect(0, i * 32, 512, 16);
-      }
-      break;
-      
-    case 'gasGiant':
-      // Jupiter/Saturn - banded gas giant
-      ctx.fillStyle = baseColor;
-      ctx.fillRect(0, 0, 512, 256);
-      
-      // Add horizontal bands
-      const bandColors = ['rgba(139,121,94,0.8)', 'rgba(160,130,98,0.6)', 'rgba(205,133,63,0.4)'];
-      for (let i = 0; i < 12; i++) {
-        ctx.fillStyle = bandColors[i % bandColors.length];
-        ctx.fillRect(0, i * 21, 512, 10 + Math.random() * 8);
-      }
-      
-      // Add the Great Red Spot for Jupiter
-      if (baseColor === '#d8ca9d') {
+      for (let i = 0; i < 46; i++) {
+        const y = rand() * 256;
+        const thickness = 4 + rand() * 14;
+        const drift = (rand() - 0.5) * 200;
         ctx.beginPath();
-        ctx.ellipse(350, 140, 40, 25, 0, 0, Math.PI * 2);
-        ctx.fillStyle = '#cd5c5c';
+        for (let x = 0; x <= 512; x += 16) {
+          const yy = y + Math.sin((x + drift) * 0.02 + i) * 7;
+          if (x === 0) ctx.moveTo(x, yy);
+          else ctx.lineTo(x, yy);
+        }
+        ctx.strokeStyle = `rgba(255, 244, 214, ${0.06 + rand() * 0.16})`;
+        ctx.lineWidth = thickness;
+        ctx.stroke();
+      }
+      // Y-shaped equatorial cloud feature (Venus's signature UV marking)
+      ctx.beginPath();
+      ctx.moveTo(180, 40);
+      ctx.quadraticCurveTo(300, 128, 180, 216);
+      ctx.quadraticCurveTo(330, 128, 330, 40);
+      ctx.strokeStyle = 'rgba(200, 150, 60, 0.18)';
+      ctx.lineWidth = 26;
+      ctx.stroke();
+      break;
+    }
+
+    case 'gasGiant': {
+      if (name === 'Saturn') {
+        // Softer pale-gold banding
+        ctx.fillStyle = baseColor;
+        ctx.fillRect(0, 0, 512, 256);
+        const saturnBands = ['#e8c890', '#f0d8a8', '#d4b078', '#f5e2bc', '#c9a86e'];
+        let y = 0;
+        let bandIdx = 0;
+        while (y < 256) {
+          const h = 10 + rand() * 26;
+          ctx.fillStyle = saturnBands[bandIdx % saturnBands.length];
+          ctx.globalAlpha = 0.25 + rand() * 0.4;
+          ctx.fillRect(0, y, 512, h);
+          y += h;
+          bandIdx++;
+        }
+        ctx.globalAlpha = 1;
+        // Faint polar hexagon-ish darkening
+        const pole = ctx.createLinearGradient(0, 0, 0, 40);
+        pole.addColorStop(0, 'rgba(120, 100, 60, 0.35)');
+        pole.addColorStop(1, 'rgba(120, 100, 60, 0)');
+        ctx.fillStyle = pole;
+        ctx.fillRect(0, 0, 512, 40);
+      } else {
+        // Jupiter: wavy belts and zones with turbulent edges
+        ctx.fillStyle = '#c9a97e';
+        ctx.fillRect(0, 0, 512, 256);
+        const bands = [
+          { y: 18, h: 16, c: '#a67c52' }, { y: 40, h: 20, c: '#e3cfa8' },
+          { y: 66, h: 26, c: '#b5895c' }, { y: 98, h: 22, c: '#ead9b8' },
+          { y: 126, h: 30, c: '#a5714a' }, { y: 162, h: 20, c: '#e8d5b0' },
+          { y: 188, h: 24, c: '#ad8158' }, { y: 218, h: 18, c: '#d9c39c' },
+        ];
+        for (const band of bands) {
+          ctx.beginPath();
+          for (let x = 0; x <= 512; x += 8) {
+            const wob = Math.sin(x * 0.03 + band.y) * 3 + Math.sin(x * 0.011) * 4;
+            if (x === 0) ctx.moveTo(x, band.y + wob);
+            else ctx.lineTo(x, band.y + wob);
+          }
+          for (let x = 512; x >= 0; x -= 8) {
+            const wob = Math.sin(x * 0.03 + band.y) * 3 + Math.sin(x * 0.011) * 4;
+            ctx.lineTo(x, band.y + band.h + wob);
+          }
+          ctx.closePath();
+          ctx.fillStyle = band.c;
+          ctx.globalAlpha = 0.75;
+          ctx.fill();
+        }
+        ctx.globalAlpha = 1;
+        // Turbulent white ovals
+        for (let i = 0; i < 8; i++) {
+          ctx.beginPath();
+          ctx.ellipse(rand() * 512, 30 + rand() * 196, 5 + rand() * 10, 3 + rand() * 5, 0, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(245, 238, 220, ${0.3 + rand() * 0.3})`;
+          ctx.fill();
+        }
+        // Great Red Spot with rim + pale core
+        ctx.beginPath();
+        ctx.ellipse(340, 152, 52, 28, -0.08, 0, Math.PI * 2);
+        ctx.fillStyle = '#b04430';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(340, 152, 44, 22, -0.08, 0, Math.PI * 2);
+        ctx.fillStyle = '#c85a3e';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(336, 150, 22, 11, -0.08, 0, Math.PI * 2);
+        ctx.fillStyle = '#e08a6a';
         ctx.fill();
       }
       break;
-      
-    case 'iceGiant':
-      // Uranus/Neptune - ice giants
-      const iceGradient = ctx.createRadialGradient(256, 128, 0, 256, 128, 200);
-      iceGradient.addColorStop(0, baseColor);
-      iceGradient.addColorStop(0.8, '#1976d2');
-      iceGradient.addColorStop(1, '#0d47a1');
+    }
+
+    case 'iceGiant': {
+      const deep = name === 'Neptune' ? '#2a4bb8' : '#2ba3c9';
+      const iceGradient = ctx.createLinearGradient(0, 0, 512, 256);
+      iceGradient.addColorStop(0, deep);
+      iceGradient.addColorStop(0.5, baseColor);
+      iceGradient.addColorStop(1, deep);
       ctx.fillStyle = iceGradient;
       ctx.fillRect(0, 0, 512, 256);
-      
-      // Add subtle atmospheric features
-      for (let i = 0; i < 6; i++) {
-        ctx.fillStyle = `rgba(255,255,255,${0.05 + Math.random() * 0.1})`;
-        ctx.fillRect(0, i * 42, 512, 20);
+      // Subtle parallel haze bands
+      for (let i = 0; i < 10; i++) {
+        const y = rand() * 256;
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.03 + rand() * 0.07})`;
+        ctx.fillRect(0, y, 512, 8 + rand() * 18);
+      }
+      if (name === 'Neptune') {
+        // Great Dark Spot + bright methane clouds
+        ctx.beginPath();
+        ctx.ellipse(300, 120, 46, 22, 0.1, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(15, 30, 90, 0.55)';
+        ctx.fill();
+        for (let i = 0; i < 5; i++) {
+          ctx.beginPath();
+          ctx.ellipse(rand() * 512, 60 + rand() * 140, 16 + rand() * 22, 4 + rand() * 6, 0, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(255, 255, 255, ${0.25 + rand() * 0.3})`;
+          ctx.fill();
+        }
       }
       break;
-      
+    }
+
     default:
       ctx.fillStyle = baseColor;
       ctx.fillRect(0, 0, 512, 256);
   }
-  
+
   return new THREE.CanvasTexture(canvas);
 }
 
@@ -343,10 +591,12 @@ function createMoonTexture(): THREE.Texture {
   return new THREE.CanvasTexture(canvas);
 }
 
-
 function Moon({ earthPosition, hideLabels }: { earthPosition: [number, number, number]; hideLabels?: boolean }) {
   const meshRef = useRef<THREE.Mesh>(null);
   const groupRef = useRef<THREE.Group>(null);
+  // Moon label is only shown when the camera is near the Moon — at system
+  // scale it otherwise collides with the Earth label (review #52).
+  const [showLabel, setShowLabel] = useState(false);
 
   // Load NASA LROC moon texture with procedural fallback
   const [moonTexture, setMoonTexture] = useState<THREE.Texture>(() => createMoonTexture());
@@ -383,6 +633,14 @@ function Moon({ earthPosition, hideLabels }: { earthPosition: [number, number, n
       groupRef.current.position.set(x, y, z);
       // Tidally locked - slow sync rotation
       meshRef.current.rotation.y = moonAngle + Math.PI;
+
+      // Hysteresis: show within 45 units, hide beyond 60 — avoids flicker
+      // at the threshold and only re-renders on state crossings.
+      const camDist = state.camera.position.distanceTo(groupRef.current.position);
+      setShowLabel(prev => {
+        const next = prev ? camDist < 60 : camDist < 45;
+        return next === prev ? prev : next;
+      });
     }
   });
 
@@ -401,7 +659,7 @@ function Moon({ earthPosition, hideLabels }: { earthPosition: [number, number, n
       </mesh>
 
       {/* Moon label */}
-      {!hideLabels && (
+      {!hideLabels && showLabel && (
         <Html position={[0, 2.5, 0]} center style={{ zIndex: 1 }}>
           <div className="bg-black/90 text-white px-3 py-1 rounded-lg text-sm font-medium pointer-events-none border border-white/20">
             Moon
@@ -861,10 +1119,37 @@ function Sun() {
   const sunRef = useRef<THREE.Mesh>(null);
   const coronaRef = useRef<THREE.Mesh>(null);
   const atmosphereRef = useRef<THREE.Mesh>(null);
-  
+
   // Sun corona shader material refs
   const coronaShaderRef = useRef<THREE.ShaderMaterial>(null);
   const outerCoronaShaderRef = useRef<THREE.ShaderMaterial>(null);
+
+
+  // Billboard glow sprites (review #49): additive radial-gradient billboards
+  // give the sun a soft halo from every camera angle — the fresnel coronas
+  // below only read at the limb. Generated once on a small canvas.
+  const glowTexture = useMemo(() => {
+    const size = 256;
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = size;
+    const ctx = canvas.getContext('2d')!;
+    const gradient = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+    gradient.addColorStop(0, 'rgba(255, 255, 255, 1)');
+    gradient.addColorStop(0.2, 'rgba(255, 247, 214, 0.55)');
+    gradient.addColorStop(0.5, 'rgba(255, 200, 100, 0.16)');
+    gradient.addColorStop(1, 'rgba(255, 179, 71, 0)');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, size, size);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    return texture;
+  }, []);
+
+  // Procedural sun surface shader
+  const sunShaderRef = useRef<THREE.ShaderMaterial>(null);
+  const sunSurfaceUniforms = useMemo(() => ({
+    time: { value: 0 },
+  }), []);
 
   // Memoized corona uniform objects to avoid per-render allocations
   const coronaUniforms = useMemo(() => ({
@@ -900,22 +1185,36 @@ function Sun() {
     if (outerCoronaShaderRef.current) {
       outerCoronaShaderRef.current.uniforms.time.value = state.clock.elapsedTime;
     }
+    if (sunShaderRef.current) {
+      sunShaderRef.current.uniforms.time.value = state.clock.elapsedTime;
+    }
   });
 
   return (
     <group position={[0, 0, 0]}>
-      {/* Main Sun body - HDR emissive for bloom */}
+      {/* Main Sun body - procedural plasma surface, limb-darkened */}
       <mesh ref={sunRef}>
         <sphereGeometry args={[10, 128, 64]} />
-        <meshStandardMaterial
-          color={SUN_EMISSIVE_COLOR}
-          emissive={SUN_EMISSIVE_COLOR}
-          emissiveIntensity={3.0}
-          roughness={1}
-          metalness={0}
-          toneMapped={false}
+        <shaderMaterial
+          ref={sunShaderRef}
+          uniforms={sunSurfaceUniforms}
+          vertexShader={SUN_SURFACE_VERTEX_SHADER}
+          fragmentShader={SUN_SURFACE_FRAGMENT_SHADER}
         />
       </mesh>
+
+      {/* Soft wide halo (additive, no postprocessing) — kept away from the
+          disc so the surface texture stays readable */}
+      <sprite scale={[48, 48, 1]}>
+        <spriteMaterial
+          map={glowTexture}
+          color="#ffb347"
+          blending={THREE.AdditiveBlending}
+          transparent
+          depthWrite={false}
+          opacity={0.3}
+        />
+      </sprite>
 
       {/* Corona - inner layer with animated noise shader */}
       <mesh ref={coronaRef} scale={1.1}>
@@ -1191,83 +1490,117 @@ function EnhancedStarField() {
   );
 }
 
-// Static asteroid field - NO FLASHING
-function AsteroidField({ asteroids, onAsteroidSelect, selectedAsteroid, hoveredAsteroid, setHoveredAsteroid, onOpenDetailed, hideLabels }: { 
-  asteroids: EnhancedAsteroid[]; 
+/**
+ * One asteroid mesh, propagated along its real Keplerian orbit. Hover state
+ * lives in the store as an id; this component subscribes as
+ * `hoveredAsteroidId === id` (boolean) so a hover change re-renders only the
+ * previously- and newly-hovered instances (#26/#27). Motion is driven by
+ * mutating the wrapper group in useFrame — no React re-renders per frame.
+ */
+const SceneAsteroid = memo(function SceneAsteroid({
+  asteroid,
+  index,
+  isSelected,
+  onAsteroidSelect,
+  onOpenDetailed,
+}: {
+  asteroid: EnhancedAsteroid;
+  index: number;
+  isSelected: boolean;
+  onAsteroidSelect?: (asteroid: EnhancedAsteroid | null) => void;
+  onOpenDetailed?: () => void;
+}) {
+  const isHovered = useAsteroidStore(s => s.hoveredAsteroidId === asteroid.id);
+  const setHoveredAsteroidId = useAsteroidStore(s => s.setHoveredAsteroidId);
+  const groupRef = useRef<THREE.Group>(null);
+
+  // Initial placement at t=0 so the rock never flashes at the origin.
+  const initialPosition = useMemo(
+    () => asteroidScenePosition(asteroid.orbit, 0),
+    [asteroid.orbit]
+  );
+
+  useFrame((state) => {
+    if (groupRef.current) {
+      const [x, y, z] = asteroidScenePosition(asteroid.orbit, state.clock.elapsedTime);
+      groupRef.current.position.set(x, y, z);
+    }
+  });
+
+  const distanceFactor = Math.min(1.5, Math.max(0.5, 30 / (asteroid.orbit.semi_major_axis * 64)));
+  const baseScale = Math.max(0.15, Math.log10(Math.max(1, asteroid.size)) * 0.35) * distanceFactor;
+  const seed = parseInt(asteroid.id.replace(/\D/g, '').slice(-6)) || index;
+  const riskColor = rarityStyle(asteroid.rarity).hex;
+  const emissiveIntensity = isSelected ? 0.8 : isHovered ? 0.5 : 0.15 + asteroid.rarity * 0.08;
+
+  const handleClick = useCallback(() => {
+    onAsteroidSelect?.(asteroid);
+  }, [onAsteroidSelect, asteroid]);
+
+  const handleDoubleClick = useCallback(() => {
+    onAsteroidSelect?.(asteroid);
+    onOpenDetailed?.();
+  }, [onAsteroidSelect, onOpenDetailed, asteroid]);
+
+  const handlePointerOver = useCallback(() => {
+    setHoveredAsteroidId(asteroid.id);
+    document.body.style.cursor = 'pointer';
+  }, [setHoveredAsteroidId, asteroid.id]);
+
+  const handlePointerOut = useCallback(() => {
+    setHoveredAsteroidId(null);
+    document.body.style.cursor = 'auto';
+  }, [setHoveredAsteroidId]);
+
+  return (
+    <group ref={groupRef} position={initialPosition}>
+      <ProceduralAsteroid
+        position={[0, 0, 0]}
+        scale={baseScale}
+        seed={seed}
+        riskColor={riskColor}
+        emissiveIntensity={emissiveIntensity}
+        isSelected={isSelected}
+        isHovered={isHovered}
+        onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
+        onPointerOver={handlePointerOver}
+        onPointerOut={handlePointerOut}
+      />
+    </group>
+  );
+});
+
+// Asteroid field - rocks ride Keplerian ellipses over static orbit paths
+function AsteroidField({ asteroids, onAsteroidSelect, selectedAsteroid, onOpenDetailed, hideLabels }: {
+  asteroids: EnhancedAsteroid[];
   onAsteroidSelect?: (asteroid: EnhancedAsteroid | null) => void;
   selectedAsteroid?: EnhancedAsteroid | null;
-  hoveredAsteroid?: number | null;
-  setHoveredAsteroid?: (index: number | null) => void;
   onOpenDetailed?: () => void;
   hideLabels?: boolean;
 }) {
-  const { showTrajectories } = useAsteroidStore();
-
   return (
     <group>
-      {/* Individual procedural asteroids */}
-      {asteroids.map((asteroid, index) => {
-        const orbit = asteroid.orbit;
-        const angle = orbit.phase;
-        const earthRadius = 3.0;
-        const minDistance = earthRadius + 2.0;
-        const actualRadius = Math.max(minDistance, orbit.radius);
-        const x = Math.cos(angle) * actualRadius;
-        const z = Math.sin(angle) * actualRadius;
-        const y = Math.sin(angle * 0.2) * orbit.inclination * 0.15;
-        const distanceFactor = Math.min(1.5, Math.max(0.5, 30 / actualRadius));
-        const baseScale = Math.max(0.15, Math.log10(Math.max(1, asteroid.size)) * 0.35) * distanceFactor;
-        const isSelected = selectedAsteroid?.id === asteroid.id;
-        const isHovered = hoveredAsteroid === index;
-        const seed = parseInt(asteroid.id.replace(/\D/g, '').slice(-6)) || index;
-        const riskColor = rarityStyle(asteroid.rarity).hex;
-        const emissiveIntensity = isSelected ? 0.8 : isHovered ? 0.5 : 0.15 + asteroid.rarity * 0.08;
+      {/* Individual procedural asteroids — each child subscribes narrowly to
+          hover state so hovering re-renders only the two affected rocks */}
+      {asteroids.map((asteroid, index) => (
+        <SceneAsteroid
+          key={asteroid.id}
+          asteroid={asteroid}
+          index={index}
+          isSelected={selectedAsteroid?.id === asteroid.id}
+          onAsteroidSelect={onAsteroidSelect}
+          onOpenDetailed={onOpenDetailed}
+        />
+      ))}
 
-        return (
-          <ProceduralAsteroid
-            key={asteroid.id}
-            position={[x, y, z]}
-            scale={baseScale}
-            seed={seed}
-            riskColor={riskColor}
-            emissiveIntensity={emissiveIntensity}
-            isSelected={isSelected}
-            isHovered={isHovered}
-            onClick={() => {
-              onAsteroidSelect?.(asteroid);
-            }}
-            onDoubleClick={() => {
-              onAsteroidSelect?.(asteroid);
-              onOpenDetailed?.();
-            }}
-            onPointerOver={() => {
-              setHoveredAsteroid?.(index);
-              document.body.style.cursor = 'pointer';
-            }}
-            onPointerOut={() => {
-              setHoveredAsteroid?.(null);
-              document.body.style.cursor = 'auto';
-            }}
-          />
-        );
-      })}
-      
+      {/* Elliptical orbit paths (brighten on hover/select or via the
+          Trajectories toggle) */}
+      <AsteroidOrbitPaths asteroids={asteroids} selectedAsteroidId={selectedAsteroid?.id} />
 
-      {/* Asteroid particle trails */}
-      <AsteroidTrails asteroids={asteroids} />
-      
       {/* Asteroid Names */}
       {selectedAsteroid && !hideLabels && (
         <AsteroidLabel asteroid={selectedAsteroid} />
-      )}
-      
-      {/* Trajectory Lines - only for filtered asteroids */}
-      {showTrajectories && (
-        <group>
-          {asteroids.slice(0, Math.min(5, asteroids.length)).map((asteroid, i) => (
-            <TrajectoryLine key={asteroid.id} asteroid={asteroid} />
-          ))}
-        </group>
       )}
     </group>
   );
@@ -1275,159 +1608,91 @@ function AsteroidField({ asteroids, onAsteroidSelect, selectedAsteroid, hoveredA
 
 // Asteroid name label
 function AsteroidLabel({ asteroid }: { asteroid: EnhancedAsteroid }) {
-  const orbit = asteroid.orbit;
-  const angle = orbit.phase;
-  const actualRadius = orbit.radius; // Use actual distance
-  
-  const x = Math.cos(angle) * actualRadius;
-  const z = Math.sin(angle) * actualRadius;
-  const y = Math.sin(angle * 0.2) * orbit.inclination * 0.15;
-  
-  return (
-    <Html position={[x, y + 2, z]} center style={{ zIndex: 1 }}>
-      <div className="bg-black/80 text-white px-2 py-1 rounded text-xs pointer-events-none whitespace-nowrap">
-        {asteroid.name}
-      </div>
-    </Html>
-  );
-}
+  const groupRef = useRef<THREE.Group>(null);
 
-// Particle trails for asteroids
-function AsteroidTrails({ asteroids }: { asteroids: EnhancedAsteroid[] }) {
-  const trailsRef = useRef<THREE.Points>(null);
-  
-  const trailData = useMemo(() => {
-    const positions = new Float32Array(asteroids.length * 20 * 3); // 20 trail points per asteroid
-    const colors = new Float32Array(asteroids.length * 20 * 3);
-    const alphas = new Float32Array(asteroids.length * 20);
-    
-    asteroids.forEach((asteroid, asteroidIndex) => {
-      const orbit = asteroid.orbit;
-      const rarityColor = rarityStyle(asteroid.rarity).hex;
-      const rgb = parseInt(rarityColor.slice(1), 16);
-      const baseColor = [(rgb >> 16) / 255, ((rgb >> 8) & 0xff) / 255, (rgb & 0xff) / 255];
-
-      for (let i = 0; i < 20; i++) {
-        const trailIndex = asteroidIndex * 20 + i;
-        const angle = orbit.phase - (i * 0.05);
-
-        const actualRadius = Math.max(5.0, orbit.radius);
-        const x = Math.cos(angle) * actualRadius;
-        const z = Math.sin(angle) * actualRadius;
-        const y = Math.sin(angle * 0.2) * orbit.inclination * 0.15;
-
-        positions[trailIndex * 3] = x;
-        positions[trailIndex * 3 + 1] = y;
-        positions[trailIndex * 3 + 2] = z;
-
-        const alpha = (20 - i) / 20;
-        colors[trailIndex * 3] = baseColor[0] * alpha;
-        colors[trailIndex * 3 + 1] = baseColor[1] * alpha;
-        colors[trailIndex * 3 + 2] = baseColor[2] * alpha;
-        alphas[trailIndex] = alpha * 0.8;
-      }
-    });
-
-    return { positions, colors, alphas };
-  }, [asteroids]);
-
-  // Memoize trail curves to avoid recreating geometry every render
-  const trailCurves = useMemo(() => {
-    return asteroids.map((asteroid) => {
-      const orbit = asteroid.orbit;
-      const trailPoints: THREE.Vector3[] = [];
-      for (let i = 0; i < 20; i++) {
-        const angle = orbit.phase - (i * 0.05);
-        const actualRadius = Math.max(5.0, orbit.radius);
-        trailPoints.push(new THREE.Vector3(
-          Math.cos(angle) * actualRadius,
-          Math.sin(angle * 0.2) * orbit.inclination * 0.15,
-          Math.sin(angle) * actualRadius,
-        ));
-      }
-      return {
-        curve: trailPoints.length >= 2 ? new THREE.CatmullRomCurve3(trailPoints) : null,
-        color: rarityStyle(asteroid.rarity).hex,
-        id: asteroid.id,
-      };
-    });
-  }, [asteroids]);
+  // Tracks the rock along its Keplerian orbit (same math as the mesh).
+  useFrame((state) => {
+    if (groupRef.current) {
+      const [x, y, z] = asteroidScenePosition(asteroid.orbit, state.clock.elapsedTime);
+      groupRef.current.position.set(x, y + 2, z);
+    }
+  });
 
   return (
-    <group>
-      {/* Smooth trail lines per asteroid */}
-      {trailCurves.map((trail) => {
-        if (!trail.curve) return null;
-        return (
-          <mesh key={trail.id}>
-            <tubeGeometry args={[trail.curve, 32, 0.06, 6, false]} />
-            <meshBasicMaterial
-              color={trail.color}
-              transparent
-              opacity={0.5}
-              blending={THREE.AdditiveBlending}
-              depthWrite={false}
-            />
-          </mesh>
-        );
-      })}
-
-      {/* Fading particle halo at trail heads */}
-      <points ref={trailsRef}>
-        <bufferGeometry>
-          <bufferAttribute
-            attach="attributes-position"
-            args={[trailData.positions, 3]}
-            count={asteroids.length * 20}
-          />
-          <bufferAttribute
-            attach="attributes-color"
-            args={[trailData.colors, 3]}
-            count={asteroids.length * 20}
-          />
-        </bufferGeometry>
-        <pointsMaterial
-          size={0.2}
-          vertexColors
-          transparent
-          opacity={0.35}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-        />
-      </points>
+    <group ref={groupRef}>
+      <Html position={[0, 0, 0]} center style={{ zIndex: 1 }}>
+        <div className="bg-black/80 text-white px-2 py-1 rounded text-xs pointer-events-none whitespace-nowrap">
+          {asteroid.name}
+        </div>
+      </Html>
     </group>
   );
 }
 
-function TrajectoryLine({ asteroid }: { asteroid: EnhancedAsteroid }) {
-  const curve = useMemo(() => {
-    const points = [];
-    const orbit = asteroid.orbit;
-    const earthRadius = 3.0;
-    const minDistance = earthRadius + 2.0;
-    const actualRadius = Math.max(minDistance, orbit.radius);
-    for (let i = 0; i <= 64; i++) {
-      const angle = (i / 64) * Math.PI * 2;
-      points.push(new THREE.Vector3(
-        Math.cos(angle) * actualRadius,
-        Math.sin(angle * 0.2) * orbit.inclination * 0.15,
-        Math.sin(angle) * actualRadius,
-      ));
-    }
-    return new THREE.CatmullRomCurve3(points);
-  }, [asteroid.orbit]);
-
+/**
+ * Faint elliptical orbit paths for every asteroid, rendered as line loops.
+ * The path brightens when its asteroid is hovered or selected, and the
+ * "Trajectories" toggle lifts all of them. Geometry is static per orbit —
+ * the moving rock reads as riding its drawn path.
+ */
+const AsteroidOrbitPaths = memo(function AsteroidOrbitPaths({
+  asteroids,
+  selectedAsteroidId,
+}: {
+  asteroids: EnhancedAsteroid[];
+  selectedAsteroidId?: string;
+}) {
   return (
-    <mesh>
-      <tubeGeometry args={[curve, 64, 0.15, 8, true]} />
-      <meshBasicMaterial
-        color={rarityStyle(asteroid.rarity).hex}
-        transparent
-        opacity={0.6}
-        depthWrite={false}
-      />
-    </mesh>
+    <group>
+      {asteroids.map((asteroid) => (
+        <OrbitPath
+          key={asteroid.id}
+          orbit={asteroid.orbit}
+          asteroidId={asteroid.id}
+          color={rarityStyle(asteroid.rarity).hex}
+          isSelected={selectedAsteroidId === asteroid.id}
+        />
+      ))}
+    </group>
   );
+});
+
+function OrbitPath({ orbit, asteroidId, color, isSelected }: {
+  orbit: EnhancedAsteroid['orbit'];
+  asteroidId: string;
+  color: string;
+  isSelected: boolean;
+}) {
+  const isHovered = useAsteroidStore(s => s.hoveredAsteroidId === asteroidId);
+  const showTrajectories = useAsteroidStore(s => s.showTrajectories);
+
+  const lineObj = useMemo(() => {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(orbitPathPoints(orbit), 3));
+    const mat = new THREE.LineBasicMaterial({
+      color,
+      transparent: true,
+      opacity: 0.14,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    return new THREE.Line(geo, mat);
+  }, [orbit, color]);
+
+  // Dispose geometry + material when the orbit data changes or on unmount.
+  useEffect(() => {
+    const line = lineObj as THREE.Line;
+    return () => {
+      line.geometry.dispose();
+      (line.material as THREE.Material).dispose();
+    };
+  }, [lineObj]);
+
+  const material = (lineObj as THREE.Line).material as THREE.LineBasicMaterial;
+  const targetOpacity = isSelected ? 0.85 : isHovered ? 0.6 : showTrajectories ? 0.45 : 0.14;
+  material.opacity = targetOpacity;
+
+  return <primitive object={lineObj} />;
 }
 
 // Enhanced Camera Controls Component
@@ -1639,15 +1904,12 @@ function AsteroidInfoPanel({ asteroid, onClose, onOpenDetailed, onSimulateImpact
 // Inner scene component that drives animation via useFrame (no React re-renders)
 function SolarSystemScene({
   asteroids, selectedAsteroid, onAsteroidSelect,
-  hoveredAsteroid, setHoveredAsteroid,
   controlsRef, onOpenDetailed, showDetailedView,
   cinematicMode, onCinematicComplete,
 }: {
   asteroids: EnhancedAsteroid[];
   selectedAsteroid?: EnhancedAsteroid | null;
   onAsteroidSelect?: (asteroid: EnhancedAsteroid | null) => void;
-  hoveredAsteroid: number | null;
-  setHoveredAsteroid: (id: number | null) => void;
   controlsRef: React.RefObject<any>;
   onOpenDetailed: () => void;
   showDetailedView: boolean;
@@ -1664,19 +1926,12 @@ function SolarSystemScene({
   const earthData = PLANET_DATA.find(p => p.name === 'Earth')!;
   const earthInitialAngle = (earthData.initialPhase || 0) * Math.PI * 2;
 
-  // Compute the selected asteroid's current world position for the cinematic camera
+  // Compute the selected asteroid's world position for the cinematic camera
+  // (start-of-flight position; the per-frame target below tracks the motion).
   const selectedWorldPos = useMemo(() => {
     if (!selectedAsteroid) return null;
-    const [ex, ey, ez] = earthPositionRef.current;
-    const orbit = selectedAsteroid.orbit;
-    const aAngle = orbit.phase;
-    const minDist = 5.0;
-    const aRadius = Math.max(minDist, orbit.radius);
-    const ax = Math.cos(aAngle) * aRadius;
-    const az = Math.sin(aAngle) * aRadius;
-    const ay = Math.sin(aAngle * 0.2) * orbit.inclination * 0.15;
-    return new THREE.Vector3(ex + ax, ey + ay, ez + az);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    const [ax, ay, az] = asteroidScenePosition(selectedAsteroid.orbit, 0);
+    return new THREE.Vector3(ax, ay, az);
   }, [selectedAsteroid, cinematicMode]);
 
   useCinematicCamera({
@@ -1686,7 +1941,7 @@ function SolarSystemScene({
   });
 
   // Drive animation from useFrame — no React state updates
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
     timeRef.current += delta * 0.2;
     const angle = earthInitialAngle + timeRef.current * earthData.speed;
     const x = Math.cos(angle) * earthData.distanceFromSun;
@@ -1699,16 +1954,10 @@ function SolarSystemScene({
     }
     if (controlsRef.current) {
       if (selectedAsteroid) {
-        // When an asteroid is selected, track its world position
-        // (asteroid is a child of Earth group, so world pos = earth + local offset)
-        const orbit = selectedAsteroid.orbit;
-        const aAngle = orbit.phase;
-        const minDist = 5.0; // earthRadius + buffer
-        const aRadius = Math.max(minDist, orbit.radius);
-        const ax = Math.cos(aAngle) * aRadius;
-        const az = Math.sin(aAngle) * aRadius;
-        const ay = Math.sin(aAngle * 0.2) * orbit.inclination * 0.15;
-        controlsRef.current.target.set(x + ax, y + ay, z + az);
+        // Track the rock along its Keplerian orbit (scene-clock time keeps
+        // this in lockstep with SceneAsteroid's useFrame).
+        const [ax, ay, az] = asteroidScenePosition(selectedAsteroid.orbit, state.clock.elapsedTime);
+        controlsRef.current.target.set(ax, ay, az);
       } else {
         controlsRef.current.target.set(x, y, z);
       }
@@ -1777,21 +2026,88 @@ function SolarSystemScene({
       <group ref={earthGroupRef} position={earthPos}>
         <Earth hideLabels={!!selectedAsteroid || showDetailedView || modalOpen} />
         <Moon earthPosition={[0, 0, 0]} hideLabels={!!selectedAsteroid || showDetailedView || modalOpen} />
-        <AsteroidField
-          asteroids={asteroids}
-          onAsteroidSelect={onAsteroidSelect}
-          selectedAsteroid={selectedAsteroid}
-          hoveredAsteroid={hoveredAsteroid}
-          setHoveredAsteroid={setHoveredAsteroid}
-          onOpenDetailed={onOpenDetailed}
-          hideLabels={!!selectedAsteroid || showDetailedView || modalOpen}
-        />
       </group>
 
-      <AgentAnnotations />
+      {/* Asteroid field lives at scene root: its Keplerian ellipses are
+          Sun-centered world coordinates, not Earth-relative. */}
+      <AsteroidField
+        asteroids={asteroids}
+        onAsteroidSelect={onAsteroidSelect}
+        selectedAsteroid={selectedAsteroid}
+        onOpenDetailed={onOpenDetailed}
+        hideLabels={!!selectedAsteroid || showDetailedView || modalOpen}
+      />
+      <AgentAnnotations asteroids={asteroids} />
 
     </>
   );
+}
+
+/**
+ * Fresnel rim shell giving a planet an atmospheric limb glow. Reuses the
+ * shared scene Fresnel shaders (same pattern as Earth's atmosphere).
+ */
+function PlanetAtmosphere({ radius, color }: { radius: number; color: string }) {
+  const uniforms = useMemo(() => ({
+    color: { value: new THREE.Color(color) },
+    power: { value: 2.6 },
+    intensity: { value: 0.9 },
+    alphaScale: { value: 0.55 },
+  }), [color]);
+
+  return (
+    <mesh scale={1.045}>
+      <sphereGeometry args={[radius, 48, 24]} />
+      <shaderMaterial
+        transparent
+        depthWrite={false}
+        side={THREE.BackSide}
+        blending={THREE.AdditiveBlending}
+        uniforms={uniforms}
+        vertexShader={FRESNEL_VERTEX_SHADER}
+        fragmentShader={FRESNEL_FRAGMENT_SHADER}
+      />
+    </mesh>
+  );
+}
+
+/**
+ * Saturn ring band texture: radial strips along x — C ring (faint), B ring
+ * (bright), Cassini division (dark gap), A ring with the Encke gap.
+ */
+function createSaturnRingTexture(): THREE.Texture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 8;
+  const ctx = canvas.getContext('2d')!;
+  const rand = seededRandom('saturn-rings');
+
+  // Radial band stops: [start, end, base color, alpha]
+  const bands: Array<[number, number, string, number]> = [
+    [0.00, 0.18, '#a89878', 0.25],  // D/C ring, faint
+    [0.18, 0.44, '#d8c49a', 0.75],  // B ring inner, bright
+    [0.44, 0.58, '#e8d8b0', 0.9],   // B ring outer, brightest
+    [0.58, 0.64, '#6a5c44', 0.12],  // Cassini division
+    [0.64, 0.86, '#cbb88e', 0.7],   // A ring
+    [0.86, 0.88, '#6a5c44', 0.2],   // Encke gap
+    [0.88, 1.00, '#c2ad84', 0.55],  // A ring outer
+  ];
+  for (const [start, end, color, alpha] of bands) {
+    ctx.fillStyle = color;
+    ctx.globalAlpha = alpha;
+    ctx.fillRect(start * 512, 0, (end - start) * 512, 8);
+  }
+  // Fine ringlet striations
+  ctx.globalAlpha = 1;
+  for (let i = 0; i < 160; i++) {
+    const x = rand() * 512;
+    ctx.fillStyle = rand() > 0.5 ? 'rgba(255, 245, 220, 0.12)' : 'rgba(70, 60, 44, 0.12)';
+    ctx.fillRect(x, 0, 1 + rand() * 1.5, 8);
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
 }
 
 // Wrapper for Planet that reads time from a ref instead of prop (avoids React re-renders)
@@ -1801,9 +2117,34 @@ function AnimatedPlanet({ planetData, earthInitialAngle, timeRef, hideLabels }: 
   const initialAngle = (planetData.initialPhase || 0) * Math.PI * 2;
 
   const planetTexture = useMemo(() =>
-    createPlanetTexture(planetData.textureType, planetData.baseColor),
-    [planetData.textureType, planetData.baseColor]
+    createPlanetTexture(planetData.textureType, planetData.baseColor, planetData.name),
+    [planetData.textureType, planetData.baseColor, planetData.name]
   );
+
+  // Saturn's rings: one geometry with UVs remapped to radius so the band
+  // texture (including the Cassini division) reads correctly, plus a slow
+  // shimmer-free basic material — rings are mostly forward-scattered light.
+  const ringGeometryObj = useMemo(() => {
+    if (!planetData.hasRings) return null;
+    const inner = planetData.size * 1.24;
+    const outer = planetData.size * 2.35;
+    const geo = new THREE.RingGeometry(inner, outer, 160, 1);
+    const pos = geo.attributes.position;
+    const uv = geo.attributes.uv;
+    const v = new THREE.Vector3();
+    for (let i = 0; i < pos.count; i++) {
+      v.fromBufferAttribute(pos, i);
+      uv.setXY(i, (v.length() - inner) / (outer - inner), 0.5);
+    }
+    return geo;
+  }, [planetData.hasRings, planetData.size]);
+
+  useEffect(() => () => ringGeometryObj?.dispose(), [ringGeometryObj]);
+
+  const saturnRingTexture = useMemo(() => {
+    if (!planetData.hasRings) return null;
+    return createSaturnRingTexture();
+  }, [planetData.hasRings]);
 
   useFrame((_, delta) => {
     const time = timeRef.current;
@@ -1825,17 +2166,20 @@ function AnimatedPlanet({ planetData, earthInitialAngle, timeRef, hideLabels }: 
           metalness={planetData.textureType === 'iceGiant' ? 0.3 : 0.1}
         />
       </mesh>
-      {planetData.hasRings && (
-        <>
-          <mesh rotation={[Math.PI / 2.2, 0, 0]}>
-            <ringGeometry args={[planetData.size * 1.2, planetData.size * 2.0, 64]} />
-            <meshStandardMaterial color="#fad5a5" transparent opacity={0.7} roughness={0.9} />
-          </mesh>
-          <mesh rotation={[Math.PI / 2.2, 0, 0]}>
-            <ringGeometry args={[planetData.size * 2.1, planetData.size * 2.8, 64]} />
-            <meshStandardMaterial color="#e8c547" transparent opacity={0.5} roughness={0.9} />
-          </mesh>
-        </>
+      {ringGeometryObj && saturnRingTexture && (
+        <mesh geometry={ringGeometryObj} rotation={[1.85, 0, 0.42]} receiveShadow>
+          <meshStandardMaterial
+            map={saturnRingTexture}
+            transparent
+            opacity={0.96}
+            side={THREE.DoubleSide}
+            roughness={0.9}
+            metalness={0}
+          />
+        </mesh>
+      )}
+      {planetData.atmosphere && (
+        <PlanetAtmosphere radius={planetData.size} color={planetData.atmosphere} />
       )}
       {!hideLabels && (
         <Html position={[0, planetData.size + 3, 0]} center style={{ zIndex: 1 }}>
@@ -1848,11 +2192,81 @@ function AnimatedPlanet({ planetData, earthInitialAngle, timeRef, hideLabels }: 
   );
 }
 
-export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSelect, hoveredAsteroid, setHoveredAsteroid }: Props) {
+/**
+ * Desktop list row. Subscribes narrowly to hover-by-id so hovering a row
+ * re-renders just that row (and the matching 3D rock), not the whole panel.
+ */
+const AsteroidListRow = memo(function AsteroidListRow({
+  asteroid,
+  index,
+  isSelected,
+  onAsteroidSelect,
+}: {
+  asteroid: EnhancedAsteroid;
+  index: number;
+  isSelected: boolean;
+  onAsteroidSelect?: (asteroid: EnhancedAsteroid | null) => void;
+}) {
+  const isHovered = useAsteroidStore(s => s.hoveredAsteroidId === asteroid.id);
+  const setHoveredAsteroidId = useAsteroidStore(s => s.setHoveredAsteroidId);
+  const rarityInfo = getRarityInfo(asteroid.rarity);
+
+  return (
+    <motion.button
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: Math.min(index * 0.02, 0.5) }}
+      onClick={() => onAsteroidSelect?.(asteroid)}
+      onMouseEnter={() => setHoveredAsteroidId(asteroid.id)}
+      onMouseLeave={() => setHoveredAsteroidId(null)}
+      className={`w-full text-left p-3 rounded-lg transition-all duration-200 ${
+        isSelected
+          ? 'bg-blue-500/30 border border-blue-400/50'
+          : isHovered
+          ? 'bg-white/10 border border-white/20'
+          : 'bg-white/5 border border-transparent hover:bg-white/10'
+      }`}
+    >
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <div className="text-white text-sm font-medium">{asteroid.name}</div>
+          <div className="flex items-center gap-2 mt-1">
+            <div className={`w-2 h-2 rounded-full bg-current ${rarityInfo.color} ${isSelected || isHovered ? 'animate-pulse' : ''}`}></div>
+            <span className={`text-xs ${rarityInfo.color}`}>
+              R{asteroid.rarity}
+            </span>
+            <span className="text-white/40 text-xs">•</span>
+            <span className="text-white/60 text-xs">
+              {asteroid.size >= 1000
+                ? `${(asteroid.size / 1000).toFixed(2)} km`
+                : `${asteroid.size.toFixed(1)} m`
+              }
+            </span>
+          </div>
+        </div>
+        {(isSelected || isHovered) && (
+          <motion.div
+            initial={{ scale: 0 }}
+            animate={{ scale: 1 }}
+            className="ml-2"
+          >
+            <div className="w-4 h-4 rounded-full bg-blue-400/30 flex items-center justify-center">
+              <div className="w-2 h-2 rounded-full bg-blue-400"></div>
+            </div>
+          </motion.div>
+        )}
+      </div>
+      <div className="text-white/40 text-xs mt-1">
+        {asteroid.velocity.toFixed(1)} km/s • {asteroid.missDistance.toFixed(2)} AU
+      </div>
+    </motion.button>
+  );
+});
+
+export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSelect }: Props) {
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
   const [activePreset, setActivePreset] = useState('NEO Overview');
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [internalHoveredAsteroid, setInternalHoveredAsteroid] = useState<number | null>(null);
   const [showDetailedView, setShowDetailedView] = useState(false);
   const [showImpactSim, setShowImpactSim] = useState(false);
   const setModalOpen = useAsteroidStore(s => s.setModalOpen);
@@ -1867,10 +2281,6 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
     Math.sin(earthInitialAngle * 0.3) * earthData.inclination * 10,
     Math.sin(earthInitialAngle) * earthData.distanceFromSun
   ];
-  
-  // Use provided props or internal state
-  const actualHoveredAsteroid = hoveredAsteroid ?? internalHoveredAsteroid;
-  const actualSetHoveredAsteroid = setHoveredAsteroid || setInternalHoveredAsteroid;
   
   const handlePresetChange = async (presetName: string) => {
     if (isTransitioning) return;
@@ -1936,7 +2346,7 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
 
     const ax = Math.cos(angle) * actualRadius;
     const az = Math.sin(angle) * actualRadius;
-    const ay = Math.sin(angle * 0.2) * orbit.inclination * 0.15;
+    const ay = Math.sin(angle * 0.2) * (orbit.inclination * 180 / Math.PI) * 0.15;
 
     // World position = current Earth position + asteroid offset
     const controls = controlsRef.current;
@@ -2003,9 +2413,7 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
         }}
         style={{ cursor: 'auto' }}
         onPointerMissed={() => {
-          if (actualSetHoveredAsteroid) {
-            actualSetHoveredAsteroid(null);
-          }
+          useAsteroidStore.getState().setHoveredAsteroidId(null);
           document.body.style.cursor = 'auto';
         }}
       >
@@ -2014,8 +2422,6 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
             asteroids={asteroids}
             selectedAsteroid={selectedAsteroid}
             onAsteroidSelect={onAsteroidSelect}
-            hoveredAsteroid={actualHoveredAsteroid}
-            setHoveredAsteroid={actualSetHoveredAsteroid}
             controlsRef={controlsRef}
             onOpenDetailed={() => setShowDetailedView(true)}
             showDetailedView={showDetailedView}
@@ -2075,83 +2481,19 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
         
         <div className="overflow-y-auto h-[calc(100%-80px)] custom-scrollbar">
           <div className="p-2 space-y-1">
-            {asteroids.map((asteroid, index) => {
-              const rarityInfo = getRarityInfo(asteroid.rarity);
-              const isSelected = selectedAsteroid?.id === asteroid.id;
-              const isHovered = actualHoveredAsteroid === index;
-              
-              return (
-                <motion.button
-                  key={asteroid.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: Math.min(index * 0.02, 0.5) }}
-                  onClick={() => onAsteroidSelect?.(asteroid)}
-                  onMouseEnter={() => actualSetHoveredAsteroid(index)}
-                  onMouseLeave={() => actualSetHoveredAsteroid(null)}
-                  className={`w-full text-left p-3 rounded-lg transition-all duration-200 ${
-                    isSelected 
-                      ? 'bg-blue-500/30 border border-blue-400/50' 
-                      : isHovered
-                      ? 'bg-white/10 border border-white/20'
-                      : 'bg-white/5 border border-transparent hover:bg-white/10'
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="text-white text-sm font-medium">{asteroid.name}</div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <div className={`w-2 h-2 rounded-full bg-current ${rarityInfo.color} ${isSelected || isHovered ? 'animate-pulse' : ''}`}></div>
-                        <span className={`text-xs ${rarityInfo.color}`}>
-                          R{asteroid.rarity}
-                        </span>
-                        <span className="text-white/40 text-xs">•</span>
-                        <span className="text-white/60 text-xs">
-                          {asteroid.size >= 1000 
-                            ? `${(asteroid.size / 1000).toFixed(2)} km`
-                            : `${asteroid.size.toFixed(1)} m`
-                          }
-                        </span>
-                      </div>
-                    </div>
-                    {(isSelected || isHovered) && (
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="ml-2"
-                      >
-                        <div className="w-4 h-4 rounded-full bg-blue-400/30 flex items-center justify-center">
-                          <div className="w-2 h-2 rounded-full bg-blue-400"></div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </div>
-                  <div className="text-white/40 text-xs mt-1">
-                    {asteroid.velocity.toFixed(1)} km/s • {asteroid.missDistance.toFixed(2)} AU
-                  </div>
-                </motion.button>
-              );
-            })}
+            {asteroids.map((asteroid, index) => (
+              <AsteroidListRow
+                key={asteroid.id}
+                asteroid={asteroid}
+                index={index}
+                isSelected={selectedAsteroid?.id === asteroid.id}
+                onAsteroidSelect={onAsteroidSelect}
+              />
+            ))}
           </div>
         </div>
       </motion.div>
       
-      <style jsx>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: rgba(255, 255, 255, 0.05);
-          border-radius: 3px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.2);
-          border-radius: 3px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(255, 255, 255, 0.3);
-        }
-      `}</style>
 
       
       <div className="absolute bottom-2 md:bottom-4 right-4 z-10 text-xs text-white/40">
@@ -2199,8 +2541,7 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
               {asteroids.map((asteroid) => {
                 const rarityInfo = getRarityInfo(asteroid.rarity);
                 const isSelected = selectedAsteroid?.id === asteroid.id;
-                const isHovered = actualHoveredAsteroid === parseInt(asteroid.id);
-                
+
                 return (
                   <motion.button
                     key={asteroid.id}
@@ -2213,10 +2554,8 @@ export function EnhancedSolarSystem({ asteroids, selectedAsteroid, onAsteroidSel
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     className={`w-full p-3 rounded-lg border transition-all ${
-                      isSelected 
-                        ? 'bg-purple-900/50 border-purple-500' 
-                        : isHovered
-                        ? 'bg-white/10 border-white/30'
+                      isSelected
+                        ? 'bg-purple-900/50 border-purple-500'
                         : 'bg-white/5 border-white/10 hover:bg-white/10'
                     }`}
                   >

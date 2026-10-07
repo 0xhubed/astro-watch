@@ -2,12 +2,17 @@
 
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { ArrowRight, Activity, Sparkles, Telescope, BarChart3, Orbit, Bot, Globe } from 'lucide-react';
 import { useState, useEffect } from 'react';
+
+// WebGL hero background — client-only, kept out of the initial bundle
+const HeroOrbits = dynamic(() => import('./HeroOrbits'), { ssr: false });
 
 export function LandingPage() {
   const [asteroidCount, setAsteroidCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [fetchFailed, setFetchFailed] = useState(false);
 
   useEffect(() => {
     fetch('/api/asteroids?range=day')
@@ -16,7 +21,10 @@ export function LandingPage() {
         setAsteroidCount(data.asteroids?.length || 0);
         setIsLoading(false);
       })
-      .catch(() => setIsLoading(false));
+      .catch(() => {
+        setFetchFailed(true);
+        setIsLoading(false);
+      });
   }, []);
 
   const features = [
@@ -62,6 +70,12 @@ export function LandingPage() {
         {/* Static stars */}
         <div className="absolute inset-0 w-full h-full bg-stars opacity-60" />
 
+        {/* WebGL particle Earth + asteroid flybys (ThreeUI-inspired);
+            track count follows today's real NEO feed */}
+        <div className="absolute inset-0 w-full h-full opacity-80">
+          <HeroOrbits asteroidCount={isLoading ? undefined : asteroidCount} />
+        </div>
+
         {/* Moving stars */}
         <motion.div
           animate={{
@@ -72,7 +86,7 @@ export function LandingPage() {
             ease: 'linear',
             repeat: Infinity,
           }}
-          className="absolute inset-0 w-full h-full opacity-40"
+          className="absolute inset-0 w-full h-full opacity-40 pointer-events-none"
           style={{
             backgroundImage: 'radial-gradient(1px 1px at 10% 10%, white, transparent), radial-gradient(1px 1px at 90% 30%, white, transparent), radial-gradient(2px 2px at 50% 60%, white, transparent)',
             backgroundSize: '400px 400px',
@@ -110,20 +124,6 @@ export function LandingPage() {
 
       {/* Hero Section */}
       <section className="relative z-10 px-4 py-16 md:px-12 md:py-32 text-center">
-        {/* Floating asteroid animation */}
-        <motion.div
-          animate={{
-            y: [0, -20, 0],
-            rotate: [0, 180, 360],
-          }}
-          transition={{
-            duration: 20,
-            repeat: Infinity,
-            ease: "linear"
-          }}
-          className="absolute top-20 right-10 w-4 h-4 bg-gray-400 rounded-full opacity-20"
-        />
-
         <motion.h1
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -180,10 +180,14 @@ export function LandingPage() {
           <span className="text-gray-300">
             {isLoading ? (
               <span className="inline-block w-8 h-4 bg-gray-700 rounded animate-pulse" />
+            ) : fetchFailed ? (
+              'Live count unavailable right now'
             ) : (
-              <span className="text-white font-semibold">{asteroidCount}</span>
+              <>
+                <span className="text-white font-semibold">{asteroidCount}</span>
+                {' '}near-Earth asteroids listed today
+              </>
             )}
-            {' '}near-Earth asteroids listed today
           </span>
         </motion.div>
       </section>

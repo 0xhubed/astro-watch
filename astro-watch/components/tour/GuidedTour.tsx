@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ChevronRight, ChevronLeft, HelpCircle } from 'lucide-react';
 import { useAsteroidStore } from '@/lib/store';
+import { useEscapeToClose } from '@/lib/use-dialog';
 
 const DISMISSED_KEY = 'astrowatch-tour-dismissed';
 
@@ -80,6 +81,7 @@ export function GuidedTour() {
   }
 
   const isLast = step === STEPS.length - 1;
+  useEscapeToClose(tourActive, endTour);
 
   return (
     <>
@@ -88,6 +90,7 @@ export function GuidedTour() {
         <button
           onClick={replayTour}
           title="Replay tour"
+          aria-label="Replay guided tour"
           className="fixed bottom-20 md:bottom-12 left-4 z-30 p-2 rounded-full bg-gray-800/80 border border-gray-700 text-gray-400 hover:text-white hover:bg-gray-700/80 transition-colors backdrop-blur-sm"
         >
           <HelpCircle className="w-4 h-4" />
@@ -146,6 +149,9 @@ export function GuidedTour() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.92, y: 16 }}
               transition={{ duration: 0.25 }}
+              role="dialog"
+              aria-modal="true"
+              aria-label={`Guided tour step ${step + 1}: ${STEPS[step].title}`}
               className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none"
             >
               <div className="pointer-events-auto w-full max-w-md mx-4 rounded-2xl bg-gray-900 border border-gray-700 shadow-2xl overflow-hidden">
@@ -156,6 +162,7 @@ export function GuidedTour() {
                   </span>
                   <button
                     onClick={endTour}
+                    aria-label="Close tour"
                     className="p-1.5 rounded-lg text-gray-500 hover:text-white hover:bg-gray-800 transition-colors"
                   >
                     <X className="w-4 h-4" />

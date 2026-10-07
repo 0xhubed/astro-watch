@@ -56,11 +56,8 @@ export interface EnhancedAsteroid extends Asteroid {
     eccentricity: number;
     semi_major_axis: number;
     isInnerOrbit?: boolean;
-  };
-  position: {
-    x: number;
-    y: number;
-    z: number;
+    ascendingNode: number;
+    perihelionArgument: number;
   };
   moonCollisionData: {
     probability: number;              // 0-1 probability
@@ -106,10 +103,16 @@ export async function getAPOD(date?: string): Promise<APOD> {
   try {
     return await fetchAPOD(date);
   } catch (error) {
-    // NASA APOD often 500s for today's date before the image is published;
-    // fall back to yesterday
-    const requestDate = date || new Date().toISOString().split('T')[0];
-    const yesterday = new Date(requestDate + 'T00:00:00');
+    // NASA APOD often 500s for *today* before the image is published, so an
+    // unqualified request may fall back to yesterday. An explicitly requested
+    // date must fail as-is — silently swapping dates would return the wrong
+    // archive entry (#6, #14).
+    if (date) {
+      console.error('Error fetching APOD for explicit date:', error);
+      throw error;
+    }
+    const today = new Date().toISOString().split('T')[0];
+    const yesterday = new Date(today + 'T00:00:00Z');
     yesterday.setDate(yesterday.getDate() - 1);
     const fallbackDate = yesterday.toISOString().split('T')[0];
 
@@ -141,9 +144,15 @@ export async function fetchNEOFeed(startDate: string, endDate: string): Promise<
     Object.values(data.near_earth_objects).forEach((dayAsteroids: any) => {
       asteroids.push(...dayAsteroids);
     });
-    
+
+    // Guard the feed: enrichment indexes close_approach_data[0], so drop
+    // objects that arrive without approach data instead of throwing (#4).
+    const enrichable = asteroids.filter(a =>
+      Array.isArray(a.close_approach_data) && a.close_approach_data.length > 0
+    );
+
     // Enhanced processing
-    return await Promise.all(asteroids.map(enhanceAsteroidData));
+    return await Promise.all(enrichable.map(enhanceAsteroidData));
   } catch (error) {
     console.error('Failed to fetch NEO data:', error);
     
@@ -168,7 +177,6 @@ export async function enhanceAsteroidData(asteroid: Asteroid): Promise<EnhancedA
   // Calculate enhanced properties
   const impactEnergy = calculateImpactEnergy(size, velocity);
   const orbit = calculateOrbitParameters(asteroid);
-  const position = calculatePosition(asteroid);
 
   const { risk, confidence } = calculateRiskScore(asteroid);
 
@@ -194,7 +202,6 @@ export async function enhanceAsteroidData(asteroid: Asteroid): Promise<EnhancedA
     missDistance,
     impactEnergy,
     orbit,
-    position,
     moonCollisionData: {
       probability: 0,
       confidence: 0,
@@ -227,15 +234,55 @@ function calculateImpactEnergy(size: number, velocity: number): number {
   return 0.5 * mass * velocityMs * velocityMs;
 }
 
-function calculateOrbitParameters(asteroid: Asteroid): any {
+/** Deterministic [0,1) hash of a string — same asteroid, same scene (#33). */
+function hashSeed(id: string): number {
+  let h = 1779033703 ^ id.length;
+  for (let i = 0; i < id.length; i++) {
+    h = Math.imul(h ^ id.charCodeAt(i), 3432918353);
+    h = (h << 13) | (h >>> 19);
+  }
+  h = Math.imul(h ^ (h >>> 16), 2246822507);
+  h = Math.imul(h ^ (h >>> 13), 3266489909);
+  return ((h ^= h >>> 16) >>> 0) / 4294967296;
+}
+
+interface OrbitParameters {
+  radius: number;
+  /** Mean motion in rad/s of scene time, Kepler-consistent (n = 0.2/a^1.5). */
+  speed: number;
+  /** Mean anomaly at t=0 (rad) — deterministic per asteroid. */
+  phase: number;
+  /** Radians at ingest — convert to degrees where displayed. */
+  inclination: number;
+  eccentricity: number;
+  semi_major_axis: number;
+  isInnerOrbit: boolean;
+  /** Longitude of the ascending node (rad). */
+  ascendingNode: number;
+  /** Argument of perihelion (rad). */
+  perihelionArgument: number;
+}
+
+function calculateOrbitParameters(asteroid: Asteroid): OrbitParameters {
   // Calculate orbital parameters for visualization
   const missDistance = parseFloat(asteroid.close_approach_data[0].miss_distance.astronomical);
   const scaleFactor = 64; // Our scale: 1 AU = 64 units
 
   // Get orbital data if available
   const orbitalData = asteroid.orbital_data;
-  const actualInclination = orbitalData?.inclination ? parseFloat(orbitalData.inclination) : (Math.random() - 0.5) * 0.2;
-  const actualEccentricity = orbitalData?.eccentricity ? parseFloat(orbitalData.eccentricity) : Math.random() * 0.3;
+  // Angles are stored in RADIANS; NASA publishes degrees (#8).
+  const actualInclination = orbitalData?.inclination
+    ? parseFloat(orbitalData.inclination) * (Math.PI / 180)
+    : (hashSeed(asteroid.id + ':incl') - 0.5) * 0.2;
+  const actualEccentricity = orbitalData?.eccentricity
+    ? parseFloat(orbitalData.eccentricity)
+    : hashSeed(asteroid.id + ':ecc') * 0.3;
+  const ascendingNode = orbitalData?.ascending_node_longitude
+    ? parseFloat(orbitalData.ascending_node_longitude) * (Math.PI / 180)
+    : hashSeed(asteroid.id + ':node') * Math.PI * 2;
+  const perihelionArgument = orbitalData?.perihelion_argument
+    ? parseFloat(orbitalData.perihelion_argument) * (Math.PI / 180)
+    : hashSeed(asteroid.id + ':arg') * Math.PI * 2;
 
   // Use the asteroid's actual semi-major axis for its orbital radius around the Sun.
   // The miss distance is the closest approach to Earth, NOT the distance from the Sun.
@@ -248,28 +295,16 @@ function calculateOrbitParameters(asteroid: Asteroid): any {
 
   return {
     radius: semiMajorAxis * scaleFactor,
-    speed: 0.01 + Math.random() * 0.02,
-    phase: Math.random() * Math.PI * 2,
+    // Kepler's third law, anchored to the scene's Earth drive rate so inner
+    // rocks visibly outrun outer ones (meanMotion() in lib/orbit-mechanics).
+    speed: 0.2 / Math.pow(Math.max(0.1, semiMajorAxis), 1.5),
+    phase: hashSeed(asteroid.id + ':phase') * Math.PI * 2,
     inclination: actualInclination,
     eccentricity: actualEccentricity,
     semi_major_axis: semiMajorAxis,
-    isInnerOrbit: semiMajorAxis < 1.0
-  };
-}
-
-function calculatePosition(asteroid: Asteroid): any {
-  // Calculate 3D position for visualization using semi-major axis (distance from Sun)
-  const angle = Math.random() * Math.PI * 2;
-  const orbitalData = asteroid.orbital_data;
-  const missDistance = parseFloat(asteroid.close_approach_data[0].miss_distance.astronomical);
-  const semiMajorAxis = orbitalData?.semi_major_axis
-    ? parseFloat(orbitalData.semi_major_axis)
-    : 1.0 + missDistance;
-
-  return {
-    x: Math.cos(angle) * semiMajorAxis,
-    y: (Math.random() - 0.5) * 0.1,
-    z: Math.sin(angle) * semiMajorAxis
+    isInnerOrbit: semiMajorAxis < 1.0,
+    ascendingNode,
+    perihelionArgument
   };
 }
 
@@ -361,8 +396,7 @@ function generateMockAsteroids(): EnhancedAsteroid[] {
         semi_major_axis: (1 + Math.random() * 2).toString(),
         ascending_node_longitude: (Math.random() * 360).toString(),
         perihelion_argument: (Math.random() * 360).toString()
-      },
-      risk: Math.random(),
+      },risk: Math.random(),
       rarity,
       hazardLevel,
       confidence: 0.7 + Math.random() * 0.3,
@@ -372,17 +406,14 @@ function generateMockAsteroids(): EnhancedAsteroid[] {
       impactEnergy: Math.pow(size, 3) * Math.pow(velocity, 2) * 0.5,
       orbit: {
         radius: (1 + Math.random() * 2) * 64, // semi-major axis * scale factor
-        speed: velocity,
+        speed: 0.2 / Math.pow(1 + Math.random() * 2, 1.5),
         phase: Math.random() * Math.PI * 2,
-        inclination: Math.random() * 30,
+        inclination: Math.random() * 0.5, // radians, matching real ingest
         eccentricity: 0.1 + Math.random() * 0.8,
         semi_major_axis: 1 + Math.random() * 2,
-        isInnerOrbit: false
-      },
-      position: {
-        x: (Math.random() - 0.5) * 3,
-        y: (Math.random() - 0.5) * 0.5,
-        z: (Math.random() - 0.5) * 3
+        isInnerOrbit: false,
+        ascendingNode: Math.random() * Math.PI * 2,
+        perihelionArgument: Math.random() * Math.PI * 2
       },
       moonCollisionData: {
         probability: Math.random() * 0.1,

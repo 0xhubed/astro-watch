@@ -1,39 +1,36 @@
-'use client';
-
+import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useState } from 'react';
-import { Analytics } from '@vercel/analytics/react';
+import { Providers } from '@/components/Providers';
 import './globals.css';
 
-const inter = Inter({ subsets: ['latin'] });
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
+
+export const metadata: Metadata = {
+  metadataBase: new URL('https://www.astro-watch.com'),
+  title: 'AstroWatch — explore near-Earth asteroids',
+  description:
+    'Browse and visualize near-Earth asteroids using NASA data — a 3D solar-system scene, AI chat, impact simulation and daily discovery.',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    title: 'AstroWatch',
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#0a0a0f',
+  maximumScale: 5,
+};
 
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [queryClient] = useState(() => new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: 3,
-        retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
-      },
-    },
-  }));
-
   return (
     <html lang="en">
-      <head>
-        <title>AstroWatch</title>
-        <meta name="description" content="Browse and visualize near-Earth asteroids using NASA data" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
-        <meta name="theme-color" content="#0a0a0f" />
-        <link rel="manifest" href="/manifest.json" />
-        <link rel="apple-touch-icon" href="/apple-icon.png" />
-      </head>
-      <body className={inter.className}>
-        <QueryClientProvider client={queryClient}>
+      <body className={`${inter.variable} font-sans antialiased`}>
+        <Providers>
           <div className="min-h-screen flex flex-col">
             <main className="flex-grow">
               {children}
@@ -42,8 +39,7 @@ export default function RootLayout({
               © 2026 AstroWatch · <a href="mailto:danielhuber.dev@proton.me" className="text-blue-400 hover:text-blue-300 transition-colors">danielhuber.dev@proton.me</a>
             </footer>
           </div>
-        </QueryClientProvider>
-        <Analytics />
+        </Providers>
       </body>
     </html>
   );

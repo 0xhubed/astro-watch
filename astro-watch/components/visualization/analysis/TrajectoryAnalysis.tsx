@@ -5,8 +5,10 @@ import { motion } from 'framer-motion';
 import { EnhancedAsteroid } from '@/lib/nasa-api';
 import { getRarityInfo } from '@/components/ui/RiskLegend';
 import { rarityStyle } from '@/lib/rarity-colors';
+import { formatMeters, formatNumber, DARK_TOOLTIP, DARK_TOOLTIP_LABEL, DARK_TOOLTIP_ITEM } from '@/lib/format';
+import { useEscapeToClose } from '@/lib/use-dialog';
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   ScatterChart, Scatter, ReferenceLine, Cell
 } from 'recharts';
 
@@ -16,12 +18,24 @@ interface Props {
 
 export function TrajectoryAnalysis({ asteroids }: Props) {
   const [selectedAsteroid, setSelectedAsteroid] = useState<EnhancedAsteroid | null>(null);
+  useEscapeToClose(selectedAsteroid !== null, () => setSelectedAsteroid(null));
 
   // Analyze orbital characteristics
   const orbitalAnalysis = useMemo(() => {
-    const apolloType = asteroids.filter(a => a.orbit.radius > 64); // Beyond Earth's orbit
-    const atenType = asteroids.filter(a => a.orbit.radius < 64);   // Inside Earth's orbit
-    const amorType = asteroids.filter(a => Math.abs(a.orbit.radius - 64) < 10); // Near Earth's orbit
+    // Real classification from published orbital elements where available:
+    // perihelion q = a(1-e). Apollo: a>1 AU crossing (q<1.017); Aten: a<1 AU;
+    // Amor: Earth-approaching without crossing (1.017<=q<1.3).
+    let apollo = 0, aten = 0, amor = 0, other = 0, approximate = 0;
+    asteroids.forEach(a => {
+      const aSma = a.orbit.semi_major_axis;
+      const q = aSma * (1 - a.orbit.eccentricity);
+      const hasRealElements = Boolean(a.orbital_data?.semi_major_axis);
+      if (!hasRealElements) approximate += 1;
+      if (aSma > 1.0 && q < 1.017) apollo++;
+      else if (aSma < 1.0) aten++;
+      else if (q >= 1.017 && q < 1.3) amor++;
+      else other++;
+    });
 
     const distanceVsVelocity = asteroids.map(asteroid => ({
       distance: asteroid.missDistance,
@@ -30,8 +44,7 @@ export function TrajectoryAnalysis({ asteroids }: Props) {
       name: asteroid.name,
       rarity: asteroid.rarity,
       energy: asteroid.impactEnergy / 1e12, // Convert to terajoules
-      type: asteroid.orbit.radius > 64 ? 'Apollo' : 
-            asteroid.orbit.radius < 64 ? 'Aten' : 'Amor'
+      type: asteroid.orbit.semi_major_axis > 1 ? 'Apollo-type (a > 1 AU)' : 'Aten-type (a < 1 AU)'
     }));
 
     const approachTimeline = asteroids
@@ -46,9 +59,12 @@ export function TrajectoryAnalysis({ asteroids }: Props) {
       .slice(0, 20); // Show next 20 approaches
 
     return {
-      apolloType,
-      atenType,
-      amorType,
+      apollo,
+      aten,
+      amor,
+      other,
+      approximate,
+      total: asteroids.length,
       distanceVsVelocity,
       approachTimeline,
       totalEnergy: asteroids.reduce((sum, a) => sum + a.impactEnergy, 0) / 1e15, // Petajoules
@@ -65,32 +81,38 @@ export function TrajectoryAnalysis({ asteroids }: Props) {
       <h3 className="text-xl font-semibold mb-4 text-white">Orbital Classification</h3>
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="text-center p-4 bg-red-900/20 rounded-lg border border-red-700/30">
-          <div className="text-2xl font-bold text-red-300">{orbitalAnalysis.apolloType.length}</div>
+          <div className="text-2xl font-bold text-red-300">{orbitalAnalysis.apollo}</div>
           <div className="text-sm text-red-200">Apollo Type</div>
           <div className="text-xs text-red-100/70 mt-1">Cross Earth's orbit from outside</div>
         </div>
         <div className="text-center p-4 bg-yellow-900/20 rounded-lg border border-yellow-700/30">
-          <div className="text-2xl font-bold text-yellow-300">{orbitalAnalysis.atenType.length}</div>
+          <div className="text-2xl font-bold text-yellow-300">{orbitalAnalysis.aten}</div>
           <div className="text-sm text-yellow-200">Aten Type</div>
           <div className="text-xs text-yellow-100/70 mt-1">Orbit mostly inside Earth's</div>
         </div>
         <div className="text-center p-4 bg-green-900/20 rounded-lg border border-green-700/30">
-          <div className="text-2xl font-bold text-green-300">{orbitalAnalysis.amorType.length}</div>
+          <div className="text-2xl font-bold text-green-300">{orbitalAnalysis.amor}</div>
           <div className="text-sm text-green-200">Amor Type</div>
           <div className="text-xs text-green-100/70 mt-1">Approach but don't cross</div>
         </div>
       </div>
-      
+
       <div className="text-white/60 text-sm">
         <p className="mb-2">
           <strong>Apollo asteroids</strong> have orbits larger than Earth's and cross our orbit from the outside.
           <strong> Aten asteroids</strong> have orbits smaller than Earth's but can still cross our path.
           <strong> Amor asteroids</strong> approach Earth but don't cross our orbital path.
+          {orbitalAnalysis.other > 0 && ` ${orbitalAnalysis.other} object${orbitalAnalysis.other === 1 ? ' does' : 's do'} not fit these classes.`}
         </p>
         <p className="text-blue-300">
-          Average miss distance: <strong>{orbitalAnalysis.averageDistance.toFixed(3)} AU</strong> 
+          Average miss distance: <strong>{orbitalAnalysis.averageDistance.toFixed(3)} AU</strong>
           ({(orbitalAnalysis.averageDistance * 149.6).toFixed(1)} million km)
         </p>
+        {orbitalAnalysis.approximate > 0 && (
+          <p className="text-white/40 text-xs mt-2">
+            Classification uses published orbital elements (a, e). {orbitalAnalysis.approximate} of {orbitalAnalysis.total} objects in this range lack them; their placement is approximate.
+          </p>
+        )}
       </div>
     </motion.div>
   );
@@ -106,27 +128,32 @@ export function TrajectoryAnalysis({ asteroids }: Props) {
       <ResponsiveContainer width="100%" height={300}>
         <ScatterChart>
           <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-          <XAxis 
-            dataKey="distance" 
+          <XAxis
+            dataKey="distance"
+            type="number"
+            domain={['auto', 'auto']}
             stroke="#9CA3AF"
             label={{ value: 'Miss Distance (AU)', position: 'insideBottom', offset: -5 }}
           />
-          <YAxis 
-            dataKey="velocity" 
+          <YAxis
+            dataKey="velocity"
+            type="number"
+            domain={['auto', 'auto']}
             stroke="#9CA3AF"
             label={{ value: 'Velocity (km/s)', angle: -90, position: 'insideLeft' }}
           />
-          <Tooltip 
-            contentStyle={{ backgroundColor: '#1F2937', border: 'none' }}
-            labelStyle={{ color: '#F3F4F6' }}
+          <Tooltip
+            contentStyle={DARK_TOOLTIP}
+            labelStyle={DARK_TOOLTIP_LABEL}
+            itemStyle={DARK_TOOLTIP_ITEM}
             formatter={(value, name, props) => [
-              name === 'distance' ? `${value} AU` : 
+              name === 'distance' ? `${value} AU` :
               name === 'velocity' ? `${value} km/s` : value,
               props.payload.name
             ]}
           />
-          <ReferenceLine x={0.05} stroke="#ef4444" strokeDasharray="2 2" label="Danger Zone" />
-          <ReferenceLine y={30} stroke="#f59e0b" strokeDasharray="2 2" label="High Velocity" />
+          <ReferenceLine x={0.05} stroke="#ef4444" strokeDasharray="2 2" label={{ value: "Danger Zone", position: "insideTopLeft", fill: "#f87171", fontSize: 11 }} />
+          <ReferenceLine y={30} stroke="#f59e0b" strokeDasharray="2 2" label={{ value: "High Velocity", position: "insideTopRight", fill: "#fbbf24", fontSize: 11 }} />
           <Scatter data={orbitalAnalysis.distanceVsVelocity} fill="#8884d8">
             {orbitalAnalysis.distanceVsVelocity.map((entry, index) => (
               <Cell
@@ -195,11 +222,11 @@ export function TrajectoryAnalysis({ asteroids }: Props) {
       <div className="grid grid-cols-2 gap-4 mb-4">
         <div className="bg-gray-800/50 rounded-lg p-4">
           <div className="text-2xl font-bold text-blue-300">
-            {orbitalAnalysis.totalEnergy.toFixed(1)} PJ
+            {formatNumber(orbitalAnalysis.totalEnergy, 1)} PJ
           </div>
           <div className="text-sm text-blue-200">Total Combined Energy</div>
           <div className="text-xs text-blue-100/70 mt-1">
-            Equivalent to {(orbitalAnalysis.totalEnergy * 0.239).toFixed(1)} megatons TNT
+            Equivalent to {formatNumber(orbitalAnalysis.totalEnergy * 0.239, 1)} megatons TNT
           </div>
         </div>
         <div className="bg-gray-800/50 rounded-lg p-4">
@@ -240,6 +267,9 @@ export function TrajectoryAnalysis({ asteroids }: Props) {
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${selectedAsteroid.name} details`}
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
         >
           {/* Backdrop */}
@@ -272,12 +302,7 @@ export function TrajectoryAnalysis({ asteroids }: Props) {
                 <div className="space-y-3 text-sm">
                   <div className="bg-white/5 rounded-lg p-3">
                     <div className="text-white/60 text-xs mb-1">Size</div>
-                    <div className="text-white font-mono">
-                      {selectedAsteroid.size >= 1000 
-                        ? `${(selectedAsteroid.size / 1000).toFixed(2)} km`
-                        : `${selectedAsteroid.size.toFixed(1)} m`
-                      } diameter
-                    </div>
+                    <div className="text-white font-mono">{formatMeters(selectedAsteroid.size)} diameter</div>
                   </div>
                   <div className="bg-white/5 rounded-lg p-3">
                     <div className="text-white/60 text-xs mb-1">Velocity</div>
@@ -315,7 +340,7 @@ export function TrajectoryAnalysis({ asteroids }: Props) {
                   </div>
                   <div className="bg-white/5 rounded-lg p-3">
                     <div className="text-white/60 text-xs mb-1">Inclination</div>
-                    <div className="text-white font-mono">{selectedAsteroid.orbit.inclination.toFixed(2)}°</div>
+                    <div className="text-white font-mono">{(selectedAsteroid.orbit.inclination * 180 / Math.PI).toFixed(2)}°</div>
                   </div>
                   <div className="bg-white/5 rounded-lg p-3">
                     <div className="text-white/60 text-xs mb-1">Eccentricity</div>
@@ -339,9 +364,9 @@ export function TrajectoryAnalysis({ asteroids }: Props) {
                   <div className="text-white/40 text-xs mt-1">{selectedAsteroid.moonCollisionData.comparisonToEarth.interpretation}</div>
                 </div>
                 <div className="bg-white/5 rounded-lg p-3">
-                  <div className="text-white/60 text-xs mb-1">Confidence Level</div>
+                  <div className="text-white/60 text-xs mb-1">Data Confidence</div>
                   <div className="text-white font-mono">{(selectedAsteroid.confidence * 100).toFixed(1)}%</div>
-                  <div className="text-white/40 text-xs mt-1">Risk assessment confidence</div>
+                  <div className="text-white/40 text-xs mt-1">Heuristic data-quality score based on approach distance — not an impact probability</div>
                 </div>
               </div>
             </div>
@@ -349,18 +374,6 @@ export function TrajectoryAnalysis({ asteroids }: Props) {
         </motion.div>
       )}
 
-      <style jsx>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: rgba(255, 255, 255, 0.05);
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.2);
-          border-radius: 2px;
-        }
-      `}</style>
     </div>
   );
 }

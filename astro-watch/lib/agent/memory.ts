@@ -169,9 +169,9 @@ export async function loadBriefing(): Promise<AgentBriefing | null> {
   return kvGet<AgentBriefing>(KEYS.briefingLatest);
 }
 
-/** Persist a threat assessment for a specific object ID. */
+/** Persist a threat assessment for a specific object ID (30-day TTL). */
 export async function saveThreat(objectId: string, threat: ThreatAssessment): Promise<void> {
-  await kvSet(KEYS.threat(objectId), threat);
+  await kvSet(KEYS.threat(objectId), threat, TTL_30_DAYS);
 }
 
 /** Load a threat assessment by object ID. */

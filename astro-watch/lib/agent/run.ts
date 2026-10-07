@@ -62,7 +62,6 @@ function buildSystemPrompt(
   • Annotate the 3-D solar-system scene with concise labels for the most important objects
   • Publish threat assessments for medium-risk or higher bodies
   • Write a daily briefing summarising key findings
-  • Send email alerts only for genuinely critical objects (rarity ≥ 4 or risk ≥ 0.7)
 
 Today: ${today}
 ${lastRun}
@@ -75,8 +74,7 @@ Guidelines:
   - Prioritise objects with high rarity scores, PHA designation, or very close miss distances (<0.05 AU).
   - Always call update_briefing once at the end of your analysis.
   - Keep annotation labels short (≤ 30 chars).
-  - For send_alert, use the ALERT_TO_EMAIL environment variable as the recipient.
-  - Consult the advisor before: sending email alerts, assigning "high" or "critical" threat levels, or when uncertain about an unusual orbital pattern. The advisor provides expert-level reasoning for these high-stakes decisions.`;
+  - Consult the advisor before: assigning "high" or "critical" threat levels, or when uncertain about an unusual orbital pattern. The advisor provides expert-level reasoning for these high-stakes decisions.`;
 }
 
 function buildUserPrompt(asteroids: EnhancedAsteroid[]): string {
@@ -96,7 +94,7 @@ function buildUserPrompt(asteroids: EnhancedAsteroid[]): string {
     orbit: {
       semiMajorAxis: a.orbit.semi_major_axis,
       eccentricity: a.orbit.eccentricity,
-      inclination: a.orbit.inclination,
+      inclination: parseFloat((a.orbit.inclination * 180 / Math.PI).toFixed(2)),
     },
   }));
 
@@ -196,22 +194,22 @@ export async function runAgent(): Promise<AgentRunResult> {
         break;
       }
 
-      // Execute tools in parallel
-      const toolResults = await Promise.all(
-        toolUseBlocks.map(async (block) => {
-          toolCallsMade++;
-          const resultText = await executeAgentTool(
-            block.name,
-            block.input as Record<string, unknown>,
-            asteroids,
-          );
-          return {
-            type: 'tool_result' as const,
-            tool_use_id: block.id,
-            content: resultText,
-          };
-        }),
-      );
+      // Execute tools sequentially and in order — each tool does read-modify-
+      // write on KV memory, so parallel execution raced on shared state (#3).
+      const toolResults = [];
+      for (const block of toolUseBlocks) {
+        toolCallsMade++;
+        const resultText = await executeAgentTool(
+          block.name,
+          block.input as Record<string, unknown>,
+          asteroids,
+        );
+        toolResults.push({
+          type: 'tool_result' as const,
+          tool_use_id: block.id,
+          content: resultText,
+        });
+      }
 
       // Append assistant turn + tool results to the conversation
       messages.push({ role: 'assistant', content: response.content });

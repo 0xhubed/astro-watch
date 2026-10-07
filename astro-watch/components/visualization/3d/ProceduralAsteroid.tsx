@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, memo, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 
@@ -45,7 +45,7 @@ interface ProceduralAsteroidProps {
   onPointerOut?: () => void;
 }
 
-export function ProceduralAsteroid({
+export const ProceduralAsteroid = memo(function ProceduralAsteroid({
   position,
   scale,
   seed,
@@ -62,10 +62,19 @@ export function ProceduralAsteroid({
 
   const detail = isSelected ? 2 : isHovered ? 1 : 0;
 
-  const geometry = useMemo(() => {
-    const baseGeo = new THREE.IcosahedronGeometry(1, detail + 1);
-    return displaceGeometry(baseGeo, seed, 0.3);
-  }, [seed, detail]);
+  // Precompute every LOD level once per seed and swap by reference — hover
+  // and selection must not rebuild geometry (#41).
+  const geometries = useMemo(() => {
+    return [0, 1, 2, 3].map(level =>
+      displaceGeometry(new THREE.IcosahedronGeometry(1, level + 1), seed, 0.3)
+    );
+  }, [seed]);
+
+  useEffect(() => {
+    return () => geometries.forEach(g => g.dispose());
+  }, [geometries]);
+
+  const geometry = geometries[Math.min(detail, geometries.length - 1)];
 
   const baseColor = useMemo(() => {
     const type = seed % 3;
@@ -81,7 +90,10 @@ export function ProceduralAsteroid({
     }
   });
 
-  const finalScale = scale * (isSelected ? 2 : isHovered ? 1.5 : 1);
+  // Size stays truthful to the data (review #62) — selection is conveyed by
+  // the rarity ring and emissive boost, never by inflating the mesh.
+  const finalScale = scale;
+  const ringScale = finalScale * (isSelected ? 2.4 : isHovered ? 2.0 : 1.8);
 
   return (
     <group position={position}>
@@ -103,12 +115,12 @@ export function ProceduralAsteroid({
         />
       </mesh>
 
-      <mesh rotation={[Math.PI / 2, 0, 0]} scale={finalScale * 1.8}>
+      <mesh rotation={[Math.PI / 2, 0, 0]} scale={ringScale}>
         <ringGeometry args={[0.9, 1.0, 32]} />
         <meshBasicMaterial
           color={riskColor}
           transparent
-          opacity={isSelected ? 0.7 : isHovered ? 0.5 : 0.2 + emissiveIntensity * 0.3}
+          opacity={isSelected ? 0.95 : isHovered ? 0.7 : 0.2 + emissiveIntensity * 0.3}
           side={THREE.DoubleSide}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
@@ -116,4 +128,4 @@ export function ProceduralAsteroid({
       </mesh>
     </group>
   );
-}
+});

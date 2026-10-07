@@ -1,25 +1,29 @@
 'use client';
 
-import { 
-  AreaChart, Area, LineChart, Line, BarChart, Bar,
+import { useMemo } from 'react';
+import {
+  AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
-  PieChart, Pie, Cell, ScatterChart, Scatter
+  PieChart, Pie, Cell, ScatterChart, Scatter, Legend
 } from 'recharts';
 import { motion } from 'framer-motion';
 import { EnhancedAsteroid } from '@/lib/nasa-api';
 import { RiskLegend, getRarityInfo } from '@/components/ui/RiskLegend';
 import { RARITY_COLORS, rarityStyle } from '@/lib/rarity-colors';
+import { formatMeters, formatNumber, formatDateShort, DARK_TOOLTIP, DARK_TOOLTIP_LABEL, DARK_TOOLTIP_ITEM } from '@/lib/format';
 import { ApproachTimeline } from './ApproachTimeline';
 
 interface Props {
   asteroids: EnhancedAsteroid[];
   timeRange: 'day' | 'week' | 'month';
+  /** Timestamp of the last successful feed fetch (from TanStack Query). */
+  dataUpdatedAt?: number;
+  isError?: boolean;
 }
 
-export function RiskDashboard({ asteroids, timeRange }: Props) {
-  const processTimeSeriesData = (asteroids: EnhancedAsteroid[], range: string) => {
-    // Group asteroids by date
+export function RiskDashboard({ asteroids, timeRange, dataUpdatedAt, isError = false }: Props) {
+  const timeSeriesData = useMemo(() => {
+    // Group asteroids by date, then sort chronologically (review #50).
     const grouped = asteroids.reduce((acc, asteroid) => {
       const date = asteroid.close_approach_data[0].close_approach_date;
       if (!acc[date]) {
@@ -28,21 +32,21 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
       acc[date].push(asteroid);
       return acc;
     }, {} as Record<string, EnhancedAsteroid[]>);
-    
-    return Object.entries(grouped).map(([date, asteroids]) => ({
-      date,
-      maxRarity: Math.max(...asteroids.map(a => a.rarity)),
-      avgRarity: asteroids.reduce((sum, a) => sum + a.rarity, 0) / asteroids.length,
-      highRarity: asteroids.filter(a => a.rarity >= 4).length,
-      mediumRarity: asteroids.filter(a => a.rarity >= 2 && a.rarity < 4).length,
-      lowRarity: asteroids.filter(a => a.rarity < 2).length,
-      count: asteroids.length
-    }));
-  };
+
+    return Object.entries(grouped)
+      .map(([date, group]) => ({
+        date,
+        maxRarity: Math.max(...group.map(a => a.rarity)),
+        avgRarity: group.reduce((sum, a) => sum + a.rarity, 0) / group.length,
+        highRarity: group.filter(a => a.rarity >= 4).length,
+        mediumRarity: group.filter(a => a.rarity >= 2 && a.rarity < 4).length,
+        lowRarity: group.filter(a => a.rarity < 2).length,
+        count: group.length
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [asteroids]);
 
   const TimeSeriesRisk = () => {
-    const data = processTimeSeriesData(asteroids, timeRange);
-    
     return (
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -51,43 +55,54 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
       >
         <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-white">Close-Approach Rarity Over Time</h3>
         <ResponsiveContainer width="100%" height={250} className="md:h-[300px] max-w-full">
-          <AreaChart data={data}>
+          <AreaChart data={timeSeriesData}>
             <defs>
-              <linearGradient id="riskGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#ff3b30" stopOpacity={0.8}/>
-                <stop offset="95%" stopColor="#ff3b30" stopOpacity={0.1}/>
-              </linearGradient>
+              {[
+                ['rarityHigh', '#ef4444'],
+                ['rarityMedium', '#f59e0b'],
+                ['rarityLow', '#10b981'],
+              ].map(([id, color]) => (
+                <linearGradient key={id} id={id} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={color} stopOpacity={0.75} />
+                  <stop offset="100%" stopColor={color} stopOpacity={0.12} />
+                </linearGradient>
+              ))}
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-            <XAxis dataKey="date" stroke="#9CA3AF" />
-            <YAxis stroke="#9CA3AF" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#374151" strokeOpacity={0.5} vertical={false} />
+            <XAxis dataKey="date" stroke="#9CA3AF" tickFormatter={formatDateShort} tickLine={false} />
+            <YAxis stroke="#9CA3AF" allowDecimals={false} tickLine={false} axisLine={false} width={32} />
             <Tooltip
-              contentStyle={{ backgroundColor: '#1F2937', border: 'none' }}
-              labelStyle={{ color: '#F3F4F6' }}
+              contentStyle={DARK_TOOLTIP}
+              labelStyle={DARK_TOOLTIP_LABEL}
+              itemStyle={DARK_TOOLTIP_ITEM}
             />
+            <Legend wrapperStyle={{ color: '#D1D5DB' }} iconType="circle" iconSize={8} />
             <Area
               type="monotone"
               dataKey="highRarity"
+              name="Rare (R4+)"
               stackId="1"
               stroke="#ef4444"
-              fillOpacity={0.8}
-              fill="#ef4444"
+              strokeWidth={1.5}
+              fill="url(#rarityHigh)"
             />
             <Area
               type="monotone"
               dataKey="mediumRarity"
+              name="Notable (R2-3)"
               stackId="1"
               stroke="#f59e0b"
-              fillOpacity={0.8}
-              fill="#f59e0b"
+              strokeWidth={1.5}
+              fill="url(#rarityMedium)"
             />
             <Area
               type="monotone"
               dataKey="lowRarity"
+              name="Routine (R0-1)"
               stackId="1"
               stroke="#10b981"
-              fillOpacity={0.8}
-              fill="#10b981"
+              strokeWidth={1.5}
+              fill="url(#rarityLow)"
             />
           </AreaChart>
         </ResponsiveContainer>
@@ -119,16 +134,45 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
               data={rarityGroups}
               cx="50%"
               cy="50%"
-              innerRadius={40}
-              outerRadius={80}
+              innerRadius={56}
+              outerRadius={86}
               paddingAngle={5}
               dataKey="value"
+              stroke="none"
             >
               {rarityGroups.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.color} />
               ))}
             </Pie>
-            <Tooltip />
+            <Tooltip
+              contentStyle={DARK_TOOLTIP}
+              labelStyle={DARK_TOOLTIP_LABEL}
+              itemStyle={DARK_TOOLTIP_ITEM}
+            />
+            {/* Center total — keeps the donut meaningful even when one
+                rarity bucket dominates today's feed */}
+            <text
+              x="50%"
+              y="47%"
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill="#ffffff"
+              fontSize={28}
+              fontWeight={600}
+            >
+              {formatNumber(asteroids.length)}
+            </text>
+            <text
+              x="50%"
+              y="58%"
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill="#9CA3AF"
+              fontSize={12}
+            >
+              objects
+            </text>
+            <Legend wrapperStyle={{ color: '#D1D5DB' }} iconType="circle" iconSize={8} />
           </PieChart>
         </ResponsiveContainer>
       </motion.div>
@@ -151,11 +195,15 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
           {topAsteroids.map((asteroid) => {
             const rarityInfo = getRarityInfo(asteroid.rarity);
             return (
-              <div key={asteroid.id} className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg">
+              <div
+                key={asteroid.id}
+                className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg border-l-2"
+                style={{ borderLeftColor: rarityStyle(asteroid.rarity).hex }}
+              >
                 <div>
                   <div className="text-white font-medium">{asteroid.name}</div>
                   <div className="text-gray-400 text-sm">
-                    {asteroid.size.toFixed(1)} m | {asteroid.velocity.toFixed(1)} km/s
+                    {formatMeters(asteroid.size)} · {asteroid.velocity.toFixed(1)} km/s
                   </div>
                 </div>
                 <div className={`${rarityInfo.bgColor} px-3 py-1 rounded-full`}>
@@ -195,10 +243,10 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
       {
         title: "Current Data Insights",
         items: [
-          `We're tracking ${stats.totalDetected} asteroids in this time period`,
-          `Average size: ${stats.averageSize.toFixed(1)} km diameter`,
+          `We're tracking ${formatNumber(stats.totalDetected)} asteroids in this time period`,
+          `Average size: ${formatMeters(stats.averageSize)} diameter`,
           `Fastest detected: ${stats.fastestVelocity.toFixed(1)} km/s`,
-          `${stats.hazardousCount} classified as Potentially Hazardous Asteroids`
+          `${formatNumber(stats.hazardousCount)} classified as Potentially Hazardous Asteroids`
         ]
       },
       {
@@ -315,25 +363,33 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
         <ResponsiveContainer width="100%" height={250} className="md:h-[300px] max-w-full">
           <ScatterChart>
             <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-            <XAxis 
-              dataKey="x" 
-              stroke="#9CA3AF" 
-              label={{ value: 'Size (km)', position: 'insideBottom', offset: -5 }}
+            <XAxis
+              dataKey="x"
+              type="number"
+              domain={['auto', 'auto']}
+              stroke="#9CA3AF"
+              label={{ value: 'Size (m)', position: 'insideBottom', offset: -5 }}
             />
-            <YAxis 
-              dataKey="y" 
+            <YAxis
+              dataKey="y"
+              type="number"
+              domain={['auto', 'auto']}
               stroke="#9CA3AF"
               label={{ value: 'Velocity (km/s)', angle: -90, position: 'insideLeft' }}
             />
-            <Tooltip 
-              contentStyle={{ backgroundColor: '#1F2937', border: 'none' }}
-              labelStyle={{ color: '#F3F4F6' }}
-              formatter={(value, name) => [
-                name === 'x' ? `${value} km` : `${value} km/s`,
-                name === 'x' ? 'Size' : 'Velocity'
-              ]}
+            <Tooltip
+              contentStyle={DARK_TOOLTIP}
+              labelStyle={DARK_TOOLTIP_LABEL}
+              itemStyle={DARK_TOOLTIP_ITEM}
+              // Header row: the asteroid's name (payload carries the point)
+              formatter={(value, name, item) => {
+                if (name === 'x') return [formatMeters(Number(value)), 'Size'];
+                if (name === 'y') return [`${formatNumber(Number(value), 1)} km/s`, 'Velocity'];
+                return [value, item?.payload?.name ?? name];
+              }}
+              labelFormatter={(_, payload) => payload?.[0]?.payload?.name ?? ''}
             />
-            <Scatter data={scatterData} fill="#8884d8">
+            <Scatter data={scatterData} fill={rarityStyle(0).hex} fillOpacity={0.85}>
               {scatterData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={rarityStyle(entry.rarity).hex} />
               ))}
@@ -398,6 +454,7 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
   };
 
   const APIStatus = () => {
+    const feedFresh = !isError && dataUpdatedAt !== undefined;
     return (
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
@@ -406,12 +463,24 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
       >
         <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-white">Data & API Information</h3>
         <div className="space-y-4">
-          <div className="flex items-center justify-between p-3 bg-green-900/20 rounded-lg border border-green-700/30">
+          <div className={`flex items-center justify-between p-3 rounded-lg border ${
+            feedFresh
+              ? 'bg-green-900/20 border-green-700/30'
+              : 'bg-yellow-900/20 border-yellow-700/30'
+          }`}>
             <div>
-              <div className="text-green-300 font-medium">NASA API Status</div>
-              <div className="text-green-200 text-sm">Live data • Updated every 15 minutes</div>
+              <div className={`font-medium ${feedFresh ? 'text-green-300' : 'text-yellow-300'}`}>
+                NASA NEO Feed
+              </div>
+              <div className={`text-sm ${feedFresh ? 'text-green-200' : 'text-yellow-200'}`}>
+                {feedFresh
+                  ? `Loaded ${new Date(dataUpdatedAt!).toLocaleTimeString()} · auto-refreshes every 15 min`
+                  : isError
+                    ? 'Feed currently unavailable — showing cached data if any'
+                    : 'Awaiting first load · auto-refreshes every 15 min'}
+              </div>
             </div>
-            <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+            <div className={`w-3 h-3 rounded-full ${feedFresh ? 'bg-green-400' : 'bg-yellow-400'} animate-pulse`}></div>
           </div>
           
           <div className="grid grid-cols-2 gap-4 text-sm">
@@ -474,22 +543,6 @@ export function RiskDashboard({ asteroids, timeRange }: Props) {
       {/* Approach Timelines */}
       <ApproachTimeline asteroids={asteroids} />
 
-      <style jsx>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 4px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: rgba(255, 255, 255, 0.05);
-          border-radius: 2px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.2);
-          border-radius: 2px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: rgba(255, 255, 255, 0.3);
-        }
-      `}</style>
     </div>
   );
 }

@@ -7,6 +7,14 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const date = searchParams.get('date') || undefined;
 
+  // Reject malformed dates before they reach NASA (#23)
+  if (date && !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return NextResponse.json(
+      { error: 'Invalid date format — use YYYY-MM-DD' },
+      { status: 400 },
+    );
+  }
+
   try {
     const apod = await getAPOD(date);
 

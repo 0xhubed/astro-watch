@@ -163,6 +163,65 @@ const FRESNEL_FRAGMENT_SHADER = `
   }
 `;
 
+// Sun surface: real SDO texture with a slow fbm "boil" warp and physical
+// limb darkening (the sun is dimmer and redder toward its edge).
+const SUN_SURFACE_VERTEX_SHADER = `
+  varying vec2 vUv;
+  varying vec3 vNormalW;
+  varying vec3 vWorldPosition;
+  void main() {
+    vUv = uv;
+    vNormalW = normalize(mat3(modelMatrix) * normal);
+    vec4 worldPos = modelMatrix * vec4(position, 1.0);
+    vWorldPosition = worldPos.xyz;
+    gl_Position = projectionMatrix * viewMatrix * worldPos;
+  }
+`;
+
+const SUN_SURFACE_FRAGMENT_SHADER = `
+  uniform sampler2D map;
+  uniform float time;
+  varying vec2 vUv;
+  varying vec3 vNormalW;
+  varying vec3 vWorldPosition;
+  float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+  float noise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    float a = hash(i);
+    float b = hash(i + vec2(1.0, 0.0));
+    float c = hash(i + vec2(0.0, 1.0));
+    float d = hash(i + vec2(1.0, 1.0));
+    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+  }
+  float fbm(vec2 p) {
+    float v = 0.0;
+    float a = 0.5;
+    for (int i = 0; i < 4; i++) {
+      v += a * noise(p);
+      p *= 2.0;
+      a *= 0.5;
+    }
+    return v;
+  }
+  void main() {
+    vec2 uv = vUv;
+    float t = time * 0.03;
+    // Slow convection warp of the surface
+    vec2 warp = vec2(fbm(uv * 5.0 + t), fbm(uv * 5.0 - t + 7.3)) - 0.5;
+    vec3 col = texture2D(map, uv + warp * 0.02).rgb;
+    // Granulation shimmer
+    float g = fbm(uv * 16.0 + vec2(t * 2.0, -t));
+    col *= 0.85 + g * 0.45;
+    // Limb darkening
+    vec3 viewDir = normalize(cameraPosition - vWorldPosition);
+    float mu = clamp(dot(normalize(vNormalW), viewDir), 0.0, 1.0);
+    col *= 0.5 + 0.6 * pow(mu, 0.65);
+    gl_FragColor = vec4(col, 1.0);
+  }
+`;
+
 // Reusable constant objects to avoid per-render allocations
 const SUN_EMISSIVE_COLOR = new THREE.Color(1.0, 0.6, 0.1);
 const EARTH_NORMAL_SCALE = new THREE.Vector2(0.2, 0.2);
@@ -1077,6 +1136,13 @@ function Sun() {
     return texture;
   }, []);
 
+  // Sun surface shader (rebound when the texture finishes loading)
+  const sunShaderRef = useRef<THREE.ShaderMaterial>(null);
+  const sunSurfaceUniforms = useMemo(() => ({
+    map: { value: sunTexture },
+    time: { value: 0 },
+  }), [sunTexture]);
+
   // Memoized corona uniform objects to avoid per-render allocations
   const coronaUniforms = useMemo(() => ({
     time: { value: 0 },
@@ -1111,44 +1177,45 @@ function Sun() {
     if (outerCoronaShaderRef.current) {
       outerCoronaShaderRef.current.uniforms.time.value = state.clock.elapsedTime;
     }
+    if (sunShaderRef.current) {
+      sunShaderRef.current.uniforms.time.value = state.clock.elapsedTime;
+    }
   });
 
   return (
     <group position={[0, 0, 0]}>
-      {/* Main Sun body - real surface texture, HDR emissive */}
+      {/* Main Sun body - textured plasma surface, limb-darkened */}
       <mesh ref={sunRef}>
         <sphereGeometry args={[10, 128, 64]} />
-        <meshStandardMaterial
-          color={SUN_EMISSIVE_COLOR}
-          map={sunTexture ?? undefined}
-          emissive={SUN_EMISSIVE_COLOR}
-          emissiveMap={sunTexture ?? undefined}
-          emissiveIntensity={sunTexture ? 2.3 : 3.0}
-          roughness={1}
-          metalness={0}
-          toneMapped={false}
-        />
+        {sunTexture ? (
+          <shaderMaterial
+            ref={sunShaderRef}
+            uniforms={sunSurfaceUniforms}
+            vertexShader={SUN_SURFACE_VERTEX_SHADER}
+            fragmentShader={SUN_SURFACE_FRAGMENT_SHADER}
+          />
+        ) : (
+          <meshStandardMaterial
+            color={SUN_EMISSIVE_COLOR}
+            emissive={SUN_EMISSIVE_COLOR}
+            emissiveIntensity={2.4}
+            roughness={1}
+            metalness={0}
+            toneMapped={false}
+          />
+        )}
       </mesh>
 
-      {/* Soft outer halo sprites (additive, no postprocessing) */}
-      <sprite scale={[52, 52, 1]}>
+      {/* Soft wide halo (additive, no postprocessing) — kept away from the
+          disc so the surface texture stays readable */}
+      <sprite scale={[48, 48, 1]}>
         <spriteMaterial
           map={glowTexture}
           color="#ffb347"
           blending={THREE.AdditiveBlending}
           transparent
           depthWrite={false}
-          opacity={0.32}
-        />
-      </sprite>
-      <sprite scale={[28, 28, 1]}>
-        <spriteMaterial
-          map={glowTexture}
-          color="#fff7d6"
-          blending={THREE.AdditiveBlending}
-          transparent
-          depthWrite={false}
-          opacity={0.65}
+          opacity={0.22}
         />
       </sprite>
 

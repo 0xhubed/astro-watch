@@ -70,9 +70,10 @@ export function LandingPage() {
         {/* Static stars */}
         <div className="absolute inset-0 w-full h-full bg-stars opacity-60" />
 
-        {/* WebGL particle globe + orbit rings (ThreeUI-inspired) */}
+        {/* WebGL particle Earth + asteroid flybys (ThreeUI-inspired);
+            track count follows today's real NEO feed */}
         <div className="absolute inset-0 w-full h-full opacity-80">
-          <HeroOrbits />
+          <HeroOrbits asteroidCount={isLoading ? undefined : asteroidCount} />
         </div>
 
         {/* Moving stars */}

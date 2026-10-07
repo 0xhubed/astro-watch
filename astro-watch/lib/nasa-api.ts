@@ -87,66 +87,98 @@ function isApodPlaceholder(apod: APOD): boolean {
 }
 
 /**
- * Fallback when the APOD API only serves placeholders (it has been doing so
- * for every date during outages): scrape the official apod.nasa.gov page,
- * which keeps serving the latest published image independently of the API.
- * For a specific date, uses that day's archive page (APOD began 1995-06-16).
+ * Fallback when the APOD API only serves placeholders (during outages it
+ * returns the NASA Science logo for every date, archive included). NASA has
+ * migrated APOD to science.nasa.gov — the old apod.nasa.gov pages now just
+ * redirect there. The landing page lists recent entries; each article page
+ * carries og: meta with the real image and an "Explanation:" section that
+ * ends at "Tomorrow's picture".
  */
+const APOD_LANDING_URL = 'https://science.nasa.gov/apod/';
+const APOD_FETCH_UA =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
+const APOD_MONTHS = [
+  'january', 'february', 'march', 'april', 'may', 'june',
+  'july', 'august', 'september', 'october', 'november', 'december',
+];
+
+function apodUnavailable(step: string, detail?: string | number): Error {
+  // The [step] tag lands in the server logs so outages are debuggable;
+  // the message keeps "503" for the route's upstream-outage mapping.
+  return new Error(
+    `NASA APOD service temporarily unavailable (503) [${step}${detail !== undefined ? ` ${detail}` : ''}]`
+  );
+}
+
 async function scrapeApodPage(date?: string): Promise<APOD> {
-  let pagePath = 'astropix.html';
-  let apodDate = date ?? new Date().toISOString().split('T')[0];
+  const landingRes = await fetch(APOD_LANDING_URL, {
+    headers: { 'User-Agent': APOD_FETCH_UA, Accept: 'text/html' },
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!landingRes.ok) throw apodUnavailable('landing', landingRes.status);
+  const landing = await landingRes.text();
+
+  const articleLinks = Array.from(
+    landing.matchAll(/href="(https:\/\/science\.nasa\.gov\/image-article\/apod-[^"]+)"/g),
+    m => m[1]
+  );
+  let articleUrl = articleLinks[0]; // featured entry = latest picture
+  if (!articleUrl) throw apodUnavailable('no article links on landing page');
 
   if (date) {
     const [y, m, d] = date.split('-');
-    const beforeArchive =
-      Number(y) < 1995 ||
-      (y === '1995' && (Number(m) < 6 || (Number(m) === 6 && Number(d) < 16)));
-    if (beforeArchive) {
-      throw new Error('NASA APOD service: date precedes the archive (503)');
+    const needle = `apod-${y}-${APOD_MONTHS[Number(m) - 1]}-${Number(d)}`;
+    const matched = articleLinks.find(link => link.includes(needle));
+    if (!matched) {
+      // The new NASA site only exposes recent entries; don't silently show
+      // a different date than the one asked for.
+      throw apodUnavailable('date not in current archive', date);
     }
-    pagePath = `ap${y.slice(2)}${m}${d}.html`;
+    articleUrl = matched;
   }
 
-  const response = await fetch(`https://apod.nasa.gov/apod/${pagePath}`, {
+  const articleRes = await fetch(articleUrl, {
+    headers: { 'User-Agent': APOD_FETCH_UA, Accept: 'text/html' },
     signal: AbortSignal.timeout(10000),
   });
-  if (!response.ok) {
-    throw new Error('NASA APOD service temporarily unavailable (503)');
+  if (!articleRes.ok) throw apodUnavailable('article', articleRes.status);
+  const html = await articleRes.text();
+
+  const ogImage = html.match(/property="og:image"\s+content="([^"]+)"/)?.[1];
+  if (!ogImage) throw apodUnavailable('no og:image on article page');
+  const ogTitle = html.match(/property="og:title"\s+content="([^"]+)"/)?.[1] ?? '';
+
+  // og:title looks like "APOD: 2026 October 7 - Supernova Remnant Pa 30 - NASA Science"
+  const titleMatch = ogTitle.match(/APOD:\s*(\d{4})\s+(\w+)\s+(\d{1,2})\s*-\s*(.*?)\s*(?:-\s*NASA)?\s*$/i);
+  let apodDate = date ?? new Date().toISOString().split('T')[0];
+  let title = 'Astronomy Picture of the Day';
+  if (titleMatch) {
+    const parsed = new Date(`${titleMatch[2]} ${titleMatch[3]}, ${titleMatch[1]}`);
+    if (!Number.isNaN(parsed.getTime())) apodDate = parsed.toISOString().split('T')[0];
+    // The non-greedy capture keeps the "- NASA Science" suffix; drop it.
+    title = titleMatch[4].replace(/\s*-\s*NASA Science\s*$/i, '');
   }
-  const html = await response.text();
 
-  const titleMatch =
-    html.match(/<title>\s*APOD[^:]*:\s*[^-]*-\s*(.*?)<\/title>/i) ||
-    html.match(/<b>\s*([^<]{3,120})\s*<\/b>\s*(?:<br|$)/i);
-  const imgMatch = html.match(/<img\s+src="?(image\/[^">\s]+)/i);
-  if (!imgMatch) {
-    throw new Error('NASA APOD service temporarily unavailable (503)');
-  }
-  const hdMatch = html.match(/<a\s+href="?(image\/[^">\s]*big[^">\s]*\.(?:jpg|jpeg|png))"?/i);
-  const expMatch = html.match(/<b>\s*Explanation:\s*<\/b>([\s\S]*?)<\/p>/i);
+  const expRegion = html.match(/Explanation:\s*<\/[^>]+>\s*([\s\S]{0,6000})/i)?.[1] ?? '';
+  const explanation = expRegion
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&#39;|&rsquo;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/\s+/g, ' ')
+    .split(/Tomorrow's picture/i)[0]
+    .trim()
+    .slice(0, 2500);
 
-  const clean = (text: string) =>
-    text
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/&nbsp;/g, ' ')
-      .replace(/&amp;/g, '&')
-      .replace(/&#39;|&rsquo;/g, "'")
-      .replace(/&quot;/g, '"')
-      .replace(/\s+/g, ' ')
-      .trim();
-
-  const apod: APOD = {
+  return {
     date: apodDate,
-    title: clean(titleMatch?.[1] ?? 'Astronomy Picture of the Day'),
-    url: `https://apod.nasa.gov/apod/${imgMatch[1]}`,
-    explanation: expMatch ? clean(expMatch[1]) : '',
+    title,
+    url: ogImage,
+    explanation,
     media_type: 'image',
     service_version: 'v1',
   };
-  if (hdMatch) {
-    apod.hdurl = `https://apod.nasa.gov/apod/${hdMatch[1]}`;
-  }
-  return apod;
 }
 
 export async function getAPOD(date?: string): Promise<APOD> {
@@ -180,8 +212,8 @@ export async function getAPOD(date?: string): Promise<APOD> {
     console.error('APOD API fetch failed, trying the official site:', error);
   }
 
-  // 2) The official apod.nasa.gov page — independent of the API, and its
-  //    front page always shows the latest published picture.
+  // 2) science.nasa.gov — the APOD site NASA migrated to, independent of
+  //    the (currently placeholder-serving) API.
   try {
     return await scrapeApodPage(date);
   } catch (error) {

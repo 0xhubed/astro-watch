@@ -211,13 +211,18 @@ const SUN_SURFACE_FRAGMENT_SHADER = `
     // Slow convection warp of the surface
     vec2 warp = vec2(fbm(uv * 5.0 + t), fbm(uv * 5.0 - t + 7.3)) - 0.5;
     vec3 col = texture2D(map, uv + warp * 0.02).rgb;
+    // Floor + range compression: dark coronal-hole patches in the source
+    // image must never read as an eclipse silhouette
+    col = col * 0.9 + 0.16;
     // Granulation shimmer
     float g = fbm(uv * 16.0 + vec2(t * 2.0, -t));
-    col *= 0.85 + g * 0.45;
-    // Limb darkening
+    col *= 0.9 + g * 0.5;
+    // Limb darkening (softened so the disc stays bright)
     vec3 viewDir = normalize(cameraPosition - vWorldPosition);
     float mu = clamp(dot(normalize(vNormalW), viewDir), 0.0, 1.0);
-    col *= 0.5 + 0.6 * pow(mu, 0.65);
+    col *= 0.66 + 0.5 * pow(mu, 0.55);
+    // Overall brightness lift toward hot white at the center
+    col = col * 1.22 + pow(mu, 2.0) * 0.10;
     gl_FragColor = vec4(col, 1.0);
   }
 `;
@@ -1215,7 +1220,7 @@ function Sun() {
           blending={THREE.AdditiveBlending}
           transparent
           depthWrite={false}
-          opacity={0.22}
+          opacity={0.3}
         />
       </sprite>
 

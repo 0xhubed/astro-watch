@@ -215,18 +215,18 @@ const SUN_SURFACE_FRAGMENT_SHADER = `
     // read grey. deep = sunspot/filament, mid = photosphere, hot = faculae.
     vec3 texSample = texture2D(map, uv + warp * 0.02).rgb;
     float lum = pow(clamp(dot(texSample, vec3(0.299, 0.587, 0.114)), 0.0, 1.0), 0.85);
-    vec3 deep = vec3(0.58, 0.14, 0.01);
-    vec3 mid  = vec3(1.0, 0.52, 0.03);
-    vec3 hot  = vec3(1.0, 0.93, 0.6);
-    vec3 col = mix(deep, mid, smoothstep(0.05, 0.6, lum));
-    col = mix(col, hot, smoothstep(0.42, 0.92, lum));
+    vec3 deep = vec3(0.72, 0.28, 0.03);
+    vec3 mid  = vec3(1.0, 0.72, 0.18);
+    vec3 hot  = vec3(1.0, 0.97, 0.78);
+    vec3 col = mix(deep, mid, smoothstep(0.05, 0.55, lum));
+    col = mix(col, hot, smoothstep(0.32, 0.8, lum));
     // Granulation shimmer as brightness modulation
     float g = fbm(uv * 16.0 + vec2(t * 2.0, -t));
     col *= 0.92 + g * 0.3;
     // Limb darkening (softened so the disc stays bright)
     vec3 viewDir = normalize(cameraPosition - vWorldPosition);
     float mu = clamp(dot(normalize(vNormalW), viewDir), 0.0, 1.0);
-    col *= 0.7 + 0.42 * pow(mu, 0.55);
+    col *= 0.78 + 0.38 * pow(mu, 0.55);
     gl_FragColor = vec4(col, 1.0);
   }
 `;

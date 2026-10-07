@@ -57,23 +57,35 @@ export function RiskDashboard({ asteroids, timeRange, dataUpdatedAt, isError = f
         <h3 className="text-lg md:text-xl font-semibold mb-3 md:mb-4 text-white">Close-Approach Rarity Over Time</h3>
         <ResponsiveContainer width="100%" height={250} className="md:h-[300px] max-w-full">
           <AreaChart data={timeSeriesData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-            <XAxis dataKey="date" stroke="#9CA3AF" tickFormatter={formatDateShort} />
-            <YAxis stroke="#9CA3AF" allowDecimals={false} />
+            <defs>
+              {[
+                ['rarityHigh', '#ef4444'],
+                ['rarityMedium', '#f59e0b'],
+                ['rarityLow', '#10b981'],
+              ].map(([id, color]) => (
+                <linearGradient key={id} id={id} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={color} stopOpacity={0.75} />
+                  <stop offset="100%" stopColor={color} stopOpacity={0.12} />
+                </linearGradient>
+              ))}
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#374151" strokeOpacity={0.5} vertical={false} />
+            <XAxis dataKey="date" stroke="#9CA3AF" tickFormatter={formatDateShort} tickLine={false} />
+            <YAxis stroke="#9CA3AF" allowDecimals={false} tickLine={false} axisLine={false} width={32} />
             <Tooltip
               contentStyle={DARK_TOOLTIP}
               labelStyle={DARK_TOOLTIP_LABEL}
               itemStyle={DARK_TOOLTIP_ITEM}
             />
-            <Legend wrapperStyle={{ color: '#D1D5DB' }} />
+            <Legend wrapperStyle={{ color: '#D1D5DB' }} iconType="circle" iconSize={8} />
             <Area
               type="monotone"
               dataKey="highRarity"
               name="Rare (R4+)"
               stackId="1"
               stroke="#ef4444"
-              fillOpacity={0.8}
-              fill="#ef4444"
+              strokeWidth={1.5}
+              fill="url(#rarityHigh)"
             />
             <Area
               type="monotone"
@@ -81,8 +93,8 @@ export function RiskDashboard({ asteroids, timeRange, dataUpdatedAt, isError = f
               name="Notable (R2-3)"
               stackId="1"
               stroke="#f59e0b"
-              fillOpacity={0.8}
-              fill="#f59e0b"
+              strokeWidth={1.5}
+              fill="url(#rarityMedium)"
             />
             <Area
               type="monotone"
@@ -90,8 +102,8 @@ export function RiskDashboard({ asteroids, timeRange, dataUpdatedAt, isError = f
               name="Routine (R0-1)"
               stackId="1"
               stroke="#10b981"
-              fillOpacity={0.8}
-              fill="#10b981"
+              strokeWidth={1.5}
+              fill="url(#rarityLow)"
             />
           </AreaChart>
         </ResponsiveContainer>
@@ -123,10 +135,11 @@ export function RiskDashboard({ asteroids, timeRange, dataUpdatedAt, isError = f
               data={rarityGroups}
               cx="50%"
               cy="50%"
-              innerRadius={40}
-              outerRadius={80}
+              innerRadius={56}
+              outerRadius={86}
               paddingAngle={5}
               dataKey="value"
+              stroke="none"
             >
               {rarityGroups.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={entry.color} />
@@ -137,7 +150,30 @@ export function RiskDashboard({ asteroids, timeRange, dataUpdatedAt, isError = f
               labelStyle={DARK_TOOLTIP_LABEL}
               itemStyle={DARK_TOOLTIP_ITEM}
             />
-            <Legend wrapperStyle={{ color: '#D1D5DB' }} />
+            {/* Center total — keeps the donut meaningful even when one
+                rarity bucket dominates today's feed */}
+            <text
+              x="50%"
+              y="47%"
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill="#ffffff"
+              fontSize={28}
+              fontWeight={600}
+            >
+              {formatNumber(asteroids.length)}
+            </text>
+            <text
+              x="50%"
+              y="58%"
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fill="#9CA3AF"
+              fontSize={12}
+            >
+              objects
+            </text>
+            <Legend wrapperStyle={{ color: '#D1D5DB' }} iconType="circle" iconSize={8} />
           </PieChart>
         </ResponsiveContainer>
       </motion.div>
@@ -160,11 +196,15 @@ export function RiskDashboard({ asteroids, timeRange, dataUpdatedAt, isError = f
           {topAsteroids.map((asteroid) => {
             const rarityInfo = getRarityInfo(asteroid.rarity);
             return (
-              <div key={asteroid.id} className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg">
+              <div
+                key={asteroid.id}
+                className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg border-l-2"
+                style={{ borderLeftColor: rarityStyle(asteroid.rarity).hex }}
+              >
                 <div>
                   <div className="text-white font-medium">{asteroid.name}</div>
                   <div className="text-gray-400 text-sm">
-                    {asteroid.size.toFixed(1)} m | {asteroid.velocity.toFixed(1)} km/s
+                    {formatMeters(asteroid.size)} · {asteroid.velocity.toFixed(1)} km/s
                   </div>
                 </div>
                 <div className={`${rarityInfo.bgColor} px-3 py-1 rounded-full`}>
@@ -342,12 +382,15 @@ export function RiskDashboard({ asteroids, timeRange, dataUpdatedAt, isError = f
               contentStyle={DARK_TOOLTIP}
               labelStyle={DARK_TOOLTIP_LABEL}
               itemStyle={DARK_TOOLTIP_ITEM}
-              formatter={(value, name) => [
-                name === 'x' ? `${formatMeters(Number(value))}` : `${formatNumber(Number(value), 1)} km/s`,
-                name === 'x' ? 'Size' : 'Velocity'
-              ]}
+              // Header row: the asteroid's name (payload carries the point)
+              formatter={(value, name, item) => {
+                if (name === 'x') return [formatMeters(Number(value)), 'Size'];
+                if (name === 'y') return [`${formatNumber(Number(value), 1)} km/s`, 'Velocity'];
+                return [value, item?.payload?.name ?? name];
+              }}
+              labelFormatter={(_, payload) => payload?.[0]?.payload?.name ?? ''}
             />
-            <Scatter data={scatterData} fill="#8884d8">
+            <Scatter data={scatterData} fill={rarityStyle(0).hex} fillOpacity={0.85}>
               {scatterData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={rarityStyle(entry.rarity).hex} />
               ))}

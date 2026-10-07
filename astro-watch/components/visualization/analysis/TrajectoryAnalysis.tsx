@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { EnhancedAsteroid } from '@/lib/nasa-api';
 import { getRarityInfo } from '@/components/ui/RiskLegend';
 import { rarityStyle } from '@/lib/rarity-colors';
-import { formatMeters, DARK_TOOLTIP, DARK_TOOLTIP_LABEL, DARK_TOOLTIP_ITEM } from '@/lib/format';
+import { formatMeters, formatNumber, DARK_TOOLTIP, DARK_TOOLTIP_LABEL, DARK_TOOLTIP_ITEM } from '@/lib/format';
 import { useEscapeToClose } from '@/lib/use-dialog';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -152,8 +152,8 @@ export function TrajectoryAnalysis({ asteroids }: Props) {
               props.payload.name
             ]}
           />
-          <ReferenceLine x={0.05} stroke="#ef4444" strokeDasharray="2 2" label="Danger Zone" />
-          <ReferenceLine y={30} stroke="#f59e0b" strokeDasharray="2 2" label="High Velocity" />
+          <ReferenceLine x={0.05} stroke="#ef4444" strokeDasharray="2 2" label={{ value: "Danger Zone", position: "insideTopLeft", fill: "#f87171", fontSize: 11 }} />
+          <ReferenceLine y={30} stroke="#f59e0b" strokeDasharray="2 2" label={{ value: "High Velocity", position: "insideTopRight", fill: "#fbbf24", fontSize: 11 }} />
           <Scatter data={orbitalAnalysis.distanceVsVelocity} fill="#8884d8">
             {orbitalAnalysis.distanceVsVelocity.map((entry, index) => (
               <Cell
@@ -222,11 +222,11 @@ export function TrajectoryAnalysis({ asteroids }: Props) {
       <div className="grid grid-cols-2 gap-4 mb-4">
         <div className="bg-gray-800/50 rounded-lg p-4">
           <div className="text-2xl font-bold text-blue-300">
-            {orbitalAnalysis.totalEnergy.toFixed(1)} PJ
+            {formatNumber(orbitalAnalysis.totalEnergy, 1)} PJ
           </div>
           <div className="text-sm text-blue-200">Total Combined Energy</div>
           <div className="text-xs text-blue-100/70 mt-1">
-            Equivalent to {(orbitalAnalysis.totalEnergy * 0.239).toFixed(1)} megatons TNT
+            Equivalent to {formatNumber(orbitalAnalysis.totalEnergy * 0.239, 1)} megatons TNT
           </div>
         </div>
         <div className="bg-gray-800/50 rounded-lg p-4">

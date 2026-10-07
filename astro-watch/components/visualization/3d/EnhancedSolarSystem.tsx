@@ -210,19 +210,23 @@ const SUN_SURFACE_FRAGMENT_SHADER = `
     float t = time * 0.03;
     // Slow convection warp of the surface
     vec2 warp = vec2(fbm(uv * 5.0 + t), fbm(uv * 5.0 - t + 7.3)) - 0.5;
-    vec3 col = texture2D(map, uv + warp * 0.02).rgb;
-    // Floor + range compression: dark coronal-hole patches in the source
-    // image must never read as an eclipse silhouette
-    col = col * 0.9 + 0.16;
-    // Granulation shimmer
+    // Sample the surface, then push its luminance through a solar color
+    // ramp: the source is false-color EUV whose dim regions would otherwise
+    // read grey. deep = sunspot/filament, mid = photosphere, hot = faculae.
+    vec3 texSample = texture2D(map, uv + warp * 0.02).rgb;
+    float lum = pow(clamp(dot(texSample, vec3(0.299, 0.587, 0.114)), 0.0, 1.0), 0.85);
+    vec3 deep = vec3(0.58, 0.14, 0.01);
+    vec3 mid  = vec3(1.0, 0.52, 0.03);
+    vec3 hot  = vec3(1.0, 0.93, 0.6);
+    vec3 col = mix(deep, mid, smoothstep(0.05, 0.6, lum));
+    col = mix(col, hot, smoothstep(0.42, 0.92, lum));
+    // Granulation shimmer as brightness modulation
     float g = fbm(uv * 16.0 + vec2(t * 2.0, -t));
-    col *= 0.9 + g * 0.5;
+    col *= 0.92 + g * 0.3;
     // Limb darkening (softened so the disc stays bright)
     vec3 viewDir = normalize(cameraPosition - vWorldPosition);
     float mu = clamp(dot(normalize(vNormalW), viewDir), 0.0, 1.0);
-    col *= 0.66 + 0.5 * pow(mu, 0.55);
-    // Overall brightness lift toward hot white at the center
-    col = col * 1.22 + pow(mu, 2.0) * 0.10;
+    col *= 0.7 + 0.42 * pow(mu, 0.55);
     gl_FragColor = vec4(col, 1.0);
   }
 `;
@@ -1093,6 +1097,108 @@ function Earth({ hideLabels }: { hideLabels?: boolean }) {
   );
 }
 
+/**
+ * The raw source is an SDO/AIA full-disc photo: the globe floats in a black
+ * square with a timestamp label — mapping that straight onto a sphere smears
+ * black corners and the label across the surface. This detects the disc
+ * (bright-pixel bounding box), then unwraps the orthographic view into a
+ * seamless equirectangular texture, mirroring the far hemisphere (invisible
+ * on churning plasma) and never sampling outside the disc.
+ */
+function createSunSurfaceTexture(image: HTMLImageElement): THREE.Texture {
+  const OUT_W = 1024;
+  const OUT_H = 512;
+
+  // --- locate the disc on a downsampled probe ---
+  const PW = 220, PH = 220;
+  const probe = document.createElement('canvas');
+  probe.width = PW; probe.height = PH;
+  const pctx = probe.getContext('2d', { willReadFrequently: true })!;
+  pctx.drawImage(image, 0, 0, PW, PH);
+  const pdata = pctx.getImageData(0, 0, PW, PH).data;
+
+  let sumX = 0, sumY = 0, count = 0;
+  let minX = PW, maxX = 0, minY = PH, maxY = 0;
+  for (let y = 0; y < PH; y++) {
+    for (let x = 0; x < PW; x++) {
+      const i = (y * PW + x) * 4;
+      const luma = 0.299 * pdata[i] + 0.587 * pdata[i + 1] + 0.114 * pdata[i + 2];
+      if (luma > 45) {
+        sumX += x; sumY += y; count++;
+        if (x < minX) minX = x; if (x > maxX) maxX = x;
+        if (y < minY) minY = y; if (y > maxY) maxY = y;
+      }
+    }
+  }
+  const dw = image.naturalWidth, dh = image.naturalHeight;
+  if (count < 100) {
+    // No usable disc detected — fall back to a flat golden canvas
+    const fallback = document.createElement('canvas');
+    fallback.width = OUT_W; fallback.height = OUT_H;
+    const fctx = fallback.getContext('2d')!;
+    fctx.fillStyle = '#e8930c';
+    fctx.fillRect(0, 0, OUT_W, OUT_H);
+    const ftex = new THREE.CanvasTexture(fallback);
+    ftex.colorSpace = THREE.SRGBColorSpace;
+    return ftex;
+  }
+  const cx = (sumX / count) / PW * dw;
+  const cy = (sumY / count) / PH * dh;
+  const radius = (Math.max(maxX - minX, maxY - minY) / 2 / PW) * dw * 0.97;
+
+  // --- read the source at full resolution ---
+  const src = document.createElement('canvas');
+  src.width = dw; src.height = dh;
+  const sctx = src.getContext('2d', { willReadFrequently: true })!;
+  sctx.drawImage(image, 0, 0);
+  const idata = sctx.getImageData(0, 0, dw, dh).data;
+
+  // --- unwrap: equirect (lon, lat) -> orthographic disc sample ---
+  const out = document.createElement('canvas');
+  out.width = OUT_W; out.height = OUT_H;
+  const octx = out.getContext('2d')!;
+  const odata = octx.createImageData(OUT_W, OUT_H);
+
+  for (let py = 0; py < OUT_H; py++) {
+    const lat = (0.5 - py / OUT_H) * Math.PI; // +north
+    const cosLat = Math.cos(lat);
+    const sinLat = Math.sin(lat);
+    for (let px = 0; px < OUT_W; px++) {
+      const lon = (px / OUT_W) * Math.PI * 2;
+      const ox = cosLat * Math.sin(lon);  // disc x (right positive)
+      const oy = sinLat;                  // disc y (screen down = south)
+      const oz = cosLat * Math.cos(lon);  // toward viewer at lon 0
+
+      // near hemisphere samples directly; far side mirrors the near view
+      let u = cx + (oz >= 0 ? ox : -ox) * radius;
+      let v = cy + oy * radius;
+
+      // never sample outside the disc (label/glow live there)
+      const dx = (u - cx) / radius;
+      const dy = (v - cy) / radius;
+      const rr = Math.sqrt(dx * dx + dy * dy);
+      if (rr > 0.985) {
+        u = cx + (dx / rr) * radius * 0.985;
+        v = cy + (dy / rr) * radius * 0.985;
+      }
+
+      const ix = Math.min(dw - 1, Math.max(0, Math.round(u)));
+      const iy = Math.min(dh - 1, Math.max(0, Math.round(v)));
+      const si = (iy * dw + ix) * 4;
+      const oi = (py * OUT_W + px) * 4;
+      odata.data[oi] = idata[si];
+      odata.data[oi + 1] = idata[si + 1];
+      odata.data[oi + 2] = idata[si + 2];
+      odata.data[oi + 3] = 255;
+    }
+  }
+  octx.putImageData(odata, 0, 0);
+
+  const texture = new THREE.CanvasTexture(out);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
 function Sun() {
   const sunRef = useRef<THREE.Mesh>(null);
   const coronaRef = useRef<THREE.Mesh>(null);
@@ -1111,8 +1217,7 @@ function Sun() {
       '/textures/sun_surface.jpg',
       (texture) => {
         if (isMounted) {
-          texture.colorSpace = THREE.SRGBColorSpace;
-          setSunTexture(texture);
+          setSunTexture(createSunSurfaceTexture(texture.image as HTMLImageElement));
         }
       },
       undefined,

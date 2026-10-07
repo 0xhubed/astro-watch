@@ -1,9 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Html } from '@react-three/drei';
+import { useFrame } from '@react-three/fiber';
+import * as THREE from 'three';
 import { useAsteroidStore } from '@/lib/store';
 import { EnhancedAsteroid } from '@/lib/nasa-api';
+import { asteroidScenePosition } from '@/lib/orbit-mechanics';
 
 /** Schema persisted by the monitoring agent (lib/agent/memory.ts). */
 interface SceneAnnotation {
@@ -49,43 +52,65 @@ export function AgentAnnotations({ asteroids }: { asteroids: EnhancedAsteroid[] 
         const asteroid = asteroids.find(a => a.id === ann.asteroidId);
         if (!asteroid) return null; // annotated object left the 7-day feed
 
-        // Exact same placement math as AsteroidField (EnhancedSolarSystem).
-        const orbit = asteroid.orbit;
-        const angle = orbit.phase;
-        const actualRadius = Math.max(5.0, orbit.radius);
-        const x = Math.cos(angle) * actualRadius;
-        const z = Math.sin(angle) * actualRadius;
-        const y = Math.sin(angle * 0.2) * (orbit.inclination * 180 / Math.PI) * 0.15;
-
         const color = ann.color || FALLBACK_COLOR;
 
         return (
-          <group key={`${ann.asteroidId}-${ann.createdAt}`} position={[x, y + 3, z]}>
-            <Html center style={{ pointerEvents: 'none', zIndex: 1 }}>
-              <div
-                style={{
-                  background: 'rgba(0,0,0,0.8)',
-                  border: `1px solid ${color}80`,
-                  borderLeft: `3px solid ${color}`,
-                  borderRadius: 6,
-                  padding: '4px 8px',
-                  maxWidth: 200,
-                  fontSize: 12,
-                  lineHeight: 1.35,
-                  whiteSpace: 'normal',
-                }}
-              >
-                <div style={{ color, fontWeight: 600 }}>{ann.label}</div>
-                {ann.notes && (
-                  <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, marginTop: 2 }}>
-                    {ann.notes}
-                  </div>
-                )}
-              </div>
-            </Html>
-          </group>
+          <AnnotationMarker
+            key={`${ann.asteroidId}-${ann.createdAt}`}
+            orbit={asteroid.orbit}
+            label={ann.label}
+            notes={ann.notes}
+            color={color}
+          />
         );
       })}
     </>
+  );
+}
+
+/**
+ * One annotation label, tracking its asteroid along the same Keplerian
+ * orbit the mesh rides (shared placement from lib/orbit-mechanics).
+ */
+function AnnotationMarker({ orbit, label, notes, color }: {
+  orbit: EnhancedAsteroid['orbit'];
+  label: string;
+  notes?: string;
+  color: string;
+}) {
+  const groupRef = useRef<THREE.Group>(null);
+
+  useFrame((state) => {
+    if (groupRef.current) {
+      const [x, y, z] = asteroidScenePosition(orbit, state.clock.elapsedTime);
+      groupRef.current.position.set(x, y + 3, z);
+    }
+  });
+
+  return (
+    <group ref={groupRef}>
+      <Html center style={{ pointerEvents: 'none', zIndex: 1 }}>
+        <div
+          style={{
+            background: 'rgba(0,0,0,0.8)',
+            border: `1px solid ${color}80`,
+            borderLeft: `3px solid ${color}`,
+            borderRadius: 6,
+            padding: '4px 8px',
+            maxWidth: 200,
+            fontSize: 12,
+            lineHeight: 1.35,
+            whiteSpace: 'normal',
+          }}
+        >
+          <div style={{ color, fontWeight: 600 }}>{label}</div>
+          {notes && (
+            <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11, marginTop: 2 }}>
+              {notes}
+            </div>
+          )}
+        </div>
+      </Html>
+    </group>
   );
 }

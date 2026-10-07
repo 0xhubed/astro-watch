@@ -56,6 +56,8 @@ export interface EnhancedAsteroid extends Asteroid {
     eccentricity: number;
     semi_major_axis: number;
     isInnerOrbit?: boolean;
+    ascendingNode: number;
+    perihelionArgument: number;
   };
   moonCollisionData: {
     probability: number;              // 0-1 probability
@@ -246,13 +248,19 @@ function hashSeed(id: string): number {
 
 interface OrbitParameters {
   radius: number;
+  /** Mean motion in rad/s of scene time, Kepler-consistent (n = 0.2/a^1.5). */
   speed: number;
+  /** Mean anomaly at t=0 (rad) — deterministic per asteroid. */
   phase: number;
   /** Radians at ingest — convert to degrees where displayed. */
   inclination: number;
   eccentricity: number;
   semi_major_axis: number;
   isInnerOrbit: boolean;
+  /** Longitude of the ascending node (rad). */
+  ascendingNode: number;
+  /** Argument of perihelion (rad). */
+  perihelionArgument: number;
 }
 
 function calculateOrbitParameters(asteroid: Asteroid): OrbitParameters {
@@ -262,13 +270,19 @@ function calculateOrbitParameters(asteroid: Asteroid): OrbitParameters {
 
   // Get orbital data if available
   const orbitalData = asteroid.orbital_data;
-  // Inclination is stored in RADIANS; NASA publishes degrees (#8).
+  // Angles are stored in RADIANS; NASA publishes degrees (#8).
   const actualInclination = orbitalData?.inclination
     ? parseFloat(orbitalData.inclination) * (Math.PI / 180)
     : (hashSeed(asteroid.id + ':incl') - 0.5) * 0.2;
   const actualEccentricity = orbitalData?.eccentricity
     ? parseFloat(orbitalData.eccentricity)
     : hashSeed(asteroid.id + ':ecc') * 0.3;
+  const ascendingNode = orbitalData?.ascending_node_longitude
+    ? parseFloat(orbitalData.ascending_node_longitude) * (Math.PI / 180)
+    : hashSeed(asteroid.id + ':node') * Math.PI * 2;
+  const perihelionArgument = orbitalData?.perihelion_argument
+    ? parseFloat(orbitalData.perihelion_argument) * (Math.PI / 180)
+    : hashSeed(asteroid.id + ':arg') * Math.PI * 2;
 
   // Use the asteroid's actual semi-major axis for its orbital radius around the Sun.
   // The miss distance is the closest approach to Earth, NOT the distance from the Sun.
@@ -281,12 +295,16 @@ function calculateOrbitParameters(asteroid: Asteroid): OrbitParameters {
 
   return {
     radius: semiMajorAxis * scaleFactor,
-    speed: 0.01 + hashSeed(asteroid.id + ':speed') * 0.02,
+    // Kepler's third law, anchored to the scene's Earth drive rate so inner
+    // rocks visibly outrun outer ones (meanMotion() in lib/orbit-mechanics).
+    speed: 0.2 / Math.pow(Math.max(0.1, semiMajorAxis), 1.5),
     phase: hashSeed(asteroid.id + ':phase') * Math.PI * 2,
     inclination: actualInclination,
     eccentricity: actualEccentricity,
     semi_major_axis: semiMajorAxis,
-    isInnerOrbit: semiMajorAxis < 1.0
+    isInnerOrbit: semiMajorAxis < 1.0,
+    ascendingNode,
+    perihelionArgument
   };
 }
 
@@ -388,12 +406,14 @@ function generateMockAsteroids(): EnhancedAsteroid[] {
       impactEnergy: Math.pow(size, 3) * Math.pow(velocity, 2) * 0.5,
       orbit: {
         radius: (1 + Math.random() * 2) * 64, // semi-major axis * scale factor
-        speed: velocity,
+        speed: 0.2 / Math.pow(1 + Math.random() * 2, 1.5),
         phase: Math.random() * Math.PI * 2,
         inclination: Math.random() * 0.5, // radians, matching real ingest
         eccentricity: 0.1 + Math.random() * 0.8,
         semi_major_axis: 1 + Math.random() * 2,
-        isInnerOrbit: false
+        isInnerOrbit: false,
+        ascendingNode: Math.random() * Math.PI * 2,
+        perihelionArgument: Math.random() * Math.PI * 2
       },
       moonCollisionData: {
         probability: Math.random() * 0.1,

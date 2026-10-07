@@ -15,6 +15,7 @@ import { ProceduralAsteroid } from './ProceduralAsteroid';
 import { SolarWind, SpaceDust } from './ParticleEffects';
 import { useCinematicCamera } from './CinematicCamera';
 import { AgentAnnotations } from './AgentAnnotations';
+import { asteroidScenePosition, orbitPathPoints } from '@/lib/orbit-mechanics';
 import { ApproachTimeline } from '@/components/visualization/charts/ApproachTimeline';
 
 interface Props {
@@ -1242,9 +1243,11 @@ function EnhancedStarField() {
 }
 
 /**
- * One asteroid mesh. Hover state lives in the store as an id; this component
- * subscribes as `hoveredAsteroidId === id` (boolean) so a hover change
- * re-renders only the previously- and newly-hovered instances (#26/#27).
+ * One asteroid mesh, propagated along its real Keplerian orbit. Hover state
+ * lives in the store as an id; this component subscribes as
+ * `hoveredAsteroidId === id` (boolean) so a hover change re-renders only the
+ * previously- and newly-hovered instances (#26/#27). Motion is driven by
+ * mutating the wrapper group in useFrame — no React re-renders per frame.
  */
 const SceneAsteroid = memo(function SceneAsteroid({
   asteroid,
@@ -1261,16 +1264,22 @@ const SceneAsteroid = memo(function SceneAsteroid({
 }) {
   const isHovered = useAsteroidStore(s => s.hoveredAsteroidId === asteroid.id);
   const setHoveredAsteroidId = useAsteroidStore(s => s.setHoveredAsteroidId);
+  const groupRef = useRef<THREE.Group>(null);
 
-  const orbit = asteroid.orbit;
-  const angle = orbit.phase;
-  const earthRadius = 3.0;
-  const minDistance = earthRadius + 2.0;
-  const actualRadius = Math.max(minDistance, orbit.radius);
-  const x = Math.cos(angle) * actualRadius;
-  const z = Math.sin(angle) * actualRadius;
-  const y = Math.sin(angle * 0.2) * (orbit.inclination * 180 / Math.PI) * 0.15;
-  const distanceFactor = Math.min(1.5, Math.max(0.5, 30 / actualRadius));
+  // Initial placement at t=0 so the rock never flashes at the origin.
+  const initialPosition = useMemo(
+    () => asteroidScenePosition(asteroid.orbit, 0),
+    [asteroid.orbit]
+  );
+
+  useFrame((state) => {
+    if (groupRef.current) {
+      const [x, y, z] = asteroidScenePosition(asteroid.orbit, state.clock.elapsedTime);
+      groupRef.current.position.set(x, y, z);
+    }
+  });
+
+  const distanceFactor = Math.min(1.5, Math.max(0.5, 30 / (asteroid.orbit.semi_major_axis * 64)));
   const baseScale = Math.max(0.15, Math.log10(Math.max(1, asteroid.size)) * 0.35) * distanceFactor;
   const seed = parseInt(asteroid.id.replace(/\D/g, '').slice(-6)) || index;
   const riskColor = rarityStyle(asteroid.rarity).hex;
@@ -1296,23 +1305,25 @@ const SceneAsteroid = memo(function SceneAsteroid({
   }, [setHoveredAsteroidId]);
 
   return (
-    <ProceduralAsteroid
-      position={[x, y, z]}
-      scale={baseScale}
-      seed={seed}
-      riskColor={riskColor}
-      emissiveIntensity={emissiveIntensity}
-      isSelected={isSelected}
-      isHovered={isHovered}
-      onClick={handleClick}
-      onDoubleClick={handleDoubleClick}
-      onPointerOver={handlePointerOver}
-      onPointerOut={handlePointerOut}
-    />
+    <group ref={groupRef} position={initialPosition}>
+      <ProceduralAsteroid
+        position={[0, 0, 0]}
+        scale={baseScale}
+        seed={seed}
+        riskColor={riskColor}
+        emissiveIntensity={emissiveIntensity}
+        isSelected={isSelected}
+        isHovered={isHovered}
+        onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
+        onPointerOver={handlePointerOver}
+        onPointerOut={handlePointerOut}
+      />
+    </group>
   );
 });
 
-// Static asteroid field - NO FLASHING
+// Asteroid field - rocks ride Keplerian ellipses over static orbit paths
 function AsteroidField({ asteroids, onAsteroidSelect, selectedAsteroid, onOpenDetailed, hideLabels }: {
   asteroids: EnhancedAsteroid[];
   onAsteroidSelect?: (asteroid: EnhancedAsteroid | null) => void;
@@ -1320,8 +1331,6 @@ function AsteroidField({ asteroids, onAsteroidSelect, selectedAsteroid, onOpenDe
   onOpenDetailed?: () => void;
   hideLabels?: boolean;
 }) {
-  const { showTrajectories } = useAsteroidStore();
-
   return (
     <group>
       {/* Individual procedural asteroids — each child subscribes narrowly to
@@ -1337,22 +1346,13 @@ function AsteroidField({ asteroids, onAsteroidSelect, selectedAsteroid, onOpenDe
         />
       ))}
 
+      {/* Elliptical orbit paths (brighten on hover/select or via the
+          Trajectories toggle) */}
+      <AsteroidOrbitPaths asteroids={asteroids} selectedAsteroidId={selectedAsteroid?.id} />
 
-      {/* Asteroid particle trails */}
-      <AsteroidTrails asteroids={asteroids} />
-      
       {/* Asteroid Names */}
       {selectedAsteroid && !hideLabels && (
         <AsteroidLabel asteroid={selectedAsteroid} />
-      )}
-      
-      {/* Trajectory Lines - only for filtered asteroids */}
-      {showTrajectories && (
-        <group>
-          {asteroids.slice(0, Math.min(5, asteroids.length)).map((asteroid, i) => (
-            <TrajectoryLine key={asteroid.id} asteroid={asteroid} />
-          ))}
-        </group>
       )}
     </group>
   );
@@ -1360,159 +1360,91 @@ function AsteroidField({ asteroids, onAsteroidSelect, selectedAsteroid, onOpenDe
 
 // Asteroid name label
 function AsteroidLabel({ asteroid }: { asteroid: EnhancedAsteroid }) {
-  const orbit = asteroid.orbit;
-  const angle = orbit.phase;
-  const actualRadius = orbit.radius; // Use actual distance
-  
-  const x = Math.cos(angle) * actualRadius;
-  const z = Math.sin(angle) * actualRadius;
-  const y = Math.sin(angle * 0.2) * (orbit.inclination * 180 / Math.PI) * 0.15;
-  
-  return (
-    <Html position={[x, y + 2, z]} center style={{ zIndex: 1 }}>
-      <div className="bg-black/80 text-white px-2 py-1 rounded text-xs pointer-events-none whitespace-nowrap">
-        {asteroid.name}
-      </div>
-    </Html>
-  );
-}
+  const groupRef = useRef<THREE.Group>(null);
 
-// Particle trails for asteroids
-function AsteroidTrails({ asteroids }: { asteroids: EnhancedAsteroid[] }) {
-  const trailsRef = useRef<THREE.Points>(null);
-  
-  const trailData = useMemo(() => {
-    const positions = new Float32Array(asteroids.length * 20 * 3); // 20 trail points per asteroid
-    const colors = new Float32Array(asteroids.length * 20 * 3);
-    const alphas = new Float32Array(asteroids.length * 20);
-    
-    asteroids.forEach((asteroid, asteroidIndex) => {
-      const orbit = asteroid.orbit;
-      const rarityColor = rarityStyle(asteroid.rarity).hex;
-      const rgb = parseInt(rarityColor.slice(1), 16);
-      const baseColor = [(rgb >> 16) / 255, ((rgb >> 8) & 0xff) / 255, (rgb & 0xff) / 255];
-
-      for (let i = 0; i < 20; i++) {
-        const trailIndex = asteroidIndex * 20 + i;
-        const angle = orbit.phase - (i * 0.05);
-
-        const actualRadius = Math.max(5.0, orbit.radius);
-        const x = Math.cos(angle) * actualRadius;
-        const z = Math.sin(angle) * actualRadius;
-        const y = Math.sin(angle * 0.2) * (orbit.inclination * 180 / Math.PI) * 0.15;
-
-        positions[trailIndex * 3] = x;
-        positions[trailIndex * 3 + 1] = y;
-        positions[trailIndex * 3 + 2] = z;
-
-        const alpha = (20 - i) / 20;
-        colors[trailIndex * 3] = baseColor[0] * alpha;
-        colors[trailIndex * 3 + 1] = baseColor[1] * alpha;
-        colors[trailIndex * 3 + 2] = baseColor[2] * alpha;
-        alphas[trailIndex] = alpha * 0.8;
-      }
-    });
-
-    return { positions, colors, alphas };
-  }, [asteroids]);
-
-  // Memoize trail curves to avoid recreating geometry every render
-  const trailCurves = useMemo(() => {
-    return asteroids.map((asteroid) => {
-      const orbit = asteroid.orbit;
-      const trailPoints: THREE.Vector3[] = [];
-      for (let i = 0; i < 20; i++) {
-        const angle = orbit.phase - (i * 0.05);
-        const actualRadius = Math.max(5.0, orbit.radius);
-        trailPoints.push(new THREE.Vector3(
-          Math.cos(angle) * actualRadius,
-          Math.sin(angle * 0.2) * (orbit.inclination * 180 / Math.PI) * 0.15,
-          Math.sin(angle) * actualRadius,
-        ));
-      }
-      return {
-        curve: trailPoints.length >= 2 ? new THREE.CatmullRomCurve3(trailPoints) : null,
-        color: rarityStyle(asteroid.rarity).hex,
-        id: asteroid.id,
-      };
-    });
-  }, [asteroids]);
+  // Tracks the rock along its Keplerian orbit (same math as the mesh).
+  useFrame((state) => {
+    if (groupRef.current) {
+      const [x, y, z] = asteroidScenePosition(asteroid.orbit, state.clock.elapsedTime);
+      groupRef.current.position.set(x, y + 2, z);
+    }
+  });
 
   return (
-    <group>
-      {/* Smooth trail lines per asteroid */}
-      {trailCurves.map((trail) => {
-        if (!trail.curve) return null;
-        return (
-          <mesh key={trail.id}>
-            <tubeGeometry args={[trail.curve, 32, 0.06, 6, false]} />
-            <meshBasicMaterial
-              color={trail.color}
-              transparent
-              opacity={0.5}
-              blending={THREE.AdditiveBlending}
-              depthWrite={false}
-            />
-          </mesh>
-        );
-      })}
-
-      {/* Fading particle halo at trail heads */}
-      <points ref={trailsRef}>
-        <bufferGeometry>
-          <bufferAttribute
-            attach="attributes-position"
-            args={[trailData.positions, 3]}
-            count={asteroids.length * 20}
-          />
-          <bufferAttribute
-            attach="attributes-color"
-            args={[trailData.colors, 3]}
-            count={asteroids.length * 20}
-          />
-        </bufferGeometry>
-        <pointsMaterial
-          size={0.2}
-          vertexColors
-          transparent
-          opacity={0.35}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-        />
-      </points>
+    <group ref={groupRef}>
+      <Html position={[0, 0, 0]} center style={{ zIndex: 1 }}>
+        <div className="bg-black/80 text-white px-2 py-1 rounded text-xs pointer-events-none whitespace-nowrap">
+          {asteroid.name}
+        </div>
+      </Html>
     </group>
   );
 }
 
-function TrajectoryLine({ asteroid }: { asteroid: EnhancedAsteroid }) {
-  const curve = useMemo(() => {
-    const points = [];
-    const orbit = asteroid.orbit;
-    const earthRadius = 3.0;
-    const minDistance = earthRadius + 2.0;
-    const actualRadius = Math.max(minDistance, orbit.radius);
-    for (let i = 0; i <= 64; i++) {
-      const angle = (i / 64) * Math.PI * 2;
-      points.push(new THREE.Vector3(
-        Math.cos(angle) * actualRadius,
-        Math.sin(angle * 0.2) * (orbit.inclination * 180 / Math.PI) * 0.15,
-        Math.sin(angle) * actualRadius,
-      ));
-    }
-    return new THREE.CatmullRomCurve3(points);
-  }, [asteroid.orbit]);
-
+/**
+ * Faint elliptical orbit paths for every asteroid, rendered as line loops.
+ * The path brightens when its asteroid is hovered or selected, and the
+ * "Trajectories" toggle lifts all of them. Geometry is static per orbit —
+ * the moving rock reads as riding its drawn path.
+ */
+const AsteroidOrbitPaths = memo(function AsteroidOrbitPaths({
+  asteroids,
+  selectedAsteroidId,
+}: {
+  asteroids: EnhancedAsteroid[];
+  selectedAsteroidId?: string;
+}) {
   return (
-    <mesh>
-      <tubeGeometry args={[curve, 64, 0.15, 8, true]} />
-      <meshBasicMaterial
-        color={rarityStyle(asteroid.rarity).hex}
-        transparent
-        opacity={0.6}
-        depthWrite={false}
-      />
-    </mesh>
+    <group>
+      {asteroids.map((asteroid) => (
+        <OrbitPath
+          key={asteroid.id}
+          orbit={asteroid.orbit}
+          asteroidId={asteroid.id}
+          color={rarityStyle(asteroid.rarity).hex}
+          isSelected={selectedAsteroidId === asteroid.id}
+        />
+      ))}
+    </group>
   );
+});
+
+function OrbitPath({ orbit, asteroidId, color, isSelected }: {
+  orbit: EnhancedAsteroid['orbit'];
+  asteroidId: string;
+  color: string;
+  isSelected: boolean;
+}) {
+  const isHovered = useAsteroidStore(s => s.hoveredAsteroidId === asteroidId);
+  const showTrajectories = useAsteroidStore(s => s.showTrajectories);
+
+  const lineObj = useMemo(() => {
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(orbitPathPoints(orbit), 3));
+    const mat = new THREE.LineBasicMaterial({
+      color,
+      transparent: true,
+      opacity: 0.14,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    return new THREE.Line(geo, mat);
+  }, [orbit, color]);
+
+  // Dispose geometry + material when the orbit data changes or on unmount.
+  useEffect(() => {
+    const line = lineObj as THREE.Line;
+    return () => {
+      line.geometry.dispose();
+      (line.material as THREE.Material).dispose();
+    };
+  }, [lineObj]);
+
+  const material = (lineObj as THREE.Line).material as THREE.LineBasicMaterial;
+  const targetOpacity = isSelected ? 0.85 : isHovered ? 0.6 : showTrajectories ? 0.45 : 0.14;
+  material.opacity = targetOpacity;
+
+  return <primitive object={lineObj} />;
 }
 
 // Enhanced Camera Controls Component
@@ -1746,19 +1678,12 @@ function SolarSystemScene({
   const earthData = PLANET_DATA.find(p => p.name === 'Earth')!;
   const earthInitialAngle = (earthData.initialPhase || 0) * Math.PI * 2;
 
-  // Compute the selected asteroid's current world position for the cinematic camera
+  // Compute the selected asteroid's world position for the cinematic camera
+  // (start-of-flight position; the per-frame target below tracks the motion).
   const selectedWorldPos = useMemo(() => {
     if (!selectedAsteroid) return null;
-    const [ex, ey, ez] = earthPositionRef.current;
-    const orbit = selectedAsteroid.orbit;
-    const aAngle = orbit.phase;
-    const minDist = 5.0;
-    const aRadius = Math.max(minDist, orbit.radius);
-    const ax = Math.cos(aAngle) * aRadius;
-    const az = Math.sin(aAngle) * aRadius;
-    const ay = Math.sin(aAngle * 0.2) * (orbit.inclination * 180 / Math.PI) * 0.15;
-    return new THREE.Vector3(ex + ax, ey + ay, ez + az);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    const [ax, ay, az] = asteroidScenePosition(selectedAsteroid.orbit, 0);
+    return new THREE.Vector3(ax, ay, az);
   }, [selectedAsteroid, cinematicMode]);
 
   useCinematicCamera({
@@ -1768,7 +1693,7 @@ function SolarSystemScene({
   });
 
   // Drive animation from useFrame — no React state updates
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
     timeRef.current += delta * 0.2;
     const angle = earthInitialAngle + timeRef.current * earthData.speed;
     const x = Math.cos(angle) * earthData.distanceFromSun;
@@ -1781,16 +1706,10 @@ function SolarSystemScene({
     }
     if (controlsRef.current) {
       if (selectedAsteroid) {
-        // When an asteroid is selected, track its world position
-        // (asteroid is a child of Earth group, so world pos = earth + local offset)
-        const orbit = selectedAsteroid.orbit;
-        const aAngle = orbit.phase;
-        const minDist = 5.0; // earthRadius + buffer
-        const aRadius = Math.max(minDist, orbit.radius);
-        const ax = Math.cos(aAngle) * aRadius;
-        const az = Math.sin(aAngle) * aRadius;
-        const ay = Math.sin(aAngle * 0.2) * (orbit.inclination * 180 / Math.PI) * 0.15;
-        controlsRef.current.target.set(x + ax, y + ay, z + az);
+        // Track the rock along its Keplerian orbit (scene-clock time keeps
+        // this in lockstep with SceneAsteroid's useFrame).
+        const [ax, ay, az] = asteroidScenePosition(selectedAsteroid.orbit, state.clock.elapsedTime);
+        controlsRef.current.target.set(ax, ay, az);
       } else {
         controlsRef.current.target.set(x, y, z);
       }
@@ -1859,17 +1778,18 @@ function SolarSystemScene({
       <group ref={earthGroupRef} position={earthPos}>
         <Earth hideLabels={!!selectedAsteroid || showDetailedView || modalOpen} />
         <Moon earthPosition={[0, 0, 0]} hideLabels={!!selectedAsteroid || showDetailedView || modalOpen} />
-        <AsteroidField
-          asteroids={asteroids}
-          onAsteroidSelect={onAsteroidSelect}
-          selectedAsteroid={selectedAsteroid}
-          onOpenDetailed={onOpenDetailed}
-          hideLabels={!!selectedAsteroid || showDetailedView || modalOpen}
-        />
-        {/* Agent annotations share the Earth group's coordinate space so
-            labels track the same local placement as the asteroids. */}
-        <AgentAnnotations asteroids={asteroids} />
       </group>
+
+      {/* Asteroid field lives at scene root: its Keplerian ellipses are
+          Sun-centered world coordinates, not Earth-relative. */}
+      <AsteroidField
+        asteroids={asteroids}
+        onAsteroidSelect={onAsteroidSelect}
+        selectedAsteroid={selectedAsteroid}
+        onOpenDetailed={onOpenDetailed}
+        hideLabels={!!selectedAsteroid || showDetailedView || modalOpen}
+      />
+      <AgentAnnotations asteroids={asteroids} />
 
     </>
   );

@@ -8,7 +8,7 @@ import { rarityStyle } from '@/lib/rarity-colors';
 import { formatMeters, formatNumber, DARK_TOOLTIP, DARK_TOOLTIP_LABEL, DARK_TOOLTIP_ITEM } from '@/lib/format';
 import { useEscapeToClose } from '@/lib/use-dialog';
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   ScatterChart, Scatter, ReferenceLine, Cell
 } from 'recharts';
 

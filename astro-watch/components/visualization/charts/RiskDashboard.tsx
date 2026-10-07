@@ -2,9 +2,8 @@
 
 import { useMemo } from 'react';
 import {
-  AreaChart, Area, LineChart, Line, BarChart, Bar,
+  AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
   PieChart, Pie, Cell, ScatterChart, Scatter, Legend
 } from 'recharts';
 import { motion } from 'framer-motion';

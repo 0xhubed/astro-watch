@@ -163,14 +163,18 @@ const FRESNEL_FRAGMENT_SHADER = `
   }
 `;
 
-// Sun surface: real SDO texture with a slow fbm "boil" warp and physical
-// limb darkening (the sun is dimmer and redder toward its edge).
+// Sun surface: fully procedural plasma. Layered, domain-warped 3D noise
+// (sampled on object-space position, so there are no UV seams at the poles)
+// drives convection granulation, sparse dark sunspot regions and bright
+// faculae through a physically-motivated color ramp. This is how the good
+// WebGL suns are built — the surface genuinely churns instead of sliding a
+// photo around.
 const SUN_SURFACE_VERTEX_SHADER = `
-  varying vec2 vUv;
+  varying vec3 vPos;
   varying vec3 vNormalW;
   varying vec3 vWorldPosition;
   void main() {
-    vUv = uv;
+    vPos = position;
     vNormalW = normalize(mat3(modelMatrix) * normal);
     vec4 worldPos = modelMatrix * vec4(position, 1.0);
     vWorldPosition = worldPos.xyz;
@@ -179,54 +183,68 @@ const SUN_SURFACE_VERTEX_SHADER = `
 `;
 
 const SUN_SURFACE_FRAGMENT_SHADER = `
-  uniform sampler2D map;
   uniform float time;
-  varying vec2 vUv;
+  varying vec3 vPos;
   varying vec3 vNormalW;
   varying vec3 vWorldPosition;
-  float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-  float noise(vec2 p) {
-    vec2 i = floor(p);
-    vec2 f = fract(p);
-    f = f * f * (3.0 - 2.0 * f);
-    float a = hash(i);
-    float b = hash(i + vec2(1.0, 0.0));
-    float c = hash(i + vec2(0.0, 1.0));
-    float d = hash(i + vec2(1.0, 1.0));
-    return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+
+  float hash(vec3 p) {
+    p = fract(p * 0.3183099 + 0.1);
+    p *= 17.0;
+    return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
   }
-  float fbm(vec2 p) {
+  float noise(vec3 x) {
+    vec3 i = floor(x);
+    vec3 f = fract(x);
+    f = f * f * (3.0 - 2.0 * f);
+    return mix(
+      mix(mix(hash(i + vec3(0,0,0)), hash(i + vec3(1,0,0)), f.x),
+          mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
+      mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x),
+          mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y),
+      f.z);
+  }
+  float fbm(vec3 p) {
     float v = 0.0;
     float a = 0.5;
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 5; i++) {
       v += a * noise(p);
-      p *= 2.0;
+      p *= 2.15;
       a *= 0.5;
     }
     return v;
   }
+
   void main() {
-    vec2 uv = vUv;
-    float t = time * 0.03;
-    // Slow convection warp of the surface
-    vec2 warp = vec2(fbm(uv * 5.0 + t), fbm(uv * 5.0 - t + 7.3)) - 0.5;
-    // Sample the surface, then push its luminance through a solar color
-    // ramp: the source is false-color EUV whose dim regions would otherwise
-    // read grey. deep = sunspot/filament, mid = photosphere, hot = faculae.
-    vec3 texSample = texture2D(map, uv + warp * 0.02).rgb;
-    float lum = pow(clamp(dot(texSample, vec3(0.299, 0.587, 0.114)), 0.0, 1.0), 0.85);
-    vec3 deep = vec3(0.72, 0.28, 0.03);
-    vec3 mid  = vec3(1.0, 0.72, 0.18);
-    vec3 hot  = vec3(1.0, 0.97, 0.78);
-    vec3 col = mix(deep, mid, smoothstep(0.05, 0.55, lum));
-    col = mix(col, hot, smoothstep(0.32, 0.8, lum));
-    // Granulation shimmer as brightness modulation
-    float g = fbm(uv * 16.0 + vec2(t * 2.0, -t));
-    col *= 0.92 + g * 0.3;
-    // Limb darkening (softened so the disc stays bright)
+    vec3 p = normalize(vPos);
+    float t = time * 0.045;
+
+    // Domain-warped convection: large cells advected by slower flows
+    vec3 q = p * 3.0;
+    float flow = fbm(q * 0.6 + vec3(t * 0.6, -t * 0.4, t * 0.5));
+    float n1 = fbm(q + vec3(t, t * 0.7, -t * 0.5) + flow * 1.8);
+    float n2 = fbm(q * 2.4 + vec3(-t * 1.2, t * 0.9, t * 0.6) + n1 * 1.6);
+    float v = n1 * 0.62 + n2 * 0.55;
+
+    // Sparse dark sunspot regions — slow, so they persist while churning
+    float spots = smoothstep(0.60, 0.76, fbm(q * 1.1 + vec3(t * 0.12)));
+    v *= 1.0 - spots * 0.6;
+
+    // Color ramp: umbra -> dim plasma -> photosphere -> white-hot faculae
+    float lum = clamp(v, 0.0, 1.15);
+    vec3 c1 = vec3(0.42, 0.07, 0.0);
+    vec3 c2 = vec3(0.98, 0.34, 0.02);
+    vec3 c3 = vec3(1.0, 0.66, 0.12);
+    vec3 c4 = vec3(1.0, 0.96, 0.75);
+    vec3 col = mix(c1, c2, smoothstep(0.0, 0.38, lum));
+    col = mix(col, c3, smoothstep(0.32, 0.72, lum));
+    col = mix(col, c4, smoothstep(0.68, 1.08, lum));
+
+    // Limb darkening — the disc dims and reddens toward its edge
     vec3 viewDir = normalize(cameraPosition - vWorldPosition);
     float mu = clamp(dot(normalize(vNormalW), viewDir), 0.0, 1.0);
-    col *= 0.78 + 0.38 * pow(mu, 0.55);
+    col *= 0.62 + 0.5 * pow(mu, 0.6);
+
     gl_FragColor = vec4(col, 1.0);
   }
 `;
@@ -1097,108 +1115,6 @@ function Earth({ hideLabels }: { hideLabels?: boolean }) {
   );
 }
 
-/**
- * The raw source is an SDO/AIA full-disc photo: the globe floats in a black
- * square with a timestamp label — mapping that straight onto a sphere smears
- * black corners and the label across the surface. This detects the disc
- * (bright-pixel bounding box), then unwraps the orthographic view into a
- * seamless equirectangular texture, mirroring the far hemisphere (invisible
- * on churning plasma) and never sampling outside the disc.
- */
-function createSunSurfaceTexture(image: HTMLImageElement): THREE.Texture {
-  const OUT_W = 1024;
-  const OUT_H = 512;
-
-  // --- locate the disc on a downsampled probe ---
-  const PW = 220, PH = 220;
-  const probe = document.createElement('canvas');
-  probe.width = PW; probe.height = PH;
-  const pctx = probe.getContext('2d', { willReadFrequently: true })!;
-  pctx.drawImage(image, 0, 0, PW, PH);
-  const pdata = pctx.getImageData(0, 0, PW, PH).data;
-
-  let sumX = 0, sumY = 0, count = 0;
-  let minX = PW, maxX = 0, minY = PH, maxY = 0;
-  for (let y = 0; y < PH; y++) {
-    for (let x = 0; x < PW; x++) {
-      const i = (y * PW + x) * 4;
-      const luma = 0.299 * pdata[i] + 0.587 * pdata[i + 1] + 0.114 * pdata[i + 2];
-      if (luma > 45) {
-        sumX += x; sumY += y; count++;
-        if (x < minX) minX = x; if (x > maxX) maxX = x;
-        if (y < minY) minY = y; if (y > maxY) maxY = y;
-      }
-    }
-  }
-  const dw = image.naturalWidth, dh = image.naturalHeight;
-  if (count < 100) {
-    // No usable disc detected — fall back to a flat golden canvas
-    const fallback = document.createElement('canvas');
-    fallback.width = OUT_W; fallback.height = OUT_H;
-    const fctx = fallback.getContext('2d')!;
-    fctx.fillStyle = '#e8930c';
-    fctx.fillRect(0, 0, OUT_W, OUT_H);
-    const ftex = new THREE.CanvasTexture(fallback);
-    ftex.colorSpace = THREE.SRGBColorSpace;
-    return ftex;
-  }
-  const cx = (sumX / count) / PW * dw;
-  const cy = (sumY / count) / PH * dh;
-  const radius = (Math.max(maxX - minX, maxY - minY) / 2 / PW) * dw * 0.97;
-
-  // --- read the source at full resolution ---
-  const src = document.createElement('canvas');
-  src.width = dw; src.height = dh;
-  const sctx = src.getContext('2d', { willReadFrequently: true })!;
-  sctx.drawImage(image, 0, 0);
-  const idata = sctx.getImageData(0, 0, dw, dh).data;
-
-  // --- unwrap: equirect (lon, lat) -> orthographic disc sample ---
-  const out = document.createElement('canvas');
-  out.width = OUT_W; out.height = OUT_H;
-  const octx = out.getContext('2d')!;
-  const odata = octx.createImageData(OUT_W, OUT_H);
-
-  for (let py = 0; py < OUT_H; py++) {
-    const lat = (0.5 - py / OUT_H) * Math.PI; // +north
-    const cosLat = Math.cos(lat);
-    const sinLat = Math.sin(lat);
-    for (let px = 0; px < OUT_W; px++) {
-      const lon = (px / OUT_W) * Math.PI * 2;
-      const ox = cosLat * Math.sin(lon);  // disc x (right positive)
-      const oy = sinLat;                  // disc y (screen down = south)
-      const oz = cosLat * Math.cos(lon);  // toward viewer at lon 0
-
-      // near hemisphere samples directly; far side mirrors the near view
-      let u = cx + (oz >= 0 ? ox : -ox) * radius;
-      let v = cy + oy * radius;
-
-      // never sample outside the disc (label/glow live there)
-      const dx = (u - cx) / radius;
-      const dy = (v - cy) / radius;
-      const rr = Math.sqrt(dx * dx + dy * dy);
-      if (rr > 0.985) {
-        u = cx + (dx / rr) * radius * 0.985;
-        v = cy + (dy / rr) * radius * 0.985;
-      }
-
-      const ix = Math.min(dw - 1, Math.max(0, Math.round(u)));
-      const iy = Math.min(dh - 1, Math.max(0, Math.round(v)));
-      const si = (iy * dw + ix) * 4;
-      const oi = (py * OUT_W + px) * 4;
-      odata.data[oi] = idata[si];
-      odata.data[oi + 1] = idata[si + 1];
-      odata.data[oi + 2] = idata[si + 2];
-      odata.data[oi + 3] = 255;
-    }
-  }
-  octx.putImageData(odata, 0, 0);
-
-  const texture = new THREE.CanvasTexture(out);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  return texture;
-}
-
 function Sun() {
   const sunRef = useRef<THREE.Mesh>(null);
   const coronaRef = useRef<THREE.Mesh>(null);
@@ -1208,23 +1124,6 @@ function Sun() {
   const coronaShaderRef = useRef<THREE.ShaderMaterial>(null);
   const outerCoronaShaderRef = useRef<THREE.ShaderMaterial>(null);
 
-  // Real SDO solar surface from /public/textures (falls back to flat color
-  // until loaded — same loader pattern as Earth and Moon).
-  const [sunTexture, setSunTexture] = useState<THREE.Texture | null>(null);
-  useEffect(() => {
-    let isMounted = true;
-    new THREE.TextureLoader().load(
-      '/textures/sun_surface.jpg',
-      (texture) => {
-        if (isMounted) {
-          setSunTexture(createSunSurfaceTexture(texture.image as HTMLImageElement));
-        }
-      },
-      undefined,
-      () => { /* keep flat emissive fallback */ }
-    );
-    return () => { isMounted = false; };
-  }, []);
 
   // Billboard glow sprites (review #49): additive radial-gradient billboards
   // give the sun a soft halo from every camera angle — the fresnel coronas
@@ -1246,12 +1145,11 @@ function Sun() {
     return texture;
   }, []);
 
-  // Sun surface shader (rebound when the texture finishes loading)
+  // Procedural sun surface shader
   const sunShaderRef = useRef<THREE.ShaderMaterial>(null);
   const sunSurfaceUniforms = useMemo(() => ({
-    map: { value: sunTexture },
     time: { value: 0 },
-  }), [sunTexture]);
+  }), []);
 
   // Memoized corona uniform objects to avoid per-render allocations
   const coronaUniforms = useMemo(() => ({
@@ -1294,26 +1192,15 @@ function Sun() {
 
   return (
     <group position={[0, 0, 0]}>
-      {/* Main Sun body - textured plasma surface, limb-darkened */}
+      {/* Main Sun body - procedural plasma surface, limb-darkened */}
       <mesh ref={sunRef}>
         <sphereGeometry args={[10, 128, 64]} />
-        {sunTexture ? (
-          <shaderMaterial
-            ref={sunShaderRef}
-            uniforms={sunSurfaceUniforms}
-            vertexShader={SUN_SURFACE_VERTEX_SHADER}
-            fragmentShader={SUN_SURFACE_FRAGMENT_SHADER}
-          />
-        ) : (
-          <meshStandardMaterial
-            color={SUN_EMISSIVE_COLOR}
-            emissive={SUN_EMISSIVE_COLOR}
-            emissiveIntensity={2.4}
-            roughness={1}
-            metalness={0}
-            toneMapped={false}
-          />
-        )}
+        <shaderMaterial
+          ref={sunShaderRef}
+          uniforms={sunSurfaceUniforms}
+          vertexShader={SUN_SURFACE_VERTEX_SHADER}
+          fragmentShader={SUN_SURFACE_FRAGMENT_SHADER}
+        />
       </mesh>
 
       {/* Soft wide halo (additive, no postprocessing) — kept away from the

@@ -16,7 +16,7 @@ A personal project that visualizes near-Earth asteroid data from NASA in a 3D sc
 ### AI Chat
 - **Chat Interface** — Ask questions about asteroids, navigate the scene, look up data
 - **Tool-Calling** — The model can select asteroids, change views, and run simulations
-- **Streaming** — SSE-based chat via Ollama Cloud (Gemma 4 1B Cloud)
+- **Streaming** — SSE-based chat via Ollama Cloud (GLM 5.3 Flash via Ollama Cloud)
 
 ### Periodic Agent (experimental)
 - **Advisor Pattern** — Haiku executor with Opus advisor for higher-stakes decisions
@@ -53,7 +53,7 @@ A personal project that visualizes near-Earth asteroid data from NASA in a 3D sc
 - **Recharts** for chart components
 
 ### AI
-- **Ollama Cloud** (gemma4:31b-cloud) — OpenAI-compatible chat API with tool-calling
+- **Ollama Cloud** (glm-5.3-flash) — OpenAI-compatible chat API with tool-calling
 - **Anthropic SDK** (Claude) — Periodic monitoring agent
 - **Vercel KV** — Agent memory persistence
 

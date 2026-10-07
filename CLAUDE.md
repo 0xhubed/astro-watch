@@ -27,7 +27,7 @@ npm run deploy       # Run deploy script
 - **Styling:** Tailwind CSS 4 with custom space theme (see `tailwind.config.ts` for risk colors, animations)
 - **3D:** Three.js 0.178 via React Three Fiber + Drei (postprocessing disabled — incompatible with Three.js 0.178)
 - **State:** Zustand (client state in `lib/store.ts`) + TanStack Query (server state, 5min cache / 15min refetch)
-- **Chat AI:** Ollama Cloud (gemma4:31b-cloud) via OpenAI-compatible API at https://ollama.com/v1
+- **Chat AI:** Ollama Cloud (glm-5.3-flash) via OpenAI-compatible API at https://ollama.com/v1
 - **Agent AI:** Claude Advisor Strategy (Haiku executor + Opus advisor) via Anthropic SDK, runs every 4h via Vercel Cron
 - **Agent Memory:** Vercel KV (Upstash Redis) with TTLs (falls back to in-memory for local dev). Uses `@vercel/kv` — do NOT install `@upstash/redis` separately.
 - **Data:** NASA NEO API, NASA APOD API
@@ -45,7 +45,7 @@ npm run deploy       # Run deploy script
 
 ### Dual-Model AI Architecture
 
-- **Chat** (`/api/chat`): Ollama Cloud OpenAI-compatible API, gemma4:31b-cloud, SSE streaming, tool-calling for scene control
+- **Chat** (`/api/chat`): Ollama Cloud OpenAI-compatible API, glm-5.3-flash, SSE streaming, tool-calling for scene control
 - **Agent** (`/api/monitoring`): Anthropic SDK, Advisor Strategy — Haiku executor with Opus advisor (`max_uses: 3`) for high-stakes decisions (alerts, threat levels). Persistent memory via Vercel KV, publishes to `/briefings` and `/threats/[id]`
 
 ### Key Directories (under `astro-watch/`)

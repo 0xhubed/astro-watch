@@ -79,6 +79,76 @@ export interface EnhancedAsteroid extends Asteroid {
 const NASA_API_KEY = process.env.NASA_API_KEY;
 const BASE_URL = 'https://api.nasa.gov/neo/rest/v1';
 
+/** NASA's API currently serves this stub when real content is missing. */
+const APOD_PLACEHOLDER_MARKER = 'nasa-logo@2x';
+
+function isApodPlaceholder(apod: APOD): boolean {
+  return (apod.url || '').includes(APOD_PLACEHOLDER_MARKER);
+}
+
+/**
+ * Fallback when the APOD API only serves placeholders (it has been doing so
+ * for every date during outages): scrape the official apod.nasa.gov page,
+ * which keeps serving the latest published image independently of the API.
+ * For a specific date, uses that day's archive page (APOD began 1995-06-16).
+ */
+async function scrapeApodPage(date?: string): Promise<APOD> {
+  let pagePath = 'astropix.html';
+  let apodDate = date ?? new Date().toISOString().split('T')[0];
+
+  if (date) {
+    const [y, m, d] = date.split('-');
+    const beforeArchive =
+      Number(y) < 1995 ||
+      (y === '1995' && (Number(m) < 6 || (Number(m) === 6 && Number(d) < 16)));
+    if (beforeArchive) {
+      throw new Error('NASA APOD service: date precedes the archive (503)');
+    }
+    pagePath = `ap${y.slice(2)}${m}${d}.html`;
+  }
+
+  const response = await fetch(`https://apod.nasa.gov/apod/${pagePath}`, {
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!response.ok) {
+    throw new Error('NASA APOD service temporarily unavailable (503)');
+  }
+  const html = await response.text();
+
+  const titleMatch =
+    html.match(/<title>\s*APOD[^:]*:\s*[^-]*-\s*(.*?)<\/title>/i) ||
+    html.match(/<b>\s*([^<]{3,120})\s*<\/b>\s*(?:<br|$)/i);
+  const imgMatch = html.match(/<img\s+src="?(image\/[^">\s]+)/i);
+  if (!imgMatch) {
+    throw new Error('NASA APOD service temporarily unavailable (503)');
+  }
+  const hdMatch = html.match(/<a\s+href="?(image\/[^">\s]*big[^">\s]*\.(?:jpg|jpeg|png))"?/i);
+  const expMatch = html.match(/<b>\s*Explanation:\s*<\/b>([\s\S]*?)<\/p>/i);
+
+  const clean = (text: string) =>
+    text
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&#39;|&rsquo;/g, "'")
+      .replace(/&quot;/g, '"')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+  const apod: APOD = {
+    date: apodDate,
+    title: clean(titleMatch?.[1] ?? 'Astronomy Picture of the Day'),
+    url: `https://apod.nasa.gov/apod/${imgMatch[1]}`,
+    explanation: expMatch ? clean(expMatch[1]) : '',
+    media_type: 'image',
+    service_version: 'v1',
+  };
+  if (hdMatch) {
+    apod.hdurl = `https://apod.nasa.gov/apod/${hdMatch[1]}`;
+  }
+  return apod;
+}
+
 export async function getAPOD(date?: string): Promise<APOD> {
   const apiKey = NASA_API_KEY || 'DEMO_KEY';
 
@@ -100,29 +170,28 @@ export async function getAPOD(date?: string): Promise<APOD> {
     return response.json();
   };
 
+  // 1) The API entry, when it carries real content.
   try {
-    return await fetchAPOD(date);
+    const apod = await fetchAPOD(date);
+    if (!isApodPlaceholder(apod)) {
+      return apod;
+    }
   } catch (error) {
-    // NASA APOD often 500s for *today* before the image is published, so an
-    // unqualified request may fall back to yesterday. An explicitly requested
-    // date must fail as-is — silently swapping dates would return the wrong
-    // archive entry (#6, #14).
-    if (date) {
-      console.error('Error fetching APOD for explicit date:', error);
-      throw error;
-    }
-    const today = new Date().toISOString().split('T')[0];
-    const yesterday = new Date(today + 'T00:00:00Z');
-    yesterday.setDate(yesterday.getDate() - 1);
-    const fallbackDate = yesterday.toISOString().split('T')[0];
-
-    try {
-      return await fetchAPOD(fallbackDate);
-    } catch {
-      console.error('Error fetching APOD (including fallback):', error);
-      throw error;
-    }
+    console.error('APOD API fetch failed, trying the official site:', error);
   }
+
+  // 2) The official apod.nasa.gov page — independent of the API, and its
+  //    front page always shows the latest published picture.
+  try {
+    return await scrapeApodPage(date);
+  } catch (error) {
+    console.error('APOD site scrape failed:', error);
+  }
+
+  // 3) Nothing worked — surface an upstream outage so the route answers
+  //    503 + Retry-After and the UI shows its retry state instead of a
+  //    misleading NASA logo.
+  throw new Error('NASA APOD service temporarily unavailable (503)');
 }
 
 export async function fetchNEOFeed(startDate: string, endDate: string): Promise<EnhancedAsteroid[]> {

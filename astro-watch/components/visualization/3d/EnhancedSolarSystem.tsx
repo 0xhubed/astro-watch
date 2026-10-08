@@ -1892,6 +1892,7 @@ function AsteroidInfoPanel({ asteroid, onClose, onOpenDetailed, onSimulateImpact
         </button>
         <button
           onClick={onSimulateImpact}
+          title="Hypothetical educational scenario with simplified physics — none of today's objects are predicted to hit Earth"
           className="w-full mt-2 bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 hover:border-red-500/50 text-red-300 hover:text-red-200 py-2 px-4 rounded-lg transition-all duration-200 text-sm font-medium"
         >
           Simulate Impact

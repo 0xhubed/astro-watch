@@ -42,6 +42,9 @@ export interface ImpactResult {
   overpressure1psiM: number;
   affectedAreaKm2: number;
   comparison: string;
+  impactAngleDeg: number;
+  /** Impactors this small usually airburst — no meaningful ground crater. */
+  likelyAirburst: boolean;
 }
 
 // ── Internal helpers ─────────────────────────────────────────────────────────
@@ -105,11 +108,12 @@ function computeCraterDiameter(
   diameterM: number,
   velocityKmS: number,
   projDensity: number,
+  impactAngleDeg = 45,
 ): number {
   const L = diameterM;
   const v = velocityKmS * 1000;
   const g = SURFACE_GRAVITY;
-  const sinTheta = Math.sin(Math.PI / 4); // sin(45°)
+  const sinTheta = Math.sin((impactAngleDeg * Math.PI) / 180);
 
   const densityRatio = Math.pow(projDensity / TARGET_DENSITY, 1 / 3);
   const craterD =
@@ -194,19 +198,25 @@ function buildComparison(energyJ: number): string {
 
 // ── Public API ───────────────────────────────────────────────────────────────
 
+/** Impactors below this diameter usually fragment in the atmosphere
+ *  (cf. Chelyabinsk 2013, ~20 m) — a ground crater typically never forms. */
+const AIRBURST_DIAMETER_M = 25;
+
 /**
  * Compute all impact physics values for an asteroid.
  *
- * @param asteroidName  Display name / designation
- * @param diameterM     Mean diameter in metres
- * @param velocityKmS   Relative velocity in km/s
- * @param isPHA         Whether NASA classifies it as potentially hazardous
+ * @param asteroidName   Display name / designation
+ * @param diameterM      Mean diameter in metres
+ * @param velocityKmS    Relative velocity in km/s
+ * @param isPHA          Whether NASA classifies it as potentially hazardous
+ * @param impactAngleDeg Impact angle from horizontal (15–90; default 45°)
  */
 export function computeImpact(
   asteroidName: string,
   diameterM: number,
   velocityKmS: number,
   isPHA: boolean,
+  impactAngleDeg = 45,
 ): ImpactResult {
   const { type, density } = inferAsteroidType(diameterM, isPHA);
   const massKg = computeMass(diameterM, density);
@@ -214,7 +224,10 @@ export function computeImpact(
   const kineticEnergyMt = kineticEnergyJ / MT_TNT_J;
   const hiroshimaMultiple = kineticEnergyJ / HIROSHIMA_J;
 
-  const craterDiameterM = computeCraterDiameter(diameterM, velocityKmS, density);
+  const likelyAirburst = diameterM < AIRBURST_DIAMETER_M;
+  const craterDiameterM = likelyAirburst
+    ? 0
+    : computeCraterDiameter(diameterM, velocityKmS, density, impactAngleDeg);
   const craterDepthM = 0.3 * craterDiameterM; // transient crater d/D ≈ 0.3 (Melosh 1989)
 
   const fireballRadiusM = computeFireballRadius(kineticEnergyJ);
@@ -244,6 +257,8 @@ export function computeImpact(
     overpressure1psiM: r1psi,
     affectedAreaKm2,
     comparison,
+    impactAngleDeg,
+    likelyAirburst,
   };
 }
 

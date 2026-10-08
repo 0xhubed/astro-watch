@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { X, MapPin, Zap, Circle, Radio } from 'lucide-react';
@@ -82,12 +82,20 @@ export function ImpactSimulation({ asteroid, onClose }: Props) {
   const [narrativeLoading, setNarrativeLoading] = useState(true);
   const globeRef = useRef<any>(null);
 
-  // Compute impact physics
-  const impact: ImpactResult = computeImpact(
-    asteroid.name,
-    asteroid.size,
-    asteroid.velocity,
-    asteroid.is_potentially_hazardous_asteroid,
+  // Impact angle from horizontal — crater size scales with sin(θ)^(1/3)
+  const [impactAngleDeg, setImpactAngleDeg] = useState(45);
+
+  // Compute impact physics (pure math — recompute is cheap on angle change)
+  const impact: ImpactResult = useMemo(
+    () =>
+      computeImpact(
+        asteroid.name,
+        asteroid.size,
+        asteroid.velocity,
+        asteroid.is_potentially_hazardous_asteroid,
+        impactAngleDeg,
+      ),
+    [asteroid.name, asteroid.size, asteroid.velocity, asteroid.is_potentially_hazardous_asteroid, impactAngleDeg],
   );
 
   // Build globe rings for crater, fireball, blast radius
@@ -149,7 +157,9 @@ export function ImpactSimulation({ asteroid, onClose }: Props) {
     setImpactLocation({ lat, lng, name: `${lat.toFixed(1)}°, ${lng.toFixed(1)}°` });
   }, []);
 
-  // Fetch AI narrative from /api/chat (SSE stream)
+  // AI narrative — fetched ONCE per asteroid (the description covers the
+  // object's energy and effects, which don't change with the chosen impact
+  // location), so relocating the impact never burns extra chat quota (#73).
   useEffect(() => {
     let cancelled = false;
     setNarrative('');
@@ -164,11 +174,19 @@ export function ImpactSimulation({ asteroid, onClose }: Props) {
             messages: [
               {
                 role: 'user',
-                content: `Describe what would happen if asteroid ${asteroid.name} (${asteroid.size.toFixed(0)}m diameter, ${asteroid.velocity.toFixed(1)} km/s) hit Earth near ${impactLocation.name}. Energy: ${formatEnergy(impact.kineticEnergyJ)}. Crater diameter: ${formatDistance(impact.craterDiameterM)}. Be vivid but scientific. 3-4 sentences. Do NOT use any tools.`,
+                content: `In a hypothetical-impact educational scenario, describe what would happen if asteroid ${asteroid.name} (${asteroid.size.toFixed(0)}m diameter, ${asteroid.velocity.toFixed(1)} km/s, energy ${formatEnergy(impact.kineticEnergyJ)}) were to hit Earth. Be vivid but scientific. 3-4 sentences. Do NOT use any tools.`,
               },
             ],
           }),
         });
+
+        if (res.status === 429) {
+          if (!cancelled) {
+            setNarrative('AI narrative unavailable right now — the hourly chat limit was reached. The physics stats remain fully computed.');
+            setNarrativeLoading(false);
+          }
+          return;
+        }
 
         if (!res.ok || !res.body) {
           setNarrative('Unable to generate impact narrative.');
@@ -220,9 +238,9 @@ export function ImpactSimulation({ asteroid, onClose }: Props) {
 
     fetchNarrative();
     return () => { cancelled = true; };
-    // Only refetch when the impact location changes (not every re-render)
+    // Once per asteroid — location clicks must not consume chat quota (#73)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [impactLocation.name]);
+  }, [asteroid.id]);
 
   return (
     <AnimatePresence>
@@ -256,19 +274,24 @@ export function ImpactSimulation({ asteroid, onClose }: Props) {
             <div className="text-white/40 text-xs mt-1">Click globe to relocate</div>
           </div>
 
-          {/* Ring legend */}
-          <div className="absolute bottom-4 left-4 z-10 space-y-1">
+          {/* Ring legend — radii update live with the scenario */}
+          <div className="absolute bottom-4 left-4 z-10 space-y-1 bg-black/50 rounded-lg px-3 py-2 backdrop-blur-sm border border-white/10">
             <div className="flex items-center gap-2 text-xs text-white/70">
               <span className="w-3 h-1 bg-red-500 rounded-full inline-block" />
               Crater
+              <span className="font-mono text-white/50">
+                {impact.likelyAirburst ? '—' : formatDistance(impact.craterDiameterM)}
+              </span>
             </div>
             <div className="flex items-center gap-2 text-xs text-white/70">
               <span className="w-3 h-1 bg-orange-500 rounded-full inline-block" />
               Fireball
+              <span className="font-mono text-white/50">{formatDistance(impact.fireballRadiusM)}</span>
             </div>
             <div className="flex items-center gap-2 text-xs text-white/70">
               <span className="w-3 h-1 bg-blue-400 rounded-full inline-block" />
               Blast radius
+              <span className="font-mono text-white/50">{formatDistance(impact.overpressure1psiM)}</span>
             </div>
           </div>
 
@@ -297,10 +320,47 @@ export function ImpactSimulation({ asteroid, onClose }: Props) {
           <div className="px-5 py-4 border-b border-white/10 shrink-0">
             <h2 className="text-white text-lg font-bold">{asteroid.name}</h2>
             <p className="text-white/50 text-xs mt-0.5">Impact physics analysis</p>
+            <p className="text-amber-300/80 text-[11px] leading-snug mt-2">
+              Hypothetical scenario — simplified physics (Collins et al. 2005).
+              None of today&apos;s objects are predicted to hit Earth.
+            </p>
           </div>
 
           {/* Scrollable content */}
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-0.5 custom-scrollbar">
+
+            {/* Scenario controls */}
+            <StatSection title="Scenario" icon={<MapPin size={13} />} />
+            <div className="py-2">
+              <div className="flex justify-between items-center mb-1.5">
+                <span className="text-white/60 text-sm">Impact angle</span>
+                <span className="font-mono text-sm text-white/90">{impactAngleDeg}°</span>
+              </div>
+              <input
+                type="range"
+                min={15}
+                max={90}
+                step={5}
+                value={impactAngleDeg}
+                onChange={(e) => setImpactAngleDeg(Number(e.target.value))}
+                className="w-full accent-orange-400"
+                aria-label="Impact angle from horizontal"
+              />
+              <p className="text-white/40 text-[11px] mt-1">
+                Shallower angles dig smaller craters (scaling ∝ sin θ<span className="align-super text-[8px]">1/3</span>).
+              </p>
+            </div>
+            {impact.likelyAirburst && (
+              <div className="mb-4 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                <div className="text-yellow-300 text-xs font-semibold uppercase tracking-wide mb-1">
+                  Likely airburst
+                </div>
+                <div className="text-yellow-200/90 text-xs leading-relaxed">
+                  Impactors this small usually fragment in the atmosphere (cf. Chelyabinsk 2013) —
+                  expect blast damage but little or no ground crater.
+                </div>
+              </div>
+            )}
 
             {/* Comparison badge */}
             <div className="mb-4 p-3 rounded-lg bg-orange-500/10 border border-orange-500/20">
@@ -319,8 +379,14 @@ export function ImpactSimulation({ asteroid, onClose }: Props) {
 
             {/* Crater */}
             <StatSection title="Crater" icon={<Circle size={13} />} />
-            <StatRow label="Diameter" value={formatDistance(impact.craterDiameterM)} />
-            <StatRow label="Depth" value={formatDistance(impact.craterDepthM)} />
+            {impact.likelyAirburst ? (
+              <div className="text-white/50 text-xs py-1">No ground crater — atmospheric airburst.</div>
+            ) : (
+              <>
+                <StatRow label="Diameter" value={formatDistance(impact.craterDiameterM)} />
+                <StatRow label="Depth" value={formatDistance(impact.craterDepthM)} />
+              </>
+            )}
 
             {/* Blast radii */}
             <StatSection title="Blast Radii" icon={<Radio size={13} />} />
